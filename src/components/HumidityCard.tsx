@@ -14,12 +14,20 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
+import { MdWaterDrop } from "react-icons/md";
 
 function HumidityCard() {
   const [average, setAverage] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<ItemHistoryDatapoint[] | null>(null);
+  // Store history as array of { name, label, history: ItemHistoryDatapoint[] }
+  const [history, setHistory] = useState<
+    {
+      name: string;
+      label: string;
+      history: ItemHistoryDatapoint[];
+    }[]
+  >([]);
 
   useEffect(() => {
     async function load() {
@@ -45,26 +53,35 @@ function HumidityCard() {
           setAverage(null);
         }
 
-        // Fetch history for the first humidity item for the last 12 hours
-        if (humidity.length > 0) {
-          const now = new Date();
-          const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
-          const starttime = twelveHoursAgo.toISOString();
-          const endtime = now.toISOString();
-          try {
-            const hist = await getItemHistory(humidity[0].name, {
-              starttime,
-              endtime,
-            });
-            setHistory(hist.data);
-            // console.log("History data:", humidity[0].name, hist.data);
-          } catch (e) {
-            console.error("Failed to load history data", e);
-            setHistory(null);
-          }
-        } else {
-          setHistory(null);
-        }
+        const histories = await Promise.all(
+          humidity.map(async (item) => {
+            const now = new Date();
+            const twelveHoursAgo = new Date(
+              now.getTime() - 12 * 60 * 60 * 1000
+            );
+            const starttime = twelveHoursAgo.toISOString();
+            const endtime = now.toISOString();
+            try {
+              const hist = await getItemHistory(item.name, {
+                starttime,
+                endtime,
+              });
+              return {
+                name: item.name,
+                label: item.label || item.name,
+                history: hist.data,
+              };
+            } catch (e) {
+              console.error(`Failed to load history for ${item.name}`, e);
+              return {
+                name: item.name,
+                label: item.label || item.name,
+                history: [],
+              };
+            }
+          })
+        );
+        setHistory(histories);
       } catch (e) {
         console.error("Failed to load humidity data", e);
         setError("Failed to load humidity data");
@@ -76,66 +93,92 @@ function HumidityCard() {
   }, []);
 
   return (
-    <div className="max-w-[400px] mx-auto my-8 shadow-lg rounded-2xl p-8 bg-surface relative overflow-hidden">
+    <div className="max-w-[400px] mx-auto my-8 rounded-2xl p-8 bg-surface/60 shadow-xl border border-white/20 backdrop-blur-md backdrop-saturate-150 relative overflow-hidden">
       {/* Chart background */}
-      {history && history.length > 1 && (
-        <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={history.map((d) => ({
-                ...d,
-                state: parseFloat(d.state),
-                time: new Date(d.time).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }),
-              }))}
-              margin={{ top: 16, right: 8, left: 8, bottom: 16 }}
-            >
-              <XAxis dataKey="time" hide={true} />
-              <YAxis domain={["auto", "auto"]} hide={true} />
-              <Line
-                type="monotone"
-                dataKey="state"
-                stroke="#0ea5e9"
-                strokeWidth={3}
-                dot={false}
-              />
-              <Tooltip contentStyle={{ display: "none" }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+      {history &&
+        history.length > 0 &&
+        history.some((h) => h.history.length > 1) && (
+          <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
+            <ResponsiveContainer width="100%" height="100%">
+              {/*
+                Interpolate missing values for each series by building a unified time axis,
+                then forward-filling each series to ensure continuous lines.
+              */}
+              {(() => {
+                // 1. Collect all unique time points across all series
+                const allTimesSet = new Set<string>();
+                history.forEach((h) => {
+                  h.history.forEach((d) => {
+                    allTimesSet.add(
+                      new Date(d.time).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    );
+                  });
+                });
+                const allTimes = Array.from(allTimesSet).sort();
+
+                // 2. For each series, build a map of time -> value
+                const seriesData = history.map((h) => {
+                  const timeToValue = new Map<string, number>();
+                  h.history.forEach((d) => {
+                    const t = new Date(d.time).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+                    timeToValue.set(t, parseFloat(d.state));
+                  });
+                  // Forward fill
+                  let lastValue: number | null = null;
+                  const data = allTimes.map((t) => {
+                    const v = timeToValue.has(t)
+                      ? timeToValue.get(t)!
+                      : lastValue;
+                    if (v !== undefined && v !== null) lastValue = v;
+                    return { time: t, state: v };
+                  });
+                  return { name: h.name, label: h.label, data };
+                });
+
+                return (
+                  <LineChart
+                    data={seriesData[0].data}
+                    margin={{ top: 16, right: 8, left: 8, bottom: 16 }}
+                  >
+                    {seriesData.map((s, idx) => (
+                      <Line
+                        key={s.name}
+                        data={s.data}
+                        type="monotone"
+                        dataKey="state"
+                        name={s.label}
+                        stroke={`hsl(${200 + idx * 60}, 80%, 55%)`}
+                        strokeWidth={2}
+                        dot={false}
+                        isAnimationActive={false}
+                        connectNulls={true}
+                      />
+                    ))}
+                    <XAxis
+                      dataKey="time"
+                      hide={true}
+                      type="category"
+                      allowDuplicatedCategory={false}
+                    />
+                    <YAxis domain={["auto", "auto"]} hide={true} />
+                    <Tooltip contentStyle={{ display: "none" }} />
+                  </LineChart>
+                );
+              })()}
+            </ResponsiveContainer>
+          </div>
+        )}
       <div className="relative z-10">
         <div className="mb-4 flex items-center gap-3">
-          {/* Humidity/ground floor icon (Heroicons: Home Modern + Droplet) */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            className="w-8 h-8 text-primary-500"
-          >
-            <path
-              d="M12 3L2 12h3v7a1 1 0 001 1h4m6-8v8a1 1 0 001 1h4a1 1 0 001-1v-7h3L12 3z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M16 17a4 4 0 11-8 0c0-2.21 4-7 4-7s4 4.79 4 7z"
-              fill="currentColor"
-              fillOpacity=".15"
-            />
-            <path
-              d="M12 21a4 4 0 004-4c0-2.21-4-7-4-7s-4 4.79-4 7a4 4 0 004 4z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <MdWaterDrop className="w-8 h-8 text-primary-500" />
           <span className="text-primary font-bold text-2xl">Erdgeschoss</span>
+          <span className="text-primary font-bold text-2xl">&#216;</span>
         </div>
         {loading ? (
           <p>Loading…</p>
