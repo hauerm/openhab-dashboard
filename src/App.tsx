@@ -1,9 +1,24 @@
-import HumidityCard from "./components/HumidityCard";
+import AirQualityCard from "./components/AirQualityCard.tsx";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 function App() {
+  const openhabUrl = `${import.meta.env.VITE_OPENHAB_PROTOCOL || "https"}://${
+    import.meta.env.VITE_OPENHAB_HOST || "localhost"
+  }:${import.meta.env.VITE_OPENHAB_PORT || "9443"}`;
   return (
-    <div className="font-sans bg-surface min-h-screen">
-      <HumidityCard />
+    <div
+      className="font-sans min-h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center p-6"
+      style={{
+        backgroundImage: `url('${openhabUrl}/static/locations/house1.JPEG')`,
+      }}
+    >
+      <div className="w-full max-w-6xl flex flex-col items-stretch gap-6 lg:flex-row">
+        <div className="flex justify-center lg:justify-end">
+          <AirQualityCard />
+        </div>
+      </div>
+      <ToastContainer />
     </div>
   );
 }

@@ -93,7 +93,7 @@ function HumidityCard() {
   }, []);
 
   return (
-    <div className="max-w-[400px] mx-auto my-8 rounded-2xl p-8 bg-surface/60 shadow-xl border border-white/20 backdrop-blur-md backdrop-saturate-150 relative overflow-hidden">
+    <div className="w-full rounded-2xl p-8 bg-surface/60 shadow-xl border border-white/20 backdrop-blur-md backdrop-saturate-150 relative overflow-hidden">
       {/* Chart background */}
       {history &&
         history.length > 0 &&
@@ -175,23 +175,23 @@ function HumidityCard() {
           </div>
         )}
       <div className="relative z-10">
-        <div className="mb-4 flex items-center gap-3">
+        <div className="absolute top-2 left-2">
           <MdWaterDrop className="w-8 h-8 text-primary-500" />
-          <span className="text-primary font-bold text-2xl">Erdgeschoss</span>
-          <span className="text-primary font-bold text-2xl">&#216;</span>
         </div>
-        {loading ? (
-          <p>Loading…</p>
-        ) : error ? (
-          <p className="text-error">{error}</p>
-        ) : average !== null ? (
-          <div className="text-5xl font-bold text-primary">
-            {average.toFixed(1)}%
-          </div>
-        ) : (
-          <p>No humidity data found.</p>
-        )}
-        {/* Removed item names for a cleaner card UI */}
+        <div className="pt-12">
+          {loading ? (
+            <p>Loading…</p>
+          ) : error ? (
+            <p className="text-error">{error}</p>
+          ) : average !== null ? (
+            <div className="text-5xl font-bold text-primary">
+              {average.toFixed(1)}%
+            </div>
+          ) : (
+            <p>No humidity data found.</p>
+          )}
+          {/* Removed item names for a cleaner card UI */}
+        </div>
       </div>
     </div>
   );

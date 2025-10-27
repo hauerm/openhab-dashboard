@@ -1,12 +1,22 @@
 import type { Item, ItemHistoryResponse } from "../types/item";
+import { toast } from "react-toastify";
 
 // Semantic property constants
 export const PROPERTY_HUMIDITY = "Property_Humidity";
+export const PROPERTY_TEMPERATURE = "Property_Temperature";
+export const PROPERTY_CO2 = "Property_AirQuality_CO2";
+export const PROPERTY_AIR_QUALITY = "Property_AirQuality_AQI";
 
-export const OPENHAB_HOST = "192.168.1.15";
-export const OPENHAB_PORT = 9443;
-export const OPENHAB_PROTOCOL = "https"; // or 'http'
+export const OPENHAB_HOST = import.meta.env.VITE_OPENHAB_HOST || "localhost";
+export const OPENHAB_PORT = import.meta.env.VITE_OPENHAB_PORT || "8080";
+export const OPENHAB_PROTOCOL = import.meta.env.VITE_OPENHAB_PROTOCOL || "http"; // or 'https'
 const OPENHAB_BASE_URL = `${OPENHAB_PROTOCOL}://${OPENHAB_HOST}:${OPENHAB_PORT}/rest`;
+
+export const OPENHAB_API_TOKEN = import.meta.env.VITE_OPENHAB_API_TOKEN;
+export const OPENHAB_WS_URL = `${OPENHAB_PROTOCOL.replace(
+  "http",
+  "ws"
+)}://${OPENHAB_HOST}:${OPENHAB_PORT}/ws?access_token=${OPENHAB_API_TOKEN}`;
 
 export async function fetchItems(): Promise<Item[]> {
   const response = await fetch(`${OPENHAB_BASE_URL}/items`);
@@ -14,6 +24,33 @@ export async function fetchItems(): Promise<Item[]> {
     throw new Error("Failed to fetch items");
   }
   return response.json();
+}
+
+let itemsCache: Item[] | null = null;
+
+export async function fetchItemsMetadata(): Promise<Item[]> {
+  if (itemsCache) return itemsCache;
+  itemsCache = await fetchItems();
+  return itemsCache!;
+}
+
+export async function sendCommand(
+  itemName: string,
+  command: string
+): Promise<void> {
+  const response = await fetch(
+    `${OPENHAB_BASE_URL}/items/${encodeURIComponent(itemName)}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: command,
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to send command to ${itemName}`);
+  }
 }
 
 export async function fetchItem(name: string): Promise<Item> {
@@ -80,3 +117,85 @@ export async function getItemHistory(
   }
   return response.json();
 }
+
+export function connectWebSocket(
+  onMessage: (event: MessageEvent) => void,
+  onError?: (error: Event) => void
+): WebSocket {
+  const ws = new WebSocket(OPENHAB_WS_URL);
+  ws.onmessage = onMessage;
+  if (onError) ws.onerror = onError;
+  return ws;
+}
+
+// WebSocket manager with retry logic
+class WebSocketManager {
+  private ws: WebSocket | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 10;
+  private reconnectDelay = 1000; // Start with 1 second
+  private onMessageCallback: ((event: MessageEvent) => void) | null = null;
+  private onErrorCallback: ((error: Event) => void) | null = null;
+
+  connect(
+    onMessage: (event: MessageEvent) => void,
+    onError?: (error: Event) => void
+  ) {
+    this.onMessageCallback = onMessage;
+    this.onErrorCallback = onError || null;
+    this.attemptConnection();
+  }
+
+  private attemptConnection() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      toast.error(
+        "Failed to connect to OpenHAB WebSocket after multiple attempts."
+      );
+      return;
+    }
+
+    try {
+      this.ws = new WebSocket(OPENHAB_WS_URL);
+      this.ws.onopen = () => {
+        toast.success("Connected to OpenHAB WebSocket.");
+        this.reconnectAttempts = 0;
+        this.reconnectDelay = 1000;
+      };
+      this.ws.onmessage = this.onMessageCallback!;
+      this.ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        if (this.onErrorCallback) this.onErrorCallback(error);
+      };
+      this.ws.onclose = () => {
+        toast.warn("WebSocket connection lost. Retrying...");
+        this.scheduleReconnect();
+      };
+    } catch (error) {
+      console.error("Failed to create WebSocket:", error);
+      this.scheduleReconnect();
+    }
+  }
+
+  private scheduleReconnect() {
+    setTimeout(() => {
+      this.reconnectAttempts++;
+      this.reconnectDelay *= 2; // Exponential backoff
+      this.attemptConnection();
+    }, this.reconnectDelay);
+  }
+
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+  }
+
+  send(data: string) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(data);
+    }
+  }
+}
+
+export const webSocketManager = new WebSocketManager();
