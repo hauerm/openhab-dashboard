@@ -6,7 +6,7 @@ import {
   PROPERTY_HUMIDITY,
   getItemHistory,
 } from "../services/openhab-service";
-import { registerWebSocketListener } from "../services/webSocketService";
+import { registerWebSocketListener } from "../services/websocket-service";
 
 interface HistoryPoint {
   timestamp: number;
@@ -53,14 +53,7 @@ export const useHumidityStore = create<HumidityState & HumidityActions>(
           metadata: humidityItems,
           itemNames: new Set(humidityItems.map((i) => i.name)),
         });
-        humidityItems.forEach((item) => {
-          const value = parseFloat(item.state);
-          if (!isNaN(value)) {
-            get().updateValue(item.name, value);
-          }
-        });
-
-        // Fetch historical data for the last 2 hours
+        // Fetch historical data for the last 2 hours (includes current values)
         const twoHoursAgo = new Date(Date.now() - 7200000).toISOString();
         for (const item of humidityItems) {
           try {
@@ -73,7 +66,7 @@ export const useHumidityStore = create<HumidityState & HumidityActions>(
                 timestamp: dp.time,
                 value: parseFloat(dp.state),
               }));
-            // Add historical points
+            // Add historical points (includes recent/current values)
             historyPoints.forEach((point) =>
               get().updateValue(item.name, point.value, point.timestamp)
             );

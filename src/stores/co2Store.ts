@@ -6,7 +6,7 @@ import {
   PROPERTY_CO2,
   getItemHistory,
 } from "../services/openhab-service";
-import { registerWebSocketListener } from "../services/webSocketService";
+import { registerWebSocketListener } from "../services/websocket-service";
 
 interface HistoryPoint {
   timestamp: number;
@@ -49,14 +49,8 @@ export const useCO2Store = create<CO2State & CO2Actions>((set, get) => ({
         metadata: co2Items,
         itemNames: new Set(co2Items.map((i) => i.name)),
       });
-      co2Items.forEach((item) => {
-        const value = parseFloat(item.state);
-        if (!isNaN(value)) {
-          get().updateValue(item.name, value);
-        }
-      });
 
-      // Fetch historical data for the last 2 hours
+      // Fetch historical data for the last 2 hours (includes current values)
       const twoHoursAgo = new Date(Date.now() - 7200000).toISOString();
       for (const item of co2Items) {
         try {
@@ -70,7 +64,7 @@ export const useCO2Store = create<CO2State & CO2Actions>((set, get) => ({
               value: parseFloat(dp.state),
             }));
 
-          // Add historical points
+          // Add historical points (includes recent/current values)
           historyPoints.forEach((point) =>
             get().updateValue(item.name, point.value, point.timestamp)
           );
@@ -96,9 +90,6 @@ export const useCO2Store = create<CO2State & CO2Actions>((set, get) => ({
       newHistory[itemName] = newHistory[itemName].filter(
         (p) => now - p.timestamp < 7200000
       );
-
-      //log history
-      console.log(`Updated CO2 history for ${itemName}:`, newHistory[itemName]);
 
       // Calculate average
       const currentValues = Object.values(newHistory)

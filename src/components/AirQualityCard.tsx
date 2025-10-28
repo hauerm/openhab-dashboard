@@ -5,7 +5,7 @@ import CO2Card from "./CO2Card";
 import AQICard from "./AQICard";
 import HeliosManualModeToggle from "./HeliosManualModeToggle";
 import ErrorBoundary from "./ErrorBoundary";
-import { initializeWebSocket } from "../services/webSocketService";
+import { initializeWebSocket } from "../services/websocket-service";
 
 const AirQualityCard: React.FC = () => {
   useEffect(() => {

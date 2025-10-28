@@ -6,7 +6,7 @@ import {
   PROPERTY_TEMPERATURE,
   getItemHistory,
 } from "../services/openhab-service";
-import { registerWebSocketListener } from "../services/webSocketService";
+import { registerWebSocketListener } from "../services/websocket-service";
 
 interface HistoryPoint {
   timestamp: number;
@@ -54,14 +54,7 @@ export const useTemperatureStore = create<
         metadata: temperatureItems,
         itemNames: new Set(temperatureItems.map((i) => i.name)),
       });
-      temperatureItems.forEach((item) => {
-        const value = parseFloat(item.state);
-        if (!isNaN(value)) {
-          get().updateValue(item.name, value);
-        }
-      });
-
-      // Fetch historical data for the last 2 hours
+      // Fetch historical data for the last 2 hours (includes current values)
       const twoHoursAgo = new Date(Date.now() - 7200000).toISOString();
       for (const item of temperatureItems) {
         try {
@@ -80,7 +73,7 @@ export const useTemperatureStore = create<
             `Fetched ${historyPoints.length} data points for ${item.name}`
           );
 
-          // Add historical points (they will be filtered by time in updateValue)
+          // Add historical points (includes recent/current values)
           historyPoints.forEach((point) =>
             get().updateValue(item.name, point.value, point.timestamp)
           );
