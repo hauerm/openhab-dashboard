@@ -38,7 +38,7 @@ const HeliosManualModeToggle: React.FC = () => {
     currentMode !== null ? HELIOS_MANUAL_LEVEL_LABELS[currentMode] : "Unknown";
 
   return (
-    <div className="max-w-[400px] mx-auto my-8 rounded-2xl p-8 bg-surface/60 shadow-xl border border-white/20 backdrop-blur-md backdrop-saturate-150 relative overflow-hidden">
+    <div className="w-full rounded-2xl p-8 bg-surface/60 shadow-xl border border-white/20 backdrop-blur-md backdrop-saturate-150 relative overflow-hidden">
       <div className="relative z-10">
         <div className="mb-4 flex items-center gap-3">
           <MdSettings className="w-8 h-8 text-primary-500" />
