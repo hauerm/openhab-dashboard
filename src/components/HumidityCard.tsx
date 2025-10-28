@@ -9,9 +9,26 @@ import {
 } from "recharts";
 import { MdWaterDrop } from "react-icons/md";
 import { useHumidityStore } from "../stores/humidityStore";
+import { registerWebSocketListener } from "../services/websocket-service";
 
-const HumidityCard: React.FC = () => {
-  const { currentValue, loading, error, getRecentHistory } = useHumidityStore();
+interface HumidityCardProps {
+  location?: string;
+}
+
+const HumidityCard: React.FC<HumidityCardProps> = ({ location }) => {
+  const { currentValue, loading, error, getRecentHistory, initialize } =
+    useHumidityStore();
+
+  // Initialize the store with location when component mounts
+  React.useEffect(() => {
+    const initStore = async () => {
+      await initialize(location);
+      registerWebSocketListener((itemName, value) =>
+        useHumidityStore.getState().handleWebSocketMessage(itemName, value)
+      );
+    };
+    initStore();
+  }, [initialize, location]);
 
   const getBackgroundTint = (value: number | null) => {
     if (value === null)

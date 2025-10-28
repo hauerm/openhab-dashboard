@@ -7,7 +7,11 @@ import HeliosManualModeToggle from "./HeliosManualModeToggle";
 import ErrorBoundary from "./ErrorBoundary";
 import { initializeWebSocket } from "../services/websocket-service";
 
-const AirQualityCard: React.FC = () => {
+interface AirQualityCardProps {
+  location?: string;
+}
+
+const AirQualityCard: React.FC<AirQualityCardProps> = ({ location }) => {
   useEffect(() => {
     initializeWebSocket();
   }, []);
@@ -21,22 +25,22 @@ const AirQualityCard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
           <div className="min-w-[250px]">
             <ErrorBoundary>
-              <TemperatureCard />
+              <TemperatureCard location={location} />
             </ErrorBoundary>
           </div>
           <div className="min-w-[250px]">
             <ErrorBoundary>
-              <HumidityCard />
+              <HumidityCard location={location} />
             </ErrorBoundary>
           </div>
           <div className="min-w-[250px]">
             <ErrorBoundary>
-              <CO2Card />
+              <CO2Card location={location} />
             </ErrorBoundary>
           </div>
           <div className="min-w-[250px]">
             <ErrorBoundary>
-              <AQICard />
+              <AQICard location={location} />
             </ErrorBoundary>
           </div>
           <div className="col-span-1 md:col-span-2 min-w-[250px]">

@@ -9,10 +9,32 @@ import {
 } from "recharts";
 import { MdAir } from "react-icons/md";
 import { useAQIStore } from "../stores/aqiStore";
+import { registerWebSocketListener } from "../services/websocket-service";
 
-const AQICard: React.FC = () => {
-  const { currentValue, loading, error, getRecentHistory, getLabelForValue } =
-    useAQIStore();
+interface AQICardProps {
+  location?: string;
+}
+
+const AQICard: React.FC<AQICardProps> = ({ location }) => {
+  const {
+    currentValue,
+    loading,
+    error,
+    getRecentHistory,
+    getLabelForValue,
+    initialize,
+  } = useAQIStore();
+
+  // Initialize the store with location when component mounts
+  React.useEffect(() => {
+    const initStore = async () => {
+      await initialize(location);
+      registerWebSocketListener((itemName, value) =>
+        useAQIStore.getState().handleWebSocketMessage(itemName, value)
+      );
+    };
+    initStore();
+  }, [initialize, location]);
 
   const getBackgroundTint = (value: number | null) => {
     if (value === null)
@@ -23,7 +45,7 @@ const AQICard: React.FC = () => {
     return "bg-gradient-to-t from-red-500/30 to-transparent";
   };
 
-  const recentHistory = getRecentHistory(2); // Last 2 hours
+  const recentHistory = getRecentHistory(24); // Last 24 hours
 
   // Prepare chart data
   const chartData = (() => {

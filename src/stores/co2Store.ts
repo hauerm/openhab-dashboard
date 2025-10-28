@@ -2,11 +2,10 @@ import { create } from "zustand";
 import type { Item } from "../types/item";
 import {
   fetchItemsMetadata,
-  filterItemsBySemanticProperty,
+  filterItems,
   PROPERTY_CO2,
   getItemHistory,
 } from "../services/openhab-service";
-import { registerWebSocketListener } from "../services/websocket-service";
 
 interface HistoryPoint {
   timestamp: number;
@@ -23,7 +22,7 @@ interface CO2State {
 }
 
 interface CO2Actions {
-  initialize: () => Promise<void>;
+  initialize: (location?: string) => Promise<void>;
   updateValue: (itemName: string, value: number, timestamp?: number) => void;
   handleWebSocketMessage: (itemName: string, value: number) => void;
   setLoading: (loading: boolean) => void;
@@ -40,11 +39,14 @@ export const useCO2Store = create<CO2State & CO2Actions>((set, get) => ({
   loading: false,
   error: null,
 
-  initialize: async () => {
+  initialize: async (location?: string) => {
     try {
       set({ loading: true, error: null });
       const items = await fetchItemsMetadata();
-      const co2Items = filterItemsBySemanticProperty(items, PROPERTY_CO2);
+      const co2Items = filterItems(items, {
+        property: PROPERTY_CO2,
+        location,
+      });
       set({
         metadata: co2Items,
         itemNames: new Set(co2Items.map((i) => i.name)),
@@ -130,9 +132,10 @@ export const useCO2Store = create<CO2State & CO2Actions>((set, get) => ({
   },
 }));
 
-(async () => {
-  await useCO2Store.getState().initialize();
-  registerWebSocketListener((itemName, value) =>
-    useCO2Store.getState().handleWebSocketMessage(itemName, value)
-  );
-})();
+// Store is now initialized explicitly by components when needed
+// (async () => {
+//   await useCO2Store.getState().initialize();
+//   registerWebSocketListener((itemName, value) =>
+//     useCO2Store.getState().handleWebSocketMessage(itemName, value)
+//   );
+// })();

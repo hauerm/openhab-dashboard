@@ -2,11 +2,10 @@ import { create } from "zustand";
 import type { Item } from "../types/item";
 import {
   fetchItemsMetadata,
-  filterItemsBySemanticProperty,
+  filterItems,
   PROPERTY_TEMPERATURE,
   getItemHistory,
 } from "../services/openhab-service";
-import { registerWebSocketListener } from "../services/websocket-service";
 
 interface HistoryPoint {
   timestamp: number;
@@ -23,7 +22,7 @@ interface TemperatureState {
 }
 
 interface TemperatureActions {
-  initialize: () => Promise<void>;
+  initialize: (location?: string) => Promise<void>;
   updateValue: (itemName: string, value: number, timestamp?: number) => void;
   handleWebSocketMessage: (itemName: string, value: number) => void;
   setLoading: (loading: boolean) => void;
@@ -42,14 +41,14 @@ export const useTemperatureStore = create<
   loading: false,
   error: null,
 
-  initialize: async () => {
+  initialize: async (location?: string) => {
     try {
       set({ loading: true, error: null });
       const items = await fetchItemsMetadata();
-      const temperatureItems = filterItemsBySemanticProperty(
-        items,
-        PROPERTY_TEMPERATURE
-      );
+      const temperatureItems = filterItems(items, {
+        property: PROPERTY_TEMPERATURE,
+        location,
+      });
       set({
         metadata: temperatureItems,
         itemNames: new Set(temperatureItems.map((i) => i.name)),
@@ -139,9 +138,10 @@ export const useTemperatureStore = create<
   },
 }));
 
-(async () => {
-  await useTemperatureStore.getState().initialize();
-  registerWebSocketListener((itemName, value) =>
-    useTemperatureStore.getState().handleWebSocketMessage(itemName, value)
-  );
-})();
+// Store is now initialized explicitly by components when needed
+// (async () => {
+//   await useTemperatureStore.getState().initialize();
+//   registerWebSocketListener((itemName, value) =>
+//     useTemperatureStore.getState().handleWebSocketMessage(itemName, value)
+//   );
+// })();

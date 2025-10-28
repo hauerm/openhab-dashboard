@@ -15,7 +15,7 @@ function App() {
     >
       <div className="w-full max-w-6xl flex flex-col items-stretch gap-6 lg:flex-row">
         <div className="flex justify-center lg:justify-end">
-          <AirQualityCard />
+          <AirQualityCard location="EG" />
         </div>
       </div>
       <ToastContainer />

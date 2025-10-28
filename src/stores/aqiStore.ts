@@ -2,11 +2,10 @@ import { create } from "zustand";
 import type { Item } from "../types/item";
 import {
   fetchItemsMetadata,
-  filterItemsBySemanticProperty,
+  filterItems,
   PROPERTY_AIR_QUALITY,
   getItemHistory,
 } from "../services/openhab-service";
-import { registerWebSocketListener } from "../services/websocket-service";
 
 interface HistoryPoint {
   timestamp: number;
@@ -24,7 +23,7 @@ interface AQIState {
 }
 
 interface AQIActions {
-  initialize: () => Promise<void>;
+  initialize: (location?: string) => Promise<void>;
   updateValue: (itemName: string, value: number, timestamp?: number) => void;
   handleWebSocketMessage: (itemName: string, value: number) => void;
   getLabelForValue: (value: number) => string;
@@ -43,14 +42,14 @@ export const useAQIStore = create<AQIState & AQIActions>((set, get) => ({
   loading: false,
   error: null,
 
-  initialize: async () => {
+  initialize: async (location?: string) => {
     try {
       set({ loading: true, error: null });
       const items = await fetchItemsMetadata();
-      const aqiItems = filterItemsBySemanticProperty(
-        items,
-        PROPERTY_AIR_QUALITY
-      );
+      const aqiItems = filterItems(items, {
+        property: PROPERTY_AIR_QUALITY,
+        location,
+      });
       set({
         metadata: aqiItems,
         itemNames: new Set(aqiItems.map((i) => i.name)),
@@ -67,13 +66,20 @@ export const useAQIStore = create<AQIState & AQIActions>((set, get) => ({
       });
       set({ stateOptions: options });
 
-      // Fetch historical data for the last 2 hours (includes current values)
-      const twoHoursAgo = new Date(Date.now() - 7200000).toISOString();
+      // Fetch historical data for the last 24 hours (includes current values)
+      const oneDayAgo = new Date(Date.now() - 86400000).toISOString();
       for (const item of aqiItems) {
         try {
           const historyResponse = await getItemHistory(item.name, {
-            starttime: twoHoursAgo,
+            starttime: oneDayAgo,
           });
+
+          //log fetched data
+          console.log(
+            `[Init] Fetched history for ${item.name}:`,
+            historyResponse.data
+          );
+
           const historyPoints = historyResponse.data
             .filter((dp) => !isNaN(parseFloat(dp.state)))
             .map((dp) => ({
@@ -83,6 +89,13 @@ export const useAQIStore = create<AQIState & AQIActions>((set, get) => ({
           // Add historical points (includes recent/current values)
           historyPoints.forEach((point) =>
             get().updateValue(item.name, point.value, point.timestamp)
+          );
+
+          // log value set
+          historyPoints.forEach((point) =>
+            console.log(
+              `[Init] Set ${item.name} to ${point.value} at ${point.timestamp}`
+            )
           );
         } catch (error) {
           console.error(`Failed to fetch history for ${item.name}:`, error);
@@ -102,9 +115,9 @@ export const useAQIStore = create<AQIState & AQIActions>((set, get) => ({
       const newHistory = { ...state.history };
       if (!newHistory[itemName]) newHistory[itemName] = [];
       newHistory[itemName].push({ timestamp: now, value });
-      // Keep only last 2 hours
+      // Keep only last 24 hours
       newHistory[itemName] = newHistory[itemName].filter(
-        (p) => now - p.timestamp < 7200000
+        (p) => now - p.timestamp < 86400000
       );
 
       // Calculate average
@@ -152,9 +165,10 @@ export const useAQIStore = create<AQIState & AQIActions>((set, get) => ({
   },
 }));
 
-(async () => {
-  await useAQIStore.getState().initialize();
-  registerWebSocketListener((itemName, value) =>
-    useAQIStore.getState().handleWebSocketMessage(itemName, value)
-  );
-})();
+// Store is now initialized explicitly by components when needed
+// (async () => {
+//   await useAQIStore.getState().initialize();
+//   registerWebSocketListener((itemName, value) =>
+//     useAQIStore.getState().handleWebSocketMessage(itemName, value)
+//   );
+// })();

@@ -102,13 +102,182 @@ export class ItemService {
   }
 
   /**
-   * Filter items by semantic property
+   * Check if an item belongs to a specific location (including sub-locations)
+   */
+  static hasLocation(
+    item: Item,
+    targetLocation: string,
+    allItems?: Item[]
+  ): boolean {
+    // Get the direct location of the item
+    // For regular items: check hasLocation
+    // For Group items (locations): check isPartOf
+    const directLocation =
+      item.type === "Group"
+        ? item.metadata?.semantics?.config?.isPartOf
+        : item.metadata?.semantics?.config?.hasLocation;
+
+    console.log(
+      `[Location] Checking ${item.type} item "${item.name}" for location "${targetLocation}"`
+    );
+
+    if (typeof directLocation !== "string") {
+      console.log(
+        `[Location] Item "${item.name}" has no valid location property (${
+          item.type === "Group" ? "isPartOf" : "hasLocation"
+        })`
+      );
+      return false;
+    }
+
+    console.log(
+      `[Location] Item "${item.name}" has direct location: "${directLocation}"`
+    );
+
+    // If direct location matches, return true
+    if (directLocation === targetLocation) {
+      console.log(
+        `[Location] ✓ Direct location match for "${item.name}": "${directLocation}"`
+      );
+      return true;
+    }
+
+    // If no allItems provided, we can't traverse hierarchy
+    if (!allItems) {
+      console.log(`[Location] No items array provided for hierarchy traversal`);
+      return false;
+    }
+
+    // Traverse up the location hierarchy
+    const result = this.isLocationAncestor(
+      directLocation,
+      targetLocation,
+      allItems
+    );
+    console.log(
+      `[Location] Hierarchy traversal result for "${item.name}": ${result}`
+    );
+    return result;
+  }
+
+  /**
+   * Check if a location is an ancestor of another location in the hierarchy
+   */
+  static isLocationAncestor(
+    locationName: string,
+    targetLocation: string,
+    allItems: Item[]
+  ): boolean {
+    console.log(
+      `[Location] Checking if "${locationName}" is ancestor of "${targetLocation}"`
+    );
+
+    // Find the location item
+    const locationItem = allItems.find((item) => item.name === locationName);
+    if (!locationItem) {
+      console.log(
+        `[Location] Location item "${locationName}" not found in items array`
+      );
+      return false;
+    }
+
+    console.log(
+      `[Location] Found location item "${locationName}" (${locationItem.type}), checking its parent location`
+    );
+
+    // For location Group items, check isPartOf; for regular items, check hasLocation
+    const parentLocation =
+      locationItem.type === "Group"
+        ? locationItem.metadata?.semantics?.config?.isPartOf
+        : locationItem.metadata?.semantics?.config?.hasLocation;
+
+    if (typeof parentLocation !== "string") {
+      console.log(
+        `[Location] Location "${locationName}" has no valid parent location property`
+      );
+      return false;
+    }
+
+    console.log(
+      `[Location] Location "${locationName}" has parent: "${parentLocation}"`
+    );
+
+    // If parent matches target, return true
+    if (parentLocation === targetLocation) {
+      console.log(
+        `[Location] ✓ Found ancestor match: "${locationName}" -> "${parentLocation}"`
+      );
+      return true;
+    }
+
+    // Recursively check parent hierarchy
+    console.log(`[Location] Continuing traversal up from "${parentLocation}"`);
+    return this.isLocationAncestor(parentLocation, targetLocation, allItems);
+  }
+
+  /**
+   * Filter items by semantic property and/or location
+   *
+   * @param items Array of items to filter
+   * @param options Configuration object with optional filters
+   * @param options.property Optional semantic property to filter by (e.g., PROPERTY_HUMIDITY)
+   * @param options.location Optional location/group name to filter by - checks location hierarchy using semantic model
+   * @returns Filtered array of items
+   *
+   * @example
+   * // Filter by semantic property only
+   * filterItems(items, { property: PROPERTY_HUMIDITY })
+   *
+   * @example
+   * // Filter by location only (checks semantic location hierarchy)
+   * filterItems(items, { location: "LivingRoom" })
+   *
+   * @example
+   * // Filter by both property and location
+   * filterItems(items, { property: PROPERTY_TEMPERATURE, location: "EG" })
+   */
+  static filterItems(
+    items: Item[],
+    options: {
+      property?: string;
+      location?: string;
+    } = {}
+  ): Item[] {
+    const { property, location } = options;
+
+    console.log(`[Filter] Filtering ${items.length} items with options:`, {
+      property,
+      location,
+    });
+
+    const filtered = items.filter((item) => {
+      // Check semantic property if specified
+      if (property && !this.hasSemanticProperty(item, property)) {
+        return false;
+      }
+
+      // Check location if specified - use semantic location hierarchy
+      if (location && !this.hasLocation(item, location, items)) {
+        return false;
+      }
+
+      console.log(`[Filter] Including "${item.name}" - matches criteria`);
+      return true;
+    });
+
+    console.log(
+      `[Filter] Filtered ${items.length} items down to ${filtered.length} items`
+    );
+    return filtered;
+  }
+  /**
+   * Filter items by semantic property (legacy function for backward compatibility)
    */
   static filterItemsBySemanticProperty(
     items: Item[],
     property: string = PROPERTY_HUMIDITY
   ): Item[] {
-    return items.filter((item) => this.hasSemanticProperty(item, property));
+    return this.filterItems(items, { property });
   }
 
   /**
@@ -140,10 +309,14 @@ export const sendCommand = ItemService.sendCommand.bind(ItemService);
 export const getItemHistory = ItemService.getItemHistory.bind(ItemService);
 export const filterItemsBySemanticType =
   ItemService.filterItemsBySemanticType.bind(ItemService);
+export const filterItems = ItemService.filterItems.bind(ItemService);
 export const filterItemsBySemanticProperty =
   ItemService.filterItemsBySemanticProperty.bind(ItemService);
 export const hasSemanticProperty =
   ItemService.hasSemanticProperty.bind(ItemService);
+export const hasLocation = ItemService.hasLocation.bind(ItemService);
+export const isLocationAncestor =
+  ItemService.isLocationAncestor.bind(ItemService);
 
 // Export constants for backward compatibility
 export {

@@ -9,9 +9,26 @@ import {
 } from "recharts";
 import { MdCo2 } from "react-icons/md";
 import { useCO2Store } from "../stores/co2Store";
+import { registerWebSocketListener } from "../services/websocket-service";
 
-const CO2Card: React.FC = () => {
-  const { currentValue, loading, error, getRecentHistory } = useCO2Store();
+interface CO2CardProps {
+  location?: string;
+}
+
+const CO2Card: React.FC<CO2CardProps> = ({ location }) => {
+  const { currentValue, loading, error, getRecentHistory, initialize } =
+    useCO2Store();
+
+  // Initialize the store with location when component mounts
+  React.useEffect(() => {
+    const initStore = async () => {
+      await initialize(location);
+      registerWebSocketListener((itemName, value) =>
+        useCO2Store.getState().handleWebSocketMessage(itemName, value)
+      );
+    };
+    initStore();
+  }, [initialize, location]);
 
   const getBackgroundTint = (value: number | null) => {
     if (value === null)

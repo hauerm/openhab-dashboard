@@ -9,10 +9,26 @@ import {
 } from "recharts";
 import { MdThermostat } from "react-icons/md";
 import { useTemperatureStore } from "../stores/temperatureStore";
+import { registerWebSocketListener } from "../services/websocket-service";
 
-const TemperatureCard: React.FC = () => {
-  const { currentValue, loading, error, getRecentHistory } =
+interface TemperatureCardProps {
+  location?: string;
+}
+
+const TemperatureCard: React.FC<TemperatureCardProps> = ({ location }) => {
+  const { currentValue, loading, error, getRecentHistory, initialize } =
     useTemperatureStore();
+
+  // Initialize the store with location when component mounts
+  React.useEffect(() => {
+    const initStore = async () => {
+      await initialize(location);
+      registerWebSocketListener((itemName, value) =>
+        useTemperatureStore.getState().handleWebSocketMessage(itemName, value)
+      );
+    };
+    initStore();
+  }, [initialize, location]);
 
   const getBackgroundTint = (value: number | null) => {
     if (value === null)
