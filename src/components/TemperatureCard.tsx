@@ -14,18 +14,12 @@ const TemperatureCard: React.FC = () => {
   const { currentValue, loading, error, getRecentHistory } =
     useTemperatureStore();
 
-  const getColor = (value: number | null) => {
-    if (value === null) return "text-gray-500";
-    if (value < 18) return "text-blue-500";
-    if (value <= 25) return "text-green-500";
-    return "text-red-500";
-  };
-
-  const getIconColor = (value: number | null) => {
-    if (value === null) return "text-gray-500";
-    if (value < 18) return "text-blue-500";
-    if (value <= 25) return "text-green-500";
-    return "text-red-500";
+  const getBackgroundTint = (value: number | null) => {
+    if (value === null)
+      return "bg-gradient-to-t from-surface/40 to-transparent";
+    if (value < 18) return "bg-gradient-to-t from-blue-500/30 to-transparent";
+    if (value <= 25) return "bg-gradient-to-t from-green-500/30 to-transparent";
+    return "bg-gradient-to-t from-red-500/30 to-transparent";
   };
 
   const recentHistory = getRecentHistory(10); // Last 2 hours
@@ -55,7 +49,20 @@ const TemperatureCard: React.FC = () => {
   })();
 
   return (
-    <div className="w-full rounded-2xl p-8 bg-surface/60 shadow-xl border border-white/20 backdrop-blur-md backdrop-saturate-150 relative overflow-hidden">
+    <div className="w-full rounded-2xl p-8 relative overflow-hidden bg-surface/60">
+      {/* Glass structure layers */}
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/10 via-transparent to-black/5"></div>
+      <div className="absolute inset-0 rounded-2xl border border-white/30 shadow-2xl shadow-black/20"></div>
+      <div className="absolute inset-[1px] rounded-[14px] border border-white/10"></div>
+      <div className="absolute inset-0 rounded-2xl backdrop-blur-xl backdrop-saturate-200"></div>
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/10 via-transparent to-white/5"></div>
+      {/* Subtle state gradient overlay */}
+      <div
+        className={`absolute inset-0 rounded-2xl ${getBackgroundTint(
+          currentValue
+        )}`}
+      ></div>
+
       {/* Chart background */}
       {chartData.length > 0 && (
         <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
@@ -84,7 +91,7 @@ const TemperatureCard: React.FC = () => {
       )}
       <div className="relative z-10">
         <div className="absolute top-2 left-2">
-          <MdThermostat className={`w-8 h-8 ${getIconColor(currentValue)}`} />
+          <MdThermostat className="w-8 h-8 text-white/80 drop-shadow-lg" />
         </div>
         <div className="pt-12">
           {loading ? (
@@ -92,7 +99,7 @@ const TemperatureCard: React.FC = () => {
           ) : error ? (
             <p className="text-error">{error}</p>
           ) : currentValue !== null ? (
-            <div className={`text-5xl font-bold ${getColor(currentValue)}`}>
+            <div className="text-5xl font-bold text-white drop-shadow-lg">
               {currentValue.toFixed(1)}°C
             </div>
           ) : (
