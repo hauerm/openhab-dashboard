@@ -21,6 +21,12 @@ export default defineConfig({
         secure: false, // Disable SSL certificate validation
         ws: true, // Enable WebSocket proxying
       },
+      // Proxy static assets (images, etc.) to OpenHAB, bypassing SSL certificate validation
+      "/static": {
+        target: "https://192.168.1.15:9443",
+        changeOrigin: true,
+        secure: false, // Disable SSL certificate validation
+      },
     },
   },
 });

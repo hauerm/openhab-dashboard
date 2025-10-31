@@ -73,6 +73,23 @@ export const useHumidityStore = create<HumidityState & HumidityActions>(
             console.error(`Failed to fetch history for ${item.name}:`, error);
           }
         }
+
+        // Fallback: Use current state from metadata if no historical data available
+        const state = get();
+        if (state.currentValue === null && humidityItems.length > 0) {
+          const currentValues = humidityItems
+            .map((item) => {
+              const stateValue = parseFloat(item.state);
+              return !isNaN(stateValue) ? stateValue : null;
+            })
+            .filter((v) => v !== null) as number[];
+
+          if (currentValues.length > 0) {
+            const avg =
+              currentValues.reduce((a, b) => a + b, 0) / currentValues.length;
+            set({ currentValue: avg });
+          }
+        }
       } catch (error) {
         set({ error: "Failed to initialize humidity data" });
         console.error("Humidity store initialization error:", error);

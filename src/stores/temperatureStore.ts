@@ -53,6 +53,7 @@ export const useTemperatureStore = create<
         metadata: temperatureItems,
         itemNames: new Set(temperatureItems.map((i) => i.name)),
       });
+
       // Fetch historical data for the last 2 hours (includes current values)
       const twoHoursAgo = new Date(Date.now() - 7200000).toISOString();
       for (const item of temperatureItems) {
@@ -60,6 +61,7 @@ export const useTemperatureStore = create<
           const historyResponse = await getItemHistory(item.name, {
             starttime: twoHoursAgo,
           });
+
           const historyPoints = historyResponse.data
             .filter((dp) => !isNaN(parseFloat(dp.state)))
             .map((dp) => ({
@@ -67,17 +69,29 @@ export const useTemperatureStore = create<
               value: parseFloat(dp.state),
             }));
 
-          // log amount of data points
-          console.log(
-            `Fetched ${historyPoints.length} data points for ${item.name}`
-          );
-
           // Add historical points (includes recent/current values)
           historyPoints.forEach((point) =>
             get().updateValue(item.name, point.value, point.timestamp)
           );
         } catch (error) {
           console.error(`Failed to fetch history for ${item.name}:`, error);
+        }
+      }
+
+      // Fallback: Use current state from metadata if no historical data available
+      const state = get();
+      if (state.currentValue === null && temperatureItems.length > 0) {
+        const currentValues = temperatureItems
+          .map((item) => {
+            const stateValue = parseFloat(item.state);
+            return !isNaN(stateValue) ? stateValue : null;
+          })
+          .filter((v) => v !== null) as number[];
+
+        if (currentValues.length > 0) {
+          const avg =
+            currentValues.reduce((a, b) => a + b, 0) / currentValues.length;
+          set({ currentValue: avg });
         }
       }
     } catch (error) {
@@ -130,10 +144,12 @@ export const useTemperatureStore = create<
     const now = Date.now();
     const cutoff = now - hours * 3600000; // hours to milliseconds
     const state = get();
+
     const filtered: Record<string, HistoryPoint[]> = {};
     for (const [item, points] of Object.entries(state.history)) {
       filtered[item] = points.filter((p) => p.timestamp >= cutoff);
     }
+
     return filtered;
   },
 }));

@@ -7,37 +7,56 @@ import {
   mdiFanSpeed3,
   mdiFan,
   mdiFanAuto,
+  mdiFanAlert,
 } from "@mdi/js";
 import {
   HELIOS_MANUAL_LEVEL_LABELS,
   HELIOS_MANUAL_MODE_ITEM,
 } from "../types/ventilation";
 import type { HeliosManualLevel } from "../types/ventilation";
-import { sendCommand } from "../services/openhab-service";
 import { useVentilationStore } from "../stores/ventilationStore";
 import { registerWebSocketListener } from "../services/websocket-service";
+import { WebSocketService } from "../services/websocket-service";
 
 const HeliosManualModeToggle: React.FC = () => {
-  const { currentLevel, initialize } = useVentilationStore();
+  const { manualLevel, actualLevel } = useVentilationStore();
   const [commandLoading, setCommandLoading] = useState(false);
 
   // Initialize the store when component mounts
   React.useEffect(() => {
     const initStore = async () => {
-      await initialize();
+      await useVentilationStore.getState().initialize();
       registerWebSocketListener((itemName, value) =>
         useVentilationStore.getState().handleWebSocketMessage(itemName, value)
       );
     };
     initStore();
-  }, [initialize]);
+  }, []); // Empty dependency array - only run once on mount
 
   const handleModeChange = async (level: HeliosManualLevel) => {
     setCommandLoading(true);
     try {
-      await sendCommand(HELIOS_MANUAL_MODE_ITEM, level.toString());
+      console.log(`[Ventilation] Sending command for level: ${level}`);
+
+      // Send WebSocket command
+      if (WebSocketService.isConnected()) {
+        console.log(`[Ventilation] Sending command via WebSocket: ${level}`);
+        await WebSocketService.sendCommand(
+          HELIOS_MANUAL_MODE_ITEM,
+          level.toString(),
+          "Decimal"
+        );
+      } else {
+        throw new Error("WebSocket not connected");
+      }
+
+      // Wait for WebSocket state updates (OpenHAB delay)
+      console.log(`[Ventilation] Waiting for WebSocket state update...`);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      console.log(`[Ventilation] Finished waiting for updates`);
     } catch (error) {
       console.error("Failed to send ventilation command:", error);
+      // Could show user error here if command fails
     } finally {
       setCommandLoading(false);
     }
@@ -57,7 +76,7 @@ const HeliosManualModeToggle: React.FC = () => {
       case 3:
         return <Icon path={mdiFanSpeed3} size={iconSize} />;
       case 4:
-        return <Icon path={mdiFan} size={iconSize} />;
+        return <Icon path={mdiFanAlert} size={iconSize} />;
     }
   };
 
@@ -83,8 +102,12 @@ const HeliosManualModeToggle: React.FC = () => {
               relative p-3 rounded-lg font-bold text-white transition-all duration-200
               backdrop-blur-md backdrop-saturate-150 border shadow-xl aspect-square
               ${
-                currentLevel === level
-                  ? "bg-white/40 border-white/60 shadow-white/30 scale-105 shadow-2xl"
+                actualLevel === level
+                  ? "bg-white/60 border-white/80 shadow-white/40 scale-105 shadow-2xl" // Bright white for actual operating level
+                  : manualLevel === level
+                  ? manualLevel === -1
+                    ? "bg-green-500/30 border-green-400/50 shadow-green-400/25 scale-105 shadow-2xl" // Consistent green for automatic setpoint (matches other cards)
+                    : "bg-white/40 border-white/60 shadow-white/30 scale-105 shadow-2xl" // Softer white for manual setpoint
                   : "bg-white/8 border-white/20 hover:bg-white/15 hover:scale-102 shadow-lg"
               }
               disabled:opacity-50 disabled:cursor-not-allowed
@@ -94,24 +117,35 @@ const HeliosManualModeToggle: React.FC = () => {
             <div className="flex items-center justify-center">
               <div
                 className={`${
-                  currentLevel === level ? "text-white" : "text-white/80"
+                  actualLevel === level || manualLevel === level
+                    ? "text-white"
+                    : "text-white/80"
                 }`}
               >
                 {getFanIcon(level)}
               </div>
             </div>
             {/* Enhanced elevation for active state */}
-            {currentLevel === level && (
-              <div className="absolute inset-0 rounded-lg bg-gradient-to-t from-white/20 to-transparent pointer-events-none shadow-inner" />
+            {(manualLevel === level || actualLevel === level) && (
+              <div
+                className={`absolute inset-0 rounded-lg bg-gradient-to-t ${
+                  manualLevel === level && manualLevel === -1
+                    ? "from-green-500/30 to-transparent"
+                    : "from-white/20 to-transparent"
+                } pointer-events-none shadow-inner`}
+              />
             )}
           </button>
         ))}
       </div>
 
       {commandLoading && (
-        <p className="text-center text-white/60 text-sm mt-4">
-          Switching ventilation mode...
-        </p>
+        <div className="flex items-center justify-center mt-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white/60"></div>
+          <p className="text-center text-white/60 text-sm ml-3">
+            Updating ventilation mode...
+          </p>
+        </div>
       )}
     </div>
   );

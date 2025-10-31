@@ -5,7 +5,8 @@ import { Point } from "../types/generated-items";
 import { fetchItemsMetadata } from "../services/openhab-service";
 
 interface VentilationState {
-  currentLevel: HeliosManualLevel | null;
+  manualLevel: HeliosManualLevel | null; // Manual mode setpoint
+  actualLevel: HeliosManualLevel | null; // Actual operating level
   metadata: Item[];
   itemNames: Set<string>;
   loading: boolean;
@@ -18,13 +19,15 @@ interface VentilationActions {
   handleWebSocketMessage: (itemName: string, value: number) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  getCurrentLevel: () => HeliosManualLevel | null;
+  getManualLevel: () => HeliosManualLevel | null;
+  getActualLevel: () => HeliosManualLevel | null;
 }
 
 export const useVentilationStore = create<
   VentilationState & VentilationActions
 >((set, get) => ({
-  currentLevel: null,
+  manualLevel: null,
+  actualLevel: null,
   metadata: [],
   itemNames: new Set(),
   loading: false,
@@ -37,36 +40,62 @@ export const useVentilationStore = create<
       const items = await fetchItemsMetadata();
       console.log(`[Ventilation] Fetched ${items.length} items from OpenHAB`);
 
-      // Find the Helios manual mode item
+      // Find the Helios manual mode and operating level items
       const manualModeItem = items.find(
         (item) => item.name === Point.Setpoint.KNX_Helios_ManualMode
       );
+      const operatingLevelItem = items.find(
+        (item) => item.name === Point.Status.KNX_Helios_KWRL_Ist_Stufe
+      );
 
+      const foundItems = [];
       if (manualModeItem) {
         console.log(
           `[Ventilation] Found manual mode item: ${manualModeItem.name}`
         );
-        set({
-          metadata: [manualModeItem],
-          itemNames: new Set([manualModeItem.name]),
-        });
-
-        // Get current state from the item
-        console.log("[Ventilation] Getting current state...");
-        try {
-          const currentState = parseFloat(manualModeItem.state);
-          if (!isNaN(currentState)) {
-            console.log(`[Ventilation] Initial level: ${currentState}`);
-            set({ currentLevel: currentState as HeliosManualLevel });
-          }
-        } catch (error) {
-          console.error(
-            `[Ventilation] Failed to parse current state for ${manualModeItem.name}:`,
-            error
-          );
-        }
+        foundItems.push(manualModeItem);
       } else {
         console.warn("[Ventilation] Helios manual mode item not found");
+      }
+
+      if (operatingLevelItem) {
+        console.log(
+          `[Ventilation] Found operating level item: ${operatingLevelItem.name}`
+        );
+        foundItems.push(operatingLevelItem);
+      } else {
+        console.warn("[Ventilation] Helios operating level item not found");
+      }
+
+      if (foundItems.length > 0) {
+        set({
+          metadata: foundItems,
+          itemNames: new Set(foundItems.map((item) => item.name)),
+        });
+
+        // Get current states from the items
+        console.log("[Ventilation] Getting current states...");
+        try {
+          if (manualModeItem) {
+            const manualState = parseFloat(manualModeItem.state);
+            if (!isNaN(manualState)) {
+              console.log(`[Ventilation] Initial manual level: ${manualState}`);
+              set({ manualLevel: manualState as HeliosManualLevel });
+            }
+          }
+
+          if (operatingLevelItem) {
+            const operatingState = parseFloat(operatingLevelItem.state);
+            if (!isNaN(operatingState)) {
+              console.log(
+                `[Ventilation] Initial operating level: ${operatingState}`
+              );
+              set({ actualLevel: operatingState as HeliosManualLevel });
+            }
+          }
+        } catch (error) {
+          console.error(`[Ventilation] Failed to parse current states:`, error);
+        }
       }
       console.log("[Ventilation] Initialization completed successfully");
     } catch (error) {
@@ -78,32 +107,41 @@ export const useVentilationStore = create<
   },
 
   updateValue: (itemName, value) => {
-    const previousLevel = get().currentLevel;
+    const previousManualLevel = get().manualLevel;
+    const previousActualLevel = get().actualLevel;
 
-    // Update current level from the manual mode setpoint
-    const currentLevel =
+    // Update manual level from the manual mode setpoint
+    const manualLevel =
       itemName === Point.Setpoint.KNX_Helios_ManualMode
         ? (value as HeliosManualLevel)
-        : get().currentLevel;
+        : get().manualLevel;
 
-    if (currentLevel !== previousLevel) {
+    // Update actual level from the operating level status
+    const actualLevel =
+      itemName === Point.Status.KNX_Helios_KWRL_Ist_Stufe
+        ? (value as HeliosManualLevel)
+        : get().actualLevel;
+
+    if (manualLevel !== previousManualLevel) {
       console.log(
-        `[Ventilation] Current level changed: ${previousLevel} → ${currentLevel}`
+        `[Ventilation] Manual level changed: ${previousManualLevel} → ${manualLevel}`
+      );
+    }
+
+    if (actualLevel !== previousActualLevel) {
+      console.log(
+        `[Ventilation] Actual level changed: ${previousActualLevel} → ${actualLevel}`
       );
     }
 
     console.log(`[Ventilation] Updated ${itemName}: ${value}`);
-    set({ currentLevel });
+    set({ manualLevel, actualLevel });
   },
 
   handleWebSocketMessage: (itemName, value) => {
     if (get().itemNames.has(itemName)) {
       console.log(`[Ventilation] WebSocket update: ${itemName} = ${value}`);
       get().updateValue(itemName, value);
-    } else {
-      console.log(
-        `[Ventilation] Ignoring WebSocket update for unknown item: ${itemName}`
-      );
     }
   },
 
@@ -121,9 +159,15 @@ export const useVentilationStore = create<
     set({ error });
   },
 
-  getCurrentLevel: () => {
-    const level = get().currentLevel;
-    console.log(`[Ventilation] Current level requested: ${level}`);
+  getManualLevel: () => {
+    const level = get().manualLevel;
+    console.log(`[Ventilation] Manual level requested: ${level}`);
+    return level;
+  },
+
+  getActualLevel: () => {
+    const level = get().actualLevel;
+    console.log(`[Ventilation] Actual level requested: ${level}`);
     return level;
   },
 }));

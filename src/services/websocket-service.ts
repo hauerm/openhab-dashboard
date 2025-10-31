@@ -1,5 +1,9 @@
 import { toast } from "react-toastify";
 import { getWebSocketUrl } from "./config";
+import type {
+  OpenHABCommandType,
+  OpenHABCommandPayload,
+} from "../types/openhab-types";
 
 interface ItemStatePayload {
   type: string;
@@ -10,13 +14,16 @@ interface ItemStatePayload {
  * Service for handling OpenHAB WebSocket connections and real-time updates
  */
 export class WebSocketService {
-  private static listeners: Array<(itemName: string, value: number) => void> = [];
+  private static listeners: Array<(itemName: string, value: number) => void> =
+    [];
   private static manager: WebSocketManager | null = null;
 
   /**
    * Register a listener for WebSocket item state changes
    */
-  static registerListener(listener: (itemName: string, value: number) => void): void {
+  static registerListener(
+    listener: (itemName: string, value: number) => void
+  ): void {
     this.listeners.push(listener);
   }
 
@@ -70,6 +77,29 @@ export class WebSocketService {
    */
   static isConnected(): boolean {
     return this.manager?.isConnected() ?? false;
+  }
+
+  /**
+   * Send a command to an item via WebSocket
+   */
+  static sendCommand(
+    itemName: string,
+    command: string | number,
+    commandType: OpenHABCommandType
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.manager) {
+        reject(new Error("WebSocket not initialized"));
+        return;
+      }
+
+      try {
+        this.manager.sendCommand(itemName, command, commandType);
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 }
 
@@ -163,12 +193,42 @@ class WebSocketManager {
     }
   }
 
+  sendCommand(
+    itemName: string,
+    command: string | number,
+    commandType: OpenHABCommandType
+  ): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      // Always format payload as JSON with type and value (mandatory for OpenHAB)
+      const commandPayload: OpenHABCommandPayload = {
+        type: commandType,
+        value: command.toString(),
+      };
+
+      const message = {
+        type: "ItemCommandEvent",
+        topic: `openhab/items/${itemName}/command`,
+        payload: JSON.stringify(commandPayload), // Payload must be a JSON string
+      };
+      this.ws.send(JSON.stringify(message));
+      console.log(
+        `[WebSocket] Sent command to ${itemName}: ${JSON.stringify(
+          commandPayload
+        )}`
+      );
+    } else {
+      throw new Error("WebSocket not connected");
+    }
+  }
+
   isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
   }
 }
 
 // Export convenience functions for backward compatibility
-export const registerWebSocketListener = WebSocketService.registerListener.bind(WebSocketService);
-export const initializeWebSocket = WebSocketService.initialize.bind(WebSocketService);
+export const registerWebSocketListener =
+  WebSocketService.registerListener.bind(WebSocketService);
+export const initializeWebSocket =
+  WebSocketService.initialize.bind(WebSocketService);
 export const webSocketManager = WebSocketService; // For backward compatibility

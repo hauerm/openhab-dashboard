@@ -74,6 +74,23 @@ export const useCO2Store = create<CO2State & CO2Actions>((set, get) => ({
           console.error(`Failed to fetch history for ${item.name}:`, error);
         }
       }
+
+      // Fallback: Use current state from metadata if no historical data available
+      const state = get();
+      if (state.currentValue === null && co2Items.length > 0) {
+        const currentValues = co2Items
+          .map((item) => {
+            const stateValue = parseFloat(item.state);
+            return !isNaN(stateValue) ? stateValue : null;
+          })
+          .filter((v) => v !== null) as number[];
+
+        if (currentValues.length > 0) {
+          const avg =
+            currentValues.reduce((a, b) => a + b, 0) / currentValues.length;
+          set({ currentValue: avg });
+        }
+      }
     } catch (error) {
       set({ error: "Failed to initialize CO2 data" });
       console.error("CO2 store initialization error:", error);

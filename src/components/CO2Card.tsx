@@ -39,7 +39,7 @@ const CO2Card: React.FC<CO2CardProps> = ({ location }) => {
     return "bg-gradient-to-t from-red-500/30 to-transparent";
   };
 
-  const recentHistory = getRecentHistory(2); // Last 2 hours
+  const recentHistory = getRecentHistory(6); // Last 6 hours
 
   // Prepare chart data
   const chartData = (() => {

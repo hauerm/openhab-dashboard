@@ -117,34 +117,17 @@ export class ItemService {
         ? item.metadata?.semantics?.config?.isPartOf
         : item.metadata?.semantics?.config?.hasLocation;
 
-    console.log(
-      `[Location] Checking ${item.type} item "${item.name}" for location "${targetLocation}"`
-    );
-
     if (typeof directLocation !== "string") {
-      console.log(
-        `[Location] Item "${item.name}" has no valid location property (${
-          item.type === "Group" ? "isPartOf" : "hasLocation"
-        })`
-      );
       return false;
     }
 
-    console.log(
-      `[Location] Item "${item.name}" has direct location: "${directLocation}"`
-    );
-
     // If direct location matches, return true
     if (directLocation === targetLocation) {
-      console.log(
-        `[Location] ✓ Direct location match for "${item.name}": "${directLocation}"`
-      );
       return true;
     }
 
     // If no allItems provided, we can't traverse hierarchy
     if (!allItems) {
-      console.log(`[Location] No items array provided for hierarchy traversal`);
       return false;
     }
 
@@ -153,9 +136,6 @@ export class ItemService {
       directLocation,
       targetLocation,
       allItems
-    );
-    console.log(
-      `[Location] Hierarchy traversal result for "${item.name}": ${result}`
     );
     return result;
   }
@@ -168,22 +148,11 @@ export class ItemService {
     targetLocation: string,
     allItems: Item[]
   ): boolean {
-    console.log(
-      `[Location] Checking if "${locationName}" is ancestor of "${targetLocation}"`
-    );
-
     // Find the location item
     const locationItem = allItems.find((item) => item.name === locationName);
     if (!locationItem) {
-      console.log(
-        `[Location] Location item "${locationName}" not found in items array`
-      );
       return false;
     }
-
-    console.log(
-      `[Location] Found location item "${locationName}" (${locationItem.type}), checking its parent location`
-    );
 
     // For location Group items, check isPartOf; for regular items, check hasLocation
     const parentLocation =
@@ -192,26 +161,15 @@ export class ItemService {
         : locationItem.metadata?.semantics?.config?.hasLocation;
 
     if (typeof parentLocation !== "string") {
-      console.log(
-        `[Location] Location "${locationName}" has no valid parent location property`
-      );
       return false;
     }
 
-    console.log(
-      `[Location] Location "${locationName}" has parent: "${parentLocation}"`
-    );
-
     // If parent matches target, return true
     if (parentLocation === targetLocation) {
-      console.log(
-        `[Location] ✓ Found ancestor match: "${locationName}" -> "${parentLocation}"`
-      );
       return true;
     }
 
     // Recursively check parent hierarchy
-    console.log(`[Location] Continuing traversal up from "${parentLocation}"`);
     return this.isLocationAncestor(parentLocation, targetLocation, allItems);
   }
 
@@ -245,11 +203,6 @@ export class ItemService {
   ): Item[] {
     const { property, location } = options;
 
-    console.log(`[Filter] Filtering ${items.length} items with options:`, {
-      property,
-      location,
-    });
-
     const filtered = items.filter((item) => {
       // Check semantic property if specified
       if (property && !this.hasSemanticProperty(item, property)) {
@@ -261,13 +214,9 @@ export class ItemService {
         return false;
       }
 
-      console.log(`[Filter] Including "${item.name}" - matches criteria`);
       return true;
     });
 
-    console.log(
-      `[Filter] Filtered ${items.length} items down to ${filtered.length} items`
-    );
     return filtered;
   }
   /**
