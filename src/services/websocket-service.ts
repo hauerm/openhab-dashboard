@@ -1,9 +1,12 @@
 import { toast } from "react-toastify";
 import { getWebSocketUrl } from "./config";
+import { log } from "./logger";
 import type {
   OpenHABCommandType,
   OpenHABCommandPayload,
 } from "../types/openhab-types";
+
+const logger = log.createLogger("WebSocket");
 
 interface ItemStatePayload {
   type: string;
@@ -33,7 +36,7 @@ export class WebSocketService {
    */
   static async initialize(): Promise<void> {
     if (this.isInitialized) {
-      console.log("[WebSocket] Already initialized, skipping...");
+      logger.debug("Already initialized, skipping...");
       return;
     }
 
@@ -59,13 +62,13 @@ export class WebSocketService {
             this.listeners.forEach((listener) => listener(itemName, value));
           }
         } catch (error) {
-          console.error("Error processing WebSocket message:", error);
+          logger.error("Error processing WebSocket message:", error);
         }
       });
 
       this.isInitialized = true;
     } catch (error) {
-      console.error("Failed to initialize WebSocket:", error);
+      logger.error("Failed to initialize WebSocket:", error);
       toast.error("Failed to initialize WebSocket connection.");
     }
   }
@@ -142,7 +145,7 @@ class WebSocketManager {
 
     try {
       const wsUrl = getWebSocketUrl();
-      console.log(`Attempting WebSocket connection to: ${wsUrl}`);
+      logger.info(`Attempting WebSocket connection to: ${wsUrl}`);
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
@@ -154,12 +157,12 @@ class WebSocketManager {
       this.ws.onmessage = this.onMessageCallback!;
 
       this.ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
+        logger.error("WebSocket error:", error);
         if (this.onErrorCallback) this.onErrorCallback(error);
       };
 
       this.ws.onclose = (event) => {
-        console.log(
+        logger.info(
           `WebSocket closed. Code: ${event.code}, Reason: ${event.reason}`
         );
         if (event.code === 1006) {
@@ -173,7 +176,7 @@ class WebSocketManager {
         this.scheduleReconnect();
       };
     } catch (error) {
-      console.error("Failed to create WebSocket:", error);
+      logger.error("Failed to create WebSocket:", error);
       toast.error(
         "Failed to create WebSocket connection. Check your OpenHAB configuration."
       );
@@ -220,10 +223,8 @@ class WebSocketManager {
         payload: JSON.stringify(commandPayload), // Payload must be a JSON string
       };
       this.ws.send(JSON.stringify(message));
-      console.log(
-        `[WebSocket] Sent command to ${itemName}: ${JSON.stringify(
-          commandPayload
-        )}`
+      logger.debug(
+        `Sent command to ${itemName}: ${JSON.stringify(commandPayload)}`
       );
     } else {
       throw new Error("WebSocket not connected");

@@ -6,6 +6,9 @@ import {
   PROPERTY_HUMIDITY,
   getItemHistory,
 } from "../services/openhab-service";
+import { log } from "../services/logger";
+
+const logger = log.createLogger("Humidity");
 
 interface HistoryPoint {
   timestamp: number;
@@ -70,7 +73,7 @@ export const useHumidityStore = create<HumidityState & HumidityActions>(
               get().updateValue(item.name, point.value, point.timestamp)
             );
           } catch (error) {
-            console.error(`Failed to fetch history for ${item.name}:`, error);
+            logger.error(`Failed to fetch history for ${item.name}:`, error);
           }
         }
 
@@ -92,7 +95,7 @@ export const useHumidityStore = create<HumidityState & HumidityActions>(
         }
       } catch (error) {
         set({ error: "Failed to initialize humidity data" });
-        console.error("Humidity store initialization error:", error);
+        logger.error("Humidity store initialization error:", error);
       } finally {
         set({ loading: false });
       }

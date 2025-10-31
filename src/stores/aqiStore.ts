@@ -6,6 +6,9 @@ import {
   PROPERTY_AIR_QUALITY,
   getItemHistory,
 } from "../services/openhab-service";
+import { log } from "../services/logger";
+
+const logger = log.createLogger("AQI");
 
 interface HistoryPoint {
   timestamp: number;
@@ -85,7 +88,7 @@ export const useAQIStore = create<AQIState & AQIActions>((set, get) => ({
             get().updateValue(item.name, point.value, point.timestamp)
           );
         } catch (error) {
-          console.error(`Failed to fetch history for ${item.name}:`, error);
+          logger.error(`Failed to fetch history for ${item.name}:`, error);
         }
       }
 
@@ -107,7 +110,7 @@ export const useAQIStore = create<AQIState & AQIActions>((set, get) => ({
       }
     } catch (error) {
       set({ error: "Failed to initialize AQI data" });
-      console.error("AQI store initialization error:", error);
+      logger.error("AQI store initialization error:", error);
     } finally {
       set({ loading: false });
     }

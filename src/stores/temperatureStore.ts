@@ -6,6 +6,9 @@ import {
   PROPERTY_TEMPERATURE,
   getItemHistory,
 } from "../services/openhab-service";
+import { log } from "../services/logger";
+
+const logger = log.createLogger("Temperature");
 
 interface HistoryPoint {
   timestamp: number;
@@ -74,7 +77,7 @@ export const useTemperatureStore = create<
             get().updateValue(item.name, point.value, point.timestamp)
           );
         } catch (error) {
-          console.error(`Failed to fetch history for ${item.name}:`, error);
+          logger.error(`Failed to fetch history for ${item.name}:`, error);
         }
       }
 
@@ -96,7 +99,7 @@ export const useTemperatureStore = create<
       }
     } catch (error) {
       set({ error: "Failed to initialize temperature data" });
-      console.error("Temperature store initialization error:", error);
+      logger.error("Temperature store initialization error:", error);
     } finally {
       set({ loading: false });
     }

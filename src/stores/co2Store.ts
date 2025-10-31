@@ -6,6 +6,9 @@ import {
   PROPERTY_CO2,
   getItemHistory,
 } from "../services/openhab-service";
+import { log } from "../services/logger";
+
+const logger = log.createLogger("CO2");
 
 interface HistoryPoint {
   timestamp: number;
@@ -71,7 +74,7 @@ export const useCO2Store = create<CO2State & CO2Actions>((set, get) => ({
             get().updateValue(item.name, point.value, point.timestamp)
           );
         } catch (error) {
-          console.error(`Failed to fetch history for ${item.name}:`, error);
+          logger.error(`Failed to fetch history for ${item.name}:`, error);
         }
       }
 
@@ -93,7 +96,7 @@ export const useCO2Store = create<CO2State & CO2Actions>((set, get) => ({
       }
     } catch (error) {
       set({ error: "Failed to initialize CO2 data" });
-      console.error("CO2 store initialization error:", error);
+      logger.error("CO2 store initialization error:", error);
     } finally {
       set({ loading: false });
     }

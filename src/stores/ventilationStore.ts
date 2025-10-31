@@ -3,6 +3,9 @@ import type { Item } from "../types/item";
 import type { HeliosManualLevel } from "../types/ventilation";
 import { Point } from "../types/generated-items";
 import { fetchItemsMetadata } from "../services/openhab-service";
+import { log } from "../services/logger";
+
+const logger = log.createLogger("Ventilation");
 
 interface VentilationState {
   manualLevel: HeliosManualLevel | null; // Manual mode setpoint
@@ -34,11 +37,11 @@ export const useVentilationStore = create<
   error: null,
 
   initialize: async () => {
-    console.log("[Ventilation] Initializing ventilation store...");
+    logger.info("Initializing ventilation store...");
     try {
       set({ loading: true, error: null });
       const items = await fetchItemsMetadata();
-      console.log(`[Ventilation] Fetched ${items.length} items from OpenHAB`);
+      logger.debug(`Fetched ${items.length} items from OpenHAB`);
 
       // Find the Helios manual mode and operating level items
       const manualModeItem = items.find(
@@ -50,21 +53,17 @@ export const useVentilationStore = create<
 
       const foundItems = [];
       if (manualModeItem) {
-        console.log(
-          `[Ventilation] Found manual mode item: ${manualModeItem.name}`
-        );
+        logger.debug(`Found manual mode item: ${manualModeItem.name}`);
         foundItems.push(manualModeItem);
       } else {
-        console.warn("[Ventilation] Helios manual mode item not found");
+        logger.warn("Helios manual mode item not found");
       }
 
       if (operatingLevelItem) {
-        console.log(
-          `[Ventilation] Found operating level item: ${operatingLevelItem.name}`
-        );
+        logger.debug(`Found operating level item: ${operatingLevelItem.name}`);
         foundItems.push(operatingLevelItem);
       } else {
-        console.warn("[Ventilation] Helios operating level item not found");
+        logger.warn("Helios operating level item not found");
       }
 
       if (foundItems.length > 0) {
@@ -74,12 +73,12 @@ export const useVentilationStore = create<
         });
 
         // Get current states from the items
-        console.log("[Ventilation] Getting current states...");
+        logger.debug("Getting current states...");
         try {
           if (manualModeItem) {
             const manualState = parseFloat(manualModeItem.state);
             if (!isNaN(manualState)) {
-              console.log(`[Ventilation] Initial manual level: ${manualState}`);
+              logger.debug(`Initial manual level: ${manualState}`);
               set({ manualLevel: manualState as HeliosManualLevel });
             }
           }
@@ -87,20 +86,18 @@ export const useVentilationStore = create<
           if (operatingLevelItem) {
             const operatingState = parseFloat(operatingLevelItem.state);
             if (!isNaN(operatingState)) {
-              console.log(
-                `[Ventilation] Initial operating level: ${operatingState}`
-              );
+              logger.debug(`Initial operating level: ${operatingState}`);
               set({ actualLevel: operatingState as HeliosManualLevel });
             }
           }
         } catch (error) {
-          console.error(`[Ventilation] Failed to parse current states:`, error);
+          logger.error(`Failed to parse current states:`, error);
         }
       }
-      console.log("[Ventilation] Initialization completed successfully");
+      logger.info("Initialization completed successfully");
     } catch (error) {
       set({ error: "Failed to initialize ventilation data" });
-      console.error("[Ventilation] Initialization error:", error);
+      logger.error("Initialization error:", error);
     } finally {
       set({ loading: false });
     }
@@ -123,51 +120,51 @@ export const useVentilationStore = create<
         : get().actualLevel;
 
     if (manualLevel !== previousManualLevel) {
-      console.log(
-        `[Ventilation] Manual level changed: ${previousManualLevel} → ${manualLevel}`
+      logger.info(
+        `Manual level changed: ${previousManualLevel} → ${manualLevel}`
       );
     }
 
     if (actualLevel !== previousActualLevel) {
-      console.log(
-        `[Ventilation] Actual level changed: ${previousActualLevel} → ${actualLevel}`
+      logger.info(
+        `Actual level changed: ${previousActualLevel} → ${actualLevel}`
       );
     }
 
-    console.log(`[Ventilation] Updated ${itemName}: ${value}`);
+    logger.debug(`Updated ${itemName}: ${value}`);
     set({ manualLevel, actualLevel });
   },
 
   handleWebSocketMessage: (itemName, value) => {
     if (get().itemNames.has(itemName)) {
-      console.log(`[Ventilation] WebSocket update: ${itemName} = ${value}`);
+      logger.debug(`WebSocket update: ${itemName} = ${value}`);
       get().updateValue(itemName, value);
     }
   },
 
   setLoading: (loading) => {
-    console.log(`[Ventilation] Loading state changed: ${loading}`);
+    logger.debug(`Loading state changed: ${loading}`);
     set({ loading });
   },
 
   setError: (error) => {
     if (error) {
-      console.error(`[Ventilation] Error set: ${error}`);
+      logger.error(`Error set: ${error}`);
     } else {
-      console.log("[Ventilation] Error cleared");
+      logger.debug("Error cleared");
     }
     set({ error });
   },
 
   getManualLevel: () => {
     const level = get().manualLevel;
-    console.log(`[Ventilation] Manual level requested: ${level}`);
+    logger.debug(`Manual level requested: ${level}`);
     return level;
   },
 
   getActualLevel: () => {
     const level = get().actualLevel;
-    console.log(`[Ventilation] Actual level requested: ${level}`);
+    logger.debug(`Actual level requested: ${level}`);
     return level;
   },
 }));
