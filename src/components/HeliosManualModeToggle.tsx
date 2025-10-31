@@ -114,15 +114,19 @@ const HeliosManualModeToggle: React.FC = () => {
             aria-label={`Set ventilation to ${HELIOS_MANUAL_LEVEL_LABELS[level]}`}
           >
             <div className="flex items-center justify-center">
-              <div
-                className={`${
-                  actualLevel === level || manualLevel === level
-                    ? "text-white"
-                    : "text-white/80"
-                }`}
-              >
-                {getFanIcon(level)}
-              </div>
+              {commandLoading ? (
+                <div className="animate-spin rounded-full h-6 w-6 border-2 border-white/60 border-t-white"></div>
+              ) : (
+                <div
+                  className={`${
+                    actualLevel === level || manualLevel === level
+                      ? "text-white"
+                      : "text-white/80"
+                  }`}
+                >
+                  {getFanIcon(level)}
+                </div>
+              )}
             </div>
             {/* Enhanced elevation for active state */}
             {(manualLevel === level || actualLevel === level) && (
@@ -137,15 +141,6 @@ const HeliosManualModeToggle: React.FC = () => {
           </button>
         ))}
       </div>
-
-      {commandLoading && (
-        <div className="flex items-center justify-center mt-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white/60"></div>
-          <p className="text-center text-white/60 text-sm ml-3">
-            Updating ventilation mode...
-          </p>
-        </div>
-      )}
     </div>
   );
 };

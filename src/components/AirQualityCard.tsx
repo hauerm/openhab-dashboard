@@ -61,10 +61,10 @@ const AirQualityCard: React.FC<AirQualityCardProps> = ({ location }) => {
   };
 
   return (
-    <div className="w-full max-w-6xl rounded-2xl p-8 bg-surface/60 shadow-xl border border-white/20 backdrop-blur-md backdrop-saturate-150 relative overflow-hidden">
+    <div className="w-full max-w-6xl rounded-2xl p-4 bg-surface/60 shadow-xl border border-white/20 backdrop-blur-md backdrop-saturate-150 relative overflow-hidden">
       <div className="relative z-10">
         {/* Header with collapse button */}
-        <div className="flex items-center justify-between mb-8 -mt-8 pt-4 -mx-8 px-4 pb-4 rounded-t-2xl bg-gray-800/80 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-4 -mt-8 pt-8 -mx-8 px-8 pb-4 rounded-t-2xl bg-gray-800/60 backdrop-blur-sm">
           <div className="flex items-center">
             <h1 className="text-3xl font-bold text-white mr-2">
               Luftqualität EG
@@ -108,7 +108,7 @@ const AirQualityCard: React.FC<AirQualityCardProps> = ({ location }) => {
 
         {/* Expanded view: full cards */}
         {!isCollapsed && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start mb-4">
             <div className="min-w-[250px]">
               <ErrorBoundary>
                 <TemperatureCard location={location} />
