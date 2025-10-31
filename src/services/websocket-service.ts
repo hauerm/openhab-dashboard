@@ -17,6 +17,7 @@ export class WebSocketService {
   private static listeners: Array<(itemName: string, value: number) => void> =
     [];
   private static manager: WebSocketManager | null = null;
+  private static isInitialized = false;
 
   /**
    * Register a listener for WebSocket item state changes
@@ -31,6 +32,11 @@ export class WebSocketService {
    * Initialize the WebSocket connection
    */
   static async initialize(): Promise<void> {
+    if (this.isInitialized) {
+      console.log("[WebSocket] Already initialized, skipping...");
+      return;
+    }
+
     try {
       if (!this.manager) {
         this.manager = new WebSocketManager();
@@ -56,6 +62,8 @@ export class WebSocketService {
           console.error("Error processing WebSocket message:", error);
         }
       });
+
+      this.isInitialized = true;
     } catch (error) {
       console.error("Failed to initialize WebSocket:", error);
       toast.error("Failed to initialize WebSocket connection.");
@@ -69,6 +77,7 @@ export class WebSocketService {
     if (this.manager) {
       this.manager.disconnect();
       this.manager = null;
+      this.isInitialized = false;
     }
   }
 
