@@ -5,7 +5,6 @@ import {
   mdiFanSpeed1,
   mdiFanSpeed2,
   mdiFanSpeed3,
-  mdiFan,
   mdiFanAuto,
   mdiFanAlert,
 } from "@mdi/js";
