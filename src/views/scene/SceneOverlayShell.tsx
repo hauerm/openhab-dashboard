@@ -1,23 +1,60 @@
-import type { PropsWithChildren } from "react";
+import { useEffect, type PropsWithChildren } from "react";
+import { MdClose } from "react-icons/md";
 
 interface SceneOverlayShellProps extends PropsWithChildren {
   onClose: () => void;
+  layout?: "dialog" | "fullscreen";
 }
 
-const SceneOverlayShell = ({ onClose, children }: SceneOverlayShellProps) => (
-  <div
-    data-testid="overlay-backdrop"
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-    onClick={onClose}
-  >
+const SceneOverlayShell = ({
+  onClose,
+  children,
+  layout = "dialog",
+}: SceneOverlayShellProps) => {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  const backdropClassName =
+    layout === "fullscreen"
+      ? "fixed inset-0 z-50 bg-black/32 p-2 backdrop-blur-sm md:p-3"
+      : "fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm";
+
+  const panelClassName =
+    layout === "fullscreen"
+      ? "relative flex h-full w-full min-h-0 flex-col overflow-hidden rounded-3xl"
+      : "relative w-full max-w-4xl rounded-2xl border border-white/20 bg-slate-950/85 p-4 shadow-2xl";
+
+  return (
     <div
-      className="w-full max-w-4xl rounded-2xl border border-white/20 bg-slate-950/85 p-4 shadow-2xl"
-      onClick={(event) => event.stopPropagation()}
+      data-testid="overlay-backdrop"
+      className={backdropClassName}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
     >
-      {children}
+      <div className={panelClassName} onClick={(event) => event.stopPropagation()}>
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-3 top-3 z-20 rounded-full border border-white/25 bg-slate-900/60 p-1.5 text-white/90 transition hover:bg-slate-800/80 hover:text-white"
+          aria-label="Overlay schließen"
+        >
+          <MdClose className="h-5 w-5" />
+        </button>
+        {children}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default SceneOverlayShell;
-

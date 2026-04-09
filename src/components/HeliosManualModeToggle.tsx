@@ -18,7 +18,15 @@ import { log } from "../services/logger";
 
 const logger = log.createLogger("HeliosManualModeToggle");
 
-const HeliosManualModeToggle: React.FC = () => {
+interface HeliosManualModeToggleProps {
+  showAutoButton?: boolean;
+  variant?: "default" | "overlay";
+}
+
+const HeliosManualModeToggle: React.FC<HeliosManualModeToggleProps> = ({
+  showAutoButton = true,
+  variant = "default",
+}) => {
   const { manualLevel, actualLevel } = useVentilationStore();
   const [commandLoading, setCommandLoading] = useState(false);
 
@@ -67,18 +75,28 @@ const HeliosManualModeToggle: React.FC = () => {
   };
 
   const getFanIcon = (level: HeliosManualLevel) => {
-    const iconClassName = "w-11 h-11";
+    const iconClassName =
+      variant === "overlay" ? "h-16 w-16 md:h-24 md:w-24" : "h-11 w-11";
+    const stageBadgeClassName =
+      variant === "overlay"
+        ? "absolute -bottom-2 -right-2 text-xl md:text-2xl font-black leading-none text-white"
+        : "absolute -bottom-1 -right-1 text-xs font-extrabold leading-none text-white";
 
     switch (level) {
       case -1:
         return <MdAutoMode className={iconClassName} />;
       case 0:
-        return <MdModeFanOff className={iconClassName} />;
+        return (
+          <div className="relative">
+            <MdModeFanOff className={iconClassName} />
+            <span className={stageBadgeClassName}>0</span>
+          </div>
+        );
       case 1:
         return (
           <div className="relative">
             <MdAir className={iconClassName} />
-            <span className="absolute -bottom-1 -right-1 text-xs font-extrabold leading-none text-white">
+            <span className={stageBadgeClassName}>
               1
             </span>
           </div>
@@ -87,7 +105,7 @@ const HeliosManualModeToggle: React.FC = () => {
         return (
           <div className="relative">
             <MdAir className={iconClassName} />
-            <span className="absolute -bottom-1 -right-1 text-xs font-extrabold leading-none text-white">
+            <span className={stageBadgeClassName}>
               2
             </span>
           </div>
@@ -96,36 +114,45 @@ const HeliosManualModeToggle: React.FC = () => {
         return (
           <div className="relative">
             <MdAir className={iconClassName} />
-            <span className="absolute -bottom-1 -right-1 text-xs font-extrabold leading-none text-white">
+            <span className={stageBadgeClassName}>
               3
             </span>
           </div>
         );
       case 4:
-        return <MdSpeed className={iconClassName} />;
+        return (
+          <div className="relative">
+            <MdSpeed className={iconClassName} />
+            <span className={stageBadgeClassName}>4</span>
+          </div>
+        );
     }
   };
 
-  const toggleButtons: HeliosManualLevel[] = [
-    -1,
-    0,
-    1,
-    2,
-    3,
-    4,
-  ];
+  const toggleButtons: HeliosManualLevel[] = showAutoButton
+    ? [-1, 0, 1, 2, 3, 4]
+    : [0, 1, 2, 3, 4];
+
+  const buttonContainerClassName =
+    variant === "overlay"
+      ? "grid w-full grid-cols-5 gap-2 md:gap-5"
+      : "flex flex-wrap items-center justify-center gap-x-5 gap-y-3 md:gap-x-6";
+
+  const buttonSizeClassName =
+    variant === "overlay"
+      ? "w-full aspect-square rounded-2xl md:rounded-3xl p-2 md:p-3"
+      : "w-[74px] h-[74px] md:w-[84px] md:h-[84px] p-2 rounded-lg";
 
   return (
     <div className="w-full">
-      {/* Fancy toggle buttons */}
-      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3 md:gap-x-6">
+      <div className={buttonContainerClassName}>
         {toggleButtons.map((level) => (
           <button
             key={level}
             onClick={() => handleModeChange(level)}
             disabled={commandLoading}
             className={`
-              relative w-[74px] h-[74px] md:w-[84px] md:h-[84px] p-2 rounded-lg font-bold text-white transition-all duration-200
+              relative ${buttonSizeClassName} font-bold text-white transition-all duration-200
               backdrop-blur-md backdrop-saturate-150 border shadow-xl
               ${
                 actualLevel === level
@@ -142,7 +169,11 @@ const HeliosManualModeToggle: React.FC = () => {
           >
             <div className="flex items-center justify-center">
               {commandLoading ? (
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-white/60 border-t-white"></div>
+                <div
+                  className={`animate-spin rounded-full border-2 border-white/60 border-t-white ${
+                    variant === "overlay" ? "h-10 w-10 md:h-12 md:w-12" : "h-8 w-8"
+                  }`}
+                ></div>
               ) : (
                 <div
                   className={`${
