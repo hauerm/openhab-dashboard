@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from "react";
-import Icon from "@mdi/react";
-import { mdiChevronUp, mdiChevronDown } from "@mdi/js";
-import TemperatureCard from "./TemperatureCard";
-import HumidityCard from "./HumidityCard";
-import CO2Card from "./CO2Card";
-import AQICard from "./AQICard";
+import SemanticCard from "./SemanticCard";
 import HeliosManualModeToggle from "./HeliosManualModeToggle";
 import ErrorBoundary from "./ErrorBoundary";
-import { initializeWebSocket } from "../services/websocket-service";
-import { useTemperatureStore } from "../stores/temperatureStore";
-import { useHumidityStore } from "../stores/humidityStore";
-import { useCO2Store } from "../stores/co2Store";
-import { useAQIStore } from "../stores/aqiStore";
-import { MdThermostat, MdWaterDrop, MdCo2, MdAir } from "react-icons/md";
+import { createSemanticStore } from "../stores/semanticStore";
+import { SEMANTIC_CONFIGS } from "../config/semanticTypes";
+import {
+  PROPERTY_TEMPERATURE,
+  PROPERTY_HUMIDITY,
+  PROPERTY_CO2,
+  PROPERTY_AIR_QUALITY,
+} from "../services/config";
+import {
+  MdThermostat,
+  MdWaterDrop,
+  MdCo2,
+  MdAir,
+  MdExpandLess,
+  MdExpandMore,
+} from "react-icons/md";
+import { normalizeHealthIndex } from "../config/healthIndex";
 
 interface AirQualityCardProps {
   location?: string;
@@ -20,16 +26,50 @@ interface AirQualityCardProps {
 
 const AirQualityCard: React.FC<AirQualityCardProps> = ({ location }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const scopeKey = location?.trim() || "__all__";
+  const cardTitle = location ? `Luftqualität ${location}` : "Luftqualität";
 
-  // Get current values from stores for collapsed view
-  const tempValue = useTemperatureStore((state) => state.currentValue);
-  const humidityValue = useHumidityStore((state) => state.currentValue);
-  const co2Value = useCO2Store((state) => state.currentValue);
-  const aqiValue = useAQIStore((state) => state.currentValue);
+  const tempStore = React.useMemo(
+    () => createSemanticStore(SEMANTIC_CONFIGS[PROPERTY_TEMPERATURE], scopeKey),
+    [scopeKey]
+  );
+  const humidityStore = React.useMemo(
+    () => createSemanticStore(SEMANTIC_CONFIGS[PROPERTY_HUMIDITY], scopeKey),
+    [scopeKey]
+  );
+  const co2Store = React.useMemo(
+    () => createSemanticStore(SEMANTIC_CONFIGS[PROPERTY_CO2], scopeKey),
+    [scopeKey]
+  );
+  const aqiStore = React.useMemo(
+    () => createSemanticStore(SEMANTIC_CONFIGS[PROPERTY_AIR_QUALITY], scopeKey),
+    [scopeKey]
+  );
+
+  const initializeTemperature = tempStore((state) => state.initialize);
+  const initializeHumidity = humidityStore((state) => state.initialize);
+  const initializeCo2 = co2Store((state) => state.initialize);
+  const initializeAqi = aqiStore((state) => state.initialize);
 
   useEffect(() => {
-    initializeWebSocket();
-  }, []);
+    void Promise.all([
+      initializeTemperature(location),
+      initializeHumidity(location),
+      initializeCo2(location),
+      initializeAqi(location),
+    ]);
+  }, [
+    location,
+    initializeTemperature,
+    initializeHumidity,
+    initializeCo2,
+    initializeAqi,
+  ]);
+
+  const tempValue = tempStore((state) => state.currentValue);
+  const humidityValue = humidityStore((state) => state.currentValue);
+  const co2Value = co2Store((state) => state.currentValue);
+  const aqiValue = aqiStore((state) => state.currentValue);
 
   // Color functions for each metric (extracted from individual cards)
   const getTemperatureColor = (value: number | null) => {
@@ -55,19 +95,21 @@ const AirQualityCard: React.FC<AirQualityCardProps> = ({ location }) => {
 
   const getAQIColor = (value: number | null) => {
     if (value === null) return "text-white/60";
-    if (value < 50) return "text-green-400";
-    if (value <= 100) return "text-amber-400";
+    const level = normalizeHealthIndex(value);
+    if (level === null) return "text-white/60";
+    if (level <= 1) return "text-green-400";
+    if (level === 2) return "text-orange-400";
     return "text-red-400";
   };
 
   return (
-    <div className="w-full max-w-6xl rounded-2xl p-4 bg-surface/60 shadow-xl border border-white/20 backdrop-blur-md backdrop-saturate-150 relative overflow-hidden">
+    <div className="w-full max-w-6xl rounded-2xl p-4 bg-slate-900/40 shadow-xl border border-white/15 backdrop-blur-md backdrop-saturate-150 relative overflow-hidden">
       <div className="relative z-10">
         {/* Header with collapse button */}
-        <div className="flex items-center justify-between mb-4 -mt-8 pt-8 -mx-8 px-8 pb-4 rounded-t-2xl bg-gray-800/60 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-4 -mt-8 pt-8 -mx-8 px-8 pb-4 rounded-t-2xl bg-slate-800/45 backdrop-blur-sm">
           <div className="flex items-center">
             <h1 className="text-3xl font-bold text-white mr-2">
-              Luftqualität EG
+              {cardTitle}
             </h1>
             {isCollapsed && (
               <div className="flex items-center space-x-3">
@@ -91,11 +133,11 @@ const AirQualityCard: React.FC<AirQualityCardProps> = ({ location }) => {
                 : "Collapse air quality details"
             }
           >
-            <Icon
-              path={isCollapsed ? mdiChevronDown : mdiChevronUp}
-              size={1.2}
-              className="text-white"
-            />
+            {isCollapsed ? (
+              <MdExpandMore className="w-6 h-6 text-white" />
+            ) : (
+              <MdExpandLess className="w-6 h-6 text-white" />
+            )}
           </button>
         </div>
 
@@ -111,22 +153,34 @@ const AirQualityCard: React.FC<AirQualityCardProps> = ({ location }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start mb-4">
             <div className="min-w-[250px]">
               <ErrorBoundary>
-                <TemperatureCard location={location} />
+                <SemanticCard
+                  semanticProperty={PROPERTY_TEMPERATURE}
+                  location={location}
+                />
               </ErrorBoundary>
             </div>
             <div className="min-w-[250px]">
               <ErrorBoundary>
-                <HumidityCard location={location} />
+                <SemanticCard
+                  semanticProperty={PROPERTY_HUMIDITY}
+                  location={location}
+                />
               </ErrorBoundary>
             </div>
             <div className="min-w-[250px]">
               <ErrorBoundary>
-                <CO2Card location={location} />
+                <SemanticCard
+                  semanticProperty={PROPERTY_CO2}
+                  location={location}
+                />
               </ErrorBoundary>
             </div>
             <div className="min-w-[250px]">
               <ErrorBoundary>
-                <AQICard location={location} />
+                <SemanticCard
+                  semanticProperty={PROPERTY_AIR_QUALITY}
+                  location={location}
+                />
               </ErrorBoundary>
             </div>
           </div>

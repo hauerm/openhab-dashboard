@@ -1,19 +1,19 @@
 # OpenHAB Air Quality Dashboard
 
-A modern, responsive dashboard for monitoring air quality metrics from OpenHAB using real-time WebSocket updates and historical data visualization.
+A responsive dashboard for monitoring air quality metrics from openHAB with live updates and history charts.
 
 ## Features
 
-- **Real-time Updates**: WebSocket connection for live data from OpenHAB sensors
-- **Historical Charts**: 2-hour historical data visualization with line charts
-- **Glass-morphism UI**: Modern design with backdrop blur effects
-- **Responsive Grid**: 2x3 card layout that adapts to different screen sizes
-- **Air Quality Metrics**: Temperature, Humidity, CO2, and AQI monitoring
-- **German Localization**: Dashboard header in German ("Luftqualität EG")
+- **Live updates**: WebSocket event handling with reconnect and listener unsubscribe support
+- **Robust state handling**: Explicit `UNDEF`/`NULL`/non-numeric state parsing
+- **Historical charts**: Per-item history merged into chart data
+- **Semantic filtering**: Item selection by semantic property and location hierarchy
+- **Command fallback**: Ventilation commands prefer WebSocket and fall back to REST
+- **Responsive layout**: Mobile/tablet-friendly card grid
 
 ## Configuration
 
-Create a `.env` file in the root directory with the following variables:
+Create a `.env` file in the project root:
 
 ```env
 # OpenHAB Configuration
@@ -28,25 +28,23 @@ VITE_OPENHAB_INSECURE=true
 
 - `VITE_OPENHAB_API_TOKEN`: Your OpenHAB API token for authentication
 - `VITE_OPENHAB_HOST`: IP address or hostname of your OpenHAB server
-- `VITE_OPENHAB_PORT`: Port number (9443 for HTTPS, 8080 for HTTP). When `VITE_OPENHAB_INSECURE=true`, the system automatically uses port 8080 if the configured port is 9443
+- `VITE_OPENHAB_PORT`: Port number (9443 for HTTPS, 8080 for HTTP)
 - `VITE_OPENHAB_PROTOCOL`: Protocol to use (`https` or `http`)
-- `VITE_OPENHAB_INSECURE`: Set to `true` to use WS instead of WSS and HTTP instead of HTTPS (bypasses certificate validation for self-signed certificates)
+- `VITE_OPENHAB_INSECURE`: Development proxy TLS setting. Set to `true` to disable TLS certificate verification in the Vite proxy for self-signed certificates. Protocol/port remain as configured.
+- `VITE_LOGLEVEL` / `VITE_LOG_LEVEL`: Optional global log level (`trace`, `debug`, `info`, `warn`, `error`, `silent`).
 
-### Certificate Issues
+### Notes
 
-If you encounter certificate validation errors when connecting to OpenHAB:
+- REST requests include `Authorization: Bearer <token>` automatically when `VITE_OPENHAB_API_TOKEN` is set.
+- WebSocket auth uses openHAB subprotocols (`org.openhab.ws.accessToken.base64.*`) when a token is present.
+- After changing `.env` values, restart `npm run dev`.
+- With `VITE_LOGLEVEL=debug` or `VITE_LOGLEVEL=trace`, semantic store initialization logs selected items and their history values.
+- Avoid inline comments in log level values (prefer `VITE_LOGLEVEL=debug` on its own line).
+- Example debug setup:
 
-**Development (with Vite proxy):**
-
-- Set `VITE_OPENHAB_INSECURE=true` to enable the Vite proxy that bypasses SSL certificate validation
-- The proxy automatically handles both REST API and WebSocket connections
-- Your browser connects to the local development server (trusted), which proxies requests to OpenHAB
-
-**Production:**
-
-- Install a proper SSL certificate on your OpenHAB server
-- Or use a reverse proxy (like nginx) that handles SSL termination
-- Remove the proxy configuration from `vite.config.ts` for production builds
+```env
+VITE_LOGLEVEL=debug
+```
 
 ## Installation
 
@@ -66,30 +64,66 @@ npm run dev
 npm run build
 ```
 
+## Vendored Items Package
+
+This dashboard consumes `openhab-hauer-items` as a vendored `file:` dependency:
+
+- Source of truth: `openhab-automation/packages/openhab-hauer-items`
+- Vendored target: `vendor/openhab-hauer-items`
+- Adapter module: `src/domain/hauer-items.ts` (exports `ITEMS`, `ITEM_META`)
+
+Update workflow:
+
+```bash
+cd ../openhab-automation
+npm run sync:hauer-items:dashboard
+
+cd ../openhab-dashboard
+npm install
+```
+
+`sync:hauer-items:dashboard` runs generation + build + export and therefore needs
+the OpenHAB generator environment configured in `openhab-automation`.
+
 ## Architecture
 
-The application follows a modular service architecture:
+The app follows a service/store/component split:
 
-### Services
+- **`src/services/config.ts`**: openHAB host/protocol/port/auth helpers
+- **`src/services/state-parser.ts`**: normalized parsing of openHAB states (`numeric`, `undef`, `null`, `unknown`)
+- **`src/services/item-service.ts`**: REST API wrapper with in-flight metadata caching
+- **`src/services/websocket-service.ts`**: connection lifecycle, typed updates, reconnect/backoff, listener subscription
+- **`src/stores/semanticStore.ts`**: scoped semantic stores (property + scope key), history + current aggregate values
+- **`src/stores/ventilationStore.ts`**: Helios manual/actual level tracking and live updates
+- **`src/components/SemanticCard.tsx`**: generic metric card with optional history chart
+- **`src/components/HeliosManualModeToggle.tsx`**: ventilation mode controls with WS/REST fallback
 
-- **`config.ts`** - Shared configuration constants and OpenHAB connection settings
-- **`item-service.ts`** - REST API operations for OpenHAB items (fetching, commands, history)
-- **`websocket-service.ts`** - WebSocket connection management and real-time updates
-- **`openhab-service.ts`** - Legacy compatibility layer that re-exports all services
+## WebSocket Usage
 
-### Service Usage
+Use typed subscriptions:
 
 ```typescript
-import { ItemService, WebSocketService } from "./services";
+import {
+  initializeWebSocket,
+  subscribeWebSocketListener,
+} from "./services/websocket-service";
 
-// Fetch items
-const items = await ItemService.fetchItems();
+await initializeWebSocket();
 
-// Initialize WebSocket connection
-await WebSocketService.initialize();
-
-// Register for real-time updates
-WebSocketService.registerListener((itemName, value) => {
-  console.log(`${itemName}: ${value}`);
+const unsubscribe = subscribeWebSocketListener((update) => {
+  // update.itemName
+  // update.rawState
+  // update.numericValue
+  // update.stateKind (numeric | undef | null | unknown)
 });
+
+// call unsubscribe() on cleanup
+```
+
+## Quality Checks
+
+```bash
+npm run lint
+npm run build
+npm run test:contracts
 ```

@@ -1,0 +1,96 @@
+import React from "react";
+import {
+  MdThermostat,
+  MdWaterDrop,
+  MdCo2,
+  MdHealthAndSafety,
+} from "react-icons/md";
+import {
+  PROPERTY_HUMIDITY,
+  PROPERTY_TEMPERATURE,
+  PROPERTY_CO2,
+  PROPERTY_AIR_QUALITY,
+} from "../services/config";
+
+export interface SemanticTypeConfig {
+  property: string;
+  historyHours: number;
+  fallbackHours?: number;
+  unit: string;
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  backgroundTintBands: BackgroundTintBand[];
+}
+
+export type BackgroundTintLevel = "good" | "moderate" | "bad";
+
+export interface BackgroundTintBand {
+  level: BackgroundTintLevel;
+  min?: number;
+  max?: number;
+}
+
+export const BACKGROUND_TINT_CLASSES: Record<BackgroundTintLevel, string> = {
+  good: "bg-gradient-to-t from-green-500/35 to-transparent",
+  moderate: "bg-gradient-to-t from-orange-500/35 to-transparent",
+  bad: "bg-gradient-to-t from-red-500/35 to-transparent",
+};
+
+export const SEMANTIC_CONFIGS: Record<string, SemanticTypeConfig> = {
+  [PROPERTY_TEMPERATURE]: {
+    property: PROPERTY_TEMPERATURE,
+    historyHours: 2, // Temperature changes more frequently, keep shorter history
+    fallbackHours: 24,
+    unit: "°C",
+    icon: MdThermostat,
+    title: "Temperature",
+    backgroundTintBands: [
+      { level: "moderate", max: 20 },
+      { level: "good", min: 20, max: 24 },
+      { level: "moderate", min: 24, max: 27 },
+      { level: "bad", min: 27 },
+    ],
+  },
+  [PROPERTY_HUMIDITY]: {
+    property: PROPERTY_HUMIDITY,
+    historyHours: 24,
+    fallbackHours: 24,
+    unit: "%",
+    icon: MdWaterDrop,
+    title: "Humidity",
+    backgroundTintBands: [
+      { level: "moderate", max: 30 },
+      { level: "good", min: 30, max: 60 },
+      { level: "moderate", min: 60, max: 70 },
+      { level: "bad", min: 70 },
+    ],
+  },
+  [PROPERTY_CO2]: {
+    property: PROPERTY_CO2,
+    historyHours: 24,
+    fallbackHours: 24,
+    unit: "ppm",
+    icon: MdCo2,
+    title: "CO₂",
+    backgroundTintBands: [
+      { level: "good", max: 800 },
+      { level: "moderate", min: 800, max: 1400 },
+      { level: "bad", min: 1400 },
+    ],
+  },
+  [PROPERTY_AIR_QUALITY]: {
+    property: PROPERTY_AIR_QUALITY,
+    historyHours: 24,
+    fallbackHours: 24,
+    unit: "",
+    icon: MdHealthAndSafety,
+    title: "Air Quality",
+    // AQI Health Index: 0 healthy, 1 fine, 2 fair, 3 poor, 4 unhealthy
+    // Bands use rounding boundaries so tint matches displayed mapped label.
+    backgroundTintBands: [
+      { level: "good", max: 1.49 },
+      { level: "moderate", min: 1.5, max: 2.49 },
+      { level: "bad", min: 2.5 },
+    ],
+  },
+};

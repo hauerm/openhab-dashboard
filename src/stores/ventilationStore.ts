@@ -1,9 +1,15 @@
 import { create } from "zustand";
 import type { Item } from "../types/item";
 import type { HeliosManualLevel } from "../types/ventilation";
-import { Point } from "../types/generated-items";
+import {
+  HELIOS_ACTUAL_LEVEL_ITEM,
+  HELIOS_MANUAL_MODE_ITEM,
+} from "../types/ventilation";
 import { fetchItemsMetadata } from "../services/openhab-service";
 import { log } from "../services/logger";
+import type { WebSocketItemUpdate } from "../services/websocket-service";
+import { subscribeWebSocketListener } from "../services/websocket-service";
+import { parseOpenHABState } from "../services/state-parser";
 
 const logger = log.createLogger("Ventilation");
 
@@ -18,13 +24,23 @@ interface VentilationState {
 
 interface VentilationActions {
   initialize: () => Promise<void>;
-  updateValue: (itemName: string, value: number) => void;
-  handleWebSocketMessage: (itemName: string, value: number) => void;
+  updateValue: (itemName: string, value: number | null) => void;
+  handleWebSocketMessage: (update: WebSocketItemUpdate) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   getManualLevel: () => HeliosManualLevel | null;
   getActualLevel: () => HeliosManualLevel | null;
 }
+
+const trackedVentilationItems = [
+  HELIOS_MANUAL_MODE_ITEM,
+  HELIOS_ACTUAL_LEVEL_ITEM,
+] as const;
+const trackedVentilationItemSet = new Set<string>(trackedVentilationItems);
+
+let initializePromise: Promise<void> | null = null;
+let unsubscribeWebSocket: (() => void) | null = null;
+let hasInitialized = false;
 
 export const useVentilationStore = create<
   VentilationState & VentilationActions
@@ -37,69 +53,65 @@ export const useVentilationStore = create<
   error: null,
 
   initialize: async () => {
-    logger.info("Initializing ventilation store...");
-    try {
-      set({ loading: true, error: null });
-      const items = await fetchItemsMetadata();
-      logger.debug(`Fetched ${items.length} items from OpenHAB`);
+    if (hasInitialized) {
+      return;
+    }
+    if (initializePromise) {
+      return initializePromise;
+    }
 
-      // Find the Helios manual mode and operating level items
-      const manualModeItem = items.find(
-        (item) => item.name === Point.Setpoint.KNX_Helios_ManualMode
-      );
-      const operatingLevelItem = items.find(
-        (item) => item.name === Point.Status.KNX_Helios_KWRL_Ist_Stufe
-      );
+    initializePromise = (async () => {
+      logger.info("Initializing ventilation store...");
+      try {
+        set({ loading: true, error: null });
+        const items = await fetchItemsMetadata();
+        logger.debug(`Fetched ${items.length} items from OpenHAB`);
 
-      const foundItems = [];
-      if (manualModeItem) {
-        logger.debug(`Found manual mode item: ${manualModeItem.name}`);
-        foundItems.push(manualModeItem);
-      } else {
-        logger.warn("Helios manual mode item not found");
-      }
+        const foundItems = items.filter((item) =>
+          trackedVentilationItemSet.has(item.name)
+        );
 
-      if (operatingLevelItem) {
-        logger.debug(`Found operating level item: ${operatingLevelItem.name}`);
-        foundItems.push(operatingLevelItem);
-      } else {
-        logger.warn("Helios operating level item not found");
-      }
+        if (foundItems.length === 0) {
+          logger.warn("No tracked ventilation items found");
+          set({
+            error:
+              "Ventilation items not found. Please check item names in the semantic model.",
+          });
+          return;
+        }
 
-      if (foundItems.length > 0) {
+        const itemNames = new Set(foundItems.map((item) => item.name));
         set({
           metadata: foundItems,
-          itemNames: new Set(foundItems.map((item) => item.name)),
+          itemNames,
         });
 
-        // Get current states from the items
-        logger.debug("Getting current states...");
-        try {
-          if (manualModeItem) {
-            const manualState = parseFloat(manualModeItem.state);
-            if (!isNaN(manualState)) {
-              logger.debug(`Initial manual level: ${manualState}`);
-              set({ manualLevel: manualState as HeliosManualLevel });
-            }
-          }
-
-          if (operatingLevelItem) {
-            const operatingState = parseFloat(operatingLevelItem.state);
-            if (!isNaN(operatingState)) {
-              logger.debug(`Initial operating level: ${operatingState}`);
-              set({ actualLevel: operatingState as HeliosManualLevel });
-            }
-          }
-        } catch (error) {
-          logger.error(`Failed to parse current states:`, error);
+        for (const item of foundItems) {
+          const parsed = parseOpenHABState(item.state);
+          get().updateValue(item.name, parsed.numericValue);
         }
+
+        if (!unsubscribeWebSocket) {
+          unsubscribeWebSocket = subscribeWebSocketListener(
+            (update) => get().handleWebSocketMessage(update),
+            { itemNames }
+          );
+        }
+
+        hasInitialized = true;
+        logger.info("Ventilation store initialization completed");
+      } catch (error) {
+        set({ error: "Failed to initialize ventilation data" });
+        logger.error("Ventilation initialization error:", error);
+      } finally {
+        set({ loading: false });
       }
-      logger.info("Initialization completed successfully");
-    } catch (error) {
-      set({ error: "Failed to initialize ventilation data" });
-      logger.error("Initialization error:", error);
+    })();
+
+    try {
+      await initializePromise;
     } finally {
-      set({ loading: false });
+      initializePromise = null;
     }
   },
 
@@ -107,66 +119,46 @@ export const useVentilationStore = create<
     const previousManualLevel = get().manualLevel;
     const previousActualLevel = get().actualLevel;
 
-    // Update manual level from the manual mode setpoint
-    const manualLevel =
-      itemName === Point.Setpoint.KNX_Helios_ManualMode
-        ? (value as HeliosManualLevel)
-        : get().manualLevel;
+    const nextManualLevel =
+      itemName === HELIOS_MANUAL_MODE_ITEM
+        ? (value as HeliosManualLevel | null)
+        : previousManualLevel;
 
-    // Update actual level from the operating level status
-    const actualLevel =
-      itemName === Point.Status.KNX_Helios_KWRL_Ist_Stufe
-        ? (value as HeliosManualLevel)
-        : get().actualLevel;
+    const nextActualLevel =
+      itemName === HELIOS_ACTUAL_LEVEL_ITEM
+        ? (value as HeliosManualLevel | null)
+        : previousActualLevel;
 
-    if (manualLevel !== previousManualLevel) {
+    if (nextManualLevel !== previousManualLevel) {
       logger.info(
-        `Manual level changed: ${previousManualLevel} → ${manualLevel}`
+        `Manual level changed: ${previousManualLevel} -> ${nextManualLevel}`
       );
     }
 
-    if (actualLevel !== previousActualLevel) {
+    if (nextActualLevel !== previousActualLevel) {
       logger.info(
-        `Actual level changed: ${previousActualLevel} → ${actualLevel}`
+        `Actual level changed: ${previousActualLevel} -> ${nextActualLevel}`
       );
     }
 
-    logger.debug(`Updated ${itemName}: ${value}`);
-    set({ manualLevel, actualLevel });
+    set({ manualLevel: nextManualLevel, actualLevel: nextActualLevel });
   },
 
-  handleWebSocketMessage: (itemName, value) => {
-    if (get().itemNames.has(itemName)) {
-      logger.debug(`WebSocket update: ${itemName} = ${value}`);
-      get().updateValue(itemName, value);
+  handleWebSocketMessage: (update) => {
+    if (!get().itemNames.has(update.itemName)) {
+      return;
     }
+    get().updateValue(update.itemName, update.numericValue);
   },
 
   setLoading: (loading) => {
-    logger.debug(`Loading state changed: ${loading}`);
     set({ loading });
   },
 
   setError: (error) => {
-    if (error) {
-      logger.error(`Error set: ${error}`);
-    } else {
-      logger.debug("Error cleared");
-    }
     set({ error });
   },
 
-  getManualLevel: () => {
-    const level = get().manualLevel;
-    logger.debug(`Manual level requested: ${level}`);
-    return level;
-  },
-
-  getActualLevel: () => {
-    const level = get().actualLevel;
-    logger.debug(`Actual level requested: ${level}`);
-    return level;
-  },
+  getManualLevel: () => get().manualLevel,
+  getActualLevel: () => get().actualLevel,
 }));
-
-// Store is now initialized explicitly by components when needed
