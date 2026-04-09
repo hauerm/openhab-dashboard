@@ -11,6 +11,10 @@ import { parseOpenHABState } from "../services/state-parser";
 import type { ParsedStateKind } from "../services/state-parser";
 import type { WebSocketItemUpdate } from "../services/websocket-service";
 import { subscribeWebSocketListener } from "../services/websocket-service";
+import {
+  getHistoryRangeDurationMs,
+  type HistoryRangeKey,
+} from "../config/historyRanges";
 
 interface HistoryPoint {
   timestamp: number;
@@ -22,7 +26,7 @@ type SemanticCurrentStatus = "ready" | "unavailable";
 interface SemanticState {
   currentValue: number | null;
   currentValueStatus: SemanticCurrentStatus;
-  history: Record<string, HistoryPoint[]>; // itemName -> history
+  history: Record<string, HistoryPoint[]>;
   metadata: Item[];
   itemNames: Set<string>;
   latestValues: Record<string, number | null>;
@@ -34,6 +38,7 @@ interface SemanticState {
 
 interface SemanticActions {
   initialize: (location?: string) => Promise<void>;
+  ensureHistoryRange: (rangeKey: HistoryRangeKey) => Promise<void>;
   updateValue: (
     itemName: string,
     value: number,
@@ -52,11 +57,12 @@ interface SemanticActions {
   getRecentHistory: (hours: number) => Record<string, HistoryPoint[]>;
 }
 
+const HISTORY_FETCH_CONCURRENCY = 5;
+
 const buildStoreKey = (config: SemanticTypeConfig, scopeKey: string): string =>
   `${config.property}::${scopeKey}`;
 
 const isSemanticDebugEnabled = (): boolean => {
-  // Only enable verbose semantic logs when debug/trace is explicitly configured.
   const rawLevel = (
     import.meta.env.VITE_LOGLEVEL || import.meta.env.VITE_LOG_LEVEL || ""
   ).toLowerCase();
@@ -77,10 +83,8 @@ const computeAverage = (
 };
 
 const parseHistoryTimestamp = (value: number | string): number | null => {
-  const normalizeEpoch = (epoch: number): number => {
-    // Normalize seconds to milliseconds if needed.
-    return epoch < 1_000_000_000_000 ? epoch * 1000 : epoch;
-  };
+  const normalizeEpoch = (epoch: number): number =>
+    epoch < 1_000_000_000_000 ? epoch * 1000 : epoch;
 
   if (typeof value === "number" && Number.isFinite(value)) {
     return normalizeEpoch(value);
@@ -104,10 +108,64 @@ const parseHistoryTimestamp = (value: number | string): number | null => {
   return Number.isFinite(parsedDate) ? parsedDate : null;
 };
 
+const mergeHistoryPoints = (
+  existing: HistoryPoint[],
+  incoming: HistoryPoint[],
+  cutoffTimestamp: number
+): HistoryPoint[] => {
+  const merged = new Map<number, number>();
+
+  for (const point of existing) {
+    if (point.timestamp >= cutoffTimestamp) {
+      merged.set(point.timestamp, point.value);
+    }
+  }
+
+  for (const point of incoming) {
+    if (point.timestamp >= cutoffTimestamp) {
+      merged.set(point.timestamp, point.value);
+    }
+  }
+
+  return Array.from(merged.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([timestamp, value]) => ({ timestamp, value }));
+};
+
+const runWithConcurrency = async <T>(
+  items: T[],
+  maxConcurrency: number,
+  worker: (item: T) => Promise<void>
+) => {
+  if (items.length === 0) {
+    return;
+  }
+
+  let index = 0;
+  const runnerCount = Math.min(maxConcurrency, items.length);
+
+  await Promise.all(
+    Array.from({ length: runnerCount }, async () => {
+      while (index < items.length) {
+        const currentIndex = index;
+        index += 1;
+        await worker(items[currentIndex]);
+      }
+    })
+  );
+};
+
 const createStoreForConfig = (config: SemanticTypeConfig) => {
   const logger = log.createLogger(config.title);
   const debugSemanticProperty = isSemanticDebugEnabled();
+  const maxRetentionDurationMs = getHistoryRangeDurationMs(
+    config.maxHistoryRangeKey ?? "year"
+  );
+
   let initializePromise: Promise<void> | null = null;
+  let historyFetchPromise: Promise<void> | null = null;
+  let inFlightStartTimestamp: number | null = null;
+  let loadedSinceTimestamp: number | null = null;
   let initializedLocationKey: string | null = null;
   let unsubscribeWebSocket: (() => void) | null = null;
 
@@ -125,18 +183,15 @@ const createStoreForConfig = (config: SemanticTypeConfig) => {
 
     initialize: async (location?: string) => {
       const locationKey = location?.trim() || "__all__";
+
       if (initializedLocationKey === locationKey && get().itemNames.size > 0) {
+        await get().ensureHistoryRange(config.defaultHistoryRangeKey);
         return;
       }
+
       if (initializePromise) {
         return initializePromise;
       }
-
-      logger.info(
-        `Initializing ${config.title} store${
-          location ? ` for location: ${location}` : ""
-        }`
-      );
 
       initializePromise = (async () => {
         try {
@@ -153,44 +208,15 @@ const createStoreForConfig = (config: SemanticTypeConfig) => {
             latestStateKinds: {},
           });
 
+          loadedSinceTimestamp = null;
+          inFlightStartTimestamp = null;
+          historyFetchPromise = null;
+
           const items = await fetchItemsMetadata();
           const filteredItems = filterItems(items, {
             property: config.property,
             location,
           });
-
-          if (debugSemanticProperty) {
-            const itemSummaries = filteredItems.map((item) => ({
-              name: item.name,
-              type: item.type,
-              state: item.state,
-              relatesTo:
-                typeof item.metadata?.semantics?.config === "object" &&
-                item.metadata?.semantics?.config !== null &&
-                "relatesTo" in item.metadata.semantics.config
-                  ? String(item.metadata.semantics.config.relatesTo)
-                  : undefined,
-              hasLocation:
-                typeof item.metadata?.semantics?.config === "object" &&
-                item.metadata?.semantics?.config !== null &&
-                "hasLocation" in item.metadata.semantics.config
-                  ? String(item.metadata.semantics.config.hasLocation)
-                  : undefined,
-              isPartOf:
-                typeof item.metadata?.semantics?.config === "object" &&
-                item.metadata?.semantics?.config !== null &&
-                "isPartOf" in item.metadata.semantics.config
-                  ? String(item.metadata.semantics.config.isPartOf)
-                  : undefined,
-            }));
-
-            logger.debug(
-              `[Debug] ${config.property} items for location "${
-                location ?? "__all__"
-              }" (${itemSummaries.length}):`,
-              itemSummaries
-            );
-          }
 
           const itemNames = new Set(filteredItems.map((item) => item.name));
           const latestValues: Record<string, number | null> = {};
@@ -206,62 +232,6 @@ const createStoreForConfig = (config: SemanticTypeConfig) => {
             history[item.name] = [];
           }
 
-          const historyStart = new Date(
-            Date.now() - (config.fallbackHours || 24) * 3600000
-          ).toISOString();
-          const historyRetentionHours = config.fallbackHours || config.historyHours;
-          const historyRetentionCutoff =
-            Date.now() - historyRetentionHours * 3600000;
-
-          await Promise.all(
-            filteredItems.map(async (item) => {
-              try {
-                const historyResponse = await getItemHistory(item.name, {
-                  starttime: historyStart,
-                });
-
-                const points = historyResponse.data
-                  .map((datapoint) => {
-                    const parsed = parseOpenHABState(datapoint.state);
-                    const timestamp = parseHistoryTimestamp(datapoint.time);
-                    if (parsed.numericValue === null || timestamp === null) {
-                      return null;
-                    }
-                    return {
-                      timestamp,
-                      value: parsed.numericValue,
-                    };
-                  })
-                  .filter(
-                    (point): point is HistoryPoint =>
-                      point !== null && point.timestamp >= historyRetentionCutoff
-                  )
-                  .sort((a, b) => a.timestamp - b.timestamp);
-
-                history[item.name] = points;
-                const latestPoint = points[points.length - 1];
-                if (latestPoint) {
-                  latestValues[item.name] = latestPoint.value;
-                  latestRawStates[item.name] = String(latestPoint.value);
-                  latestStateKinds[item.name] = "numeric";
-                }
-
-                if (debugSemanticProperty) {
-                  logger.debug(
-                    `[Debug] History for ${item.name} (${points.length} points):`,
-                    points.map((point) => ({
-                      timestamp: point.timestamp,
-                      isoTime: new Date(point.timestamp).toISOString(),
-                      value: point.value,
-                    }))
-                  );
-                }
-              } catch (error) {
-                logger.error(`Failed to fetch history for ${item.name}:`, error);
-              }
-            })
-          );
-
           const currentValue = computeAverage(latestValues);
           set({
             metadata: filteredItems,
@@ -274,13 +244,6 @@ const createStoreForConfig = (config: SemanticTypeConfig) => {
             currentValueStatus: currentValue === null ? "unavailable" : "ready",
           });
 
-          if (debugSemanticProperty) {
-            logger.debug(`[Debug] Aggregated latest values for ${config.property}:`, {
-              currentValue,
-              latestValues,
-            });
-          }
-
           if (!unsubscribeWebSocket) {
             unsubscribeWebSocket = subscribeWebSocketListener((update) =>
               get().handleWebSocketMessage(update)
@@ -288,7 +251,14 @@ const createStoreForConfig = (config: SemanticTypeConfig) => {
           }
 
           initializedLocationKey = locationKey;
-          logger.info(`${config.title} store initialization completed`);
+
+          if (debugSemanticProperty) {
+            logger.debug(
+              `[Debug] Initialized ${config.property} for ${locationKey} with ${filteredItems.length} items`
+            );
+          }
+
+          await get().ensureHistoryRange(config.defaultHistoryRangeKey);
         } catch (error) {
           set({
             error: `Failed to initialize ${config.title.toLowerCase()} data`,
@@ -306,8 +276,129 @@ const createStoreForConfig = (config: SemanticTypeConfig) => {
       }
     },
 
+    ensureHistoryRange: async (rangeKey) => {
+      const itemNames = Array.from(get().itemNames);
+      if (itemNames.length === 0) {
+        return;
+      }
+
+      const requestedStart = Date.now() - getHistoryRangeDurationMs(rangeKey);
+
+      if (
+        loadedSinceTimestamp !== null &&
+        loadedSinceTimestamp <= requestedStart
+      ) {
+        return;
+      }
+
+      while (historyFetchPromise) {
+        const inFlightCoversRequested =
+          inFlightStartTimestamp !== null &&
+          inFlightStartTimestamp <= requestedStart;
+
+        await historyFetchPromise;
+
+        if (
+          inFlightCoversRequested ||
+          (loadedSinceTimestamp !== null && loadedSinceTimestamp <= requestedStart)
+        ) {
+          return;
+        }
+      }
+
+      const fetchStart =
+        loadedSinceTimestamp !== null
+          ? Math.min(loadedSinceTimestamp, requestedStart)
+          : requestedStart;
+
+      inFlightStartTimestamp = fetchStart;
+      historyFetchPromise = (async () => {
+        const retentionCutoff = Date.now() - maxRetentionDurationMs;
+        const nextHistory: Record<string, HistoryPoint[]> = { ...get().history };
+        const nextValues: Record<string, number | null> = { ...get().latestValues };
+        const nextRawStates: Record<string, string> = { ...get().latestRawStates };
+        const nextKinds: Record<string, ParsedStateKind> = {
+          ...get().latestStateKinds,
+        };
+
+        set({ loading: true, error: null });
+
+        await runWithConcurrency(
+          itemNames,
+          HISTORY_FETCH_CONCURRENCY,
+          async (itemName) => {
+            try {
+              const historyResponse = await getItemHistory(itemName, {
+                starttime: new Date(fetchStart).toISOString(),
+              });
+
+              const incomingPoints = historyResponse.data
+                .map((datapoint) => {
+                  const parsed = parseOpenHABState(datapoint.state);
+                  const timestamp = parseHistoryTimestamp(datapoint.time);
+                  if (parsed.numericValue === null || timestamp === null) {
+                    return null;
+                  }
+                  return {
+                    timestamp,
+                    value: parsed.numericValue,
+                  };
+                })
+                .filter(
+                  (point): point is HistoryPoint =>
+                    point !== null && point.timestamp >= retentionCutoff
+                )
+                .sort((a, b) => a.timestamp - b.timestamp);
+
+              const mergedPoints = mergeHistoryPoints(
+                nextHistory[itemName] ?? [],
+                incomingPoints,
+                retentionCutoff
+              );
+
+              nextHistory[itemName] = mergedPoints;
+
+              const latestPoint = mergedPoints[mergedPoints.length - 1];
+              if (latestPoint) {
+                nextValues[itemName] = latestPoint.value;
+                nextRawStates[itemName] = String(latestPoint.value);
+                nextKinds[itemName] = "numeric";
+              }
+            } catch (error) {
+              logger.error(`Failed to fetch history for ${itemName}:`, error);
+            }
+          }
+        );
+
+        const currentValue = computeAverage(nextValues);
+        set({
+          history: nextHistory,
+          latestValues: nextValues,
+          latestRawStates: nextRawStates,
+          latestStateKinds: nextKinds,
+          currentValue,
+          currentValueStatus: currentValue === null ? "unavailable" : "ready",
+        });
+
+        loadedSinceTimestamp =
+          loadedSinceTimestamp === null
+            ? fetchStart
+            : Math.min(loadedSinceTimestamp, fetchStart);
+      })();
+
+      try {
+        await historyFetchPromise;
+      } finally {
+        historyFetchPromise = null;
+        inFlightStartTimestamp = null;
+        set({ loading: false });
+      }
+    },
+
     updateValue: (itemName, value, timestamp, rawState) => {
       const now = timestamp ?? Date.now();
+      const retentionCutoff = now - maxRetentionDurationMs;
+
       set((state) => {
         const nextHistory = { ...state.history };
         const nextValues: Record<string, number | null> = {
@@ -323,16 +414,11 @@ const createStoreForConfig = (config: SemanticTypeConfig) => {
           [itemName]: "numeric",
         };
 
-        if (!nextHistory[itemName]) {
-          nextHistory[itemName] = [];
-        }
-        nextHistory[itemName] = [
-          ...nextHistory[itemName],
-          { timestamp: now, value },
-        ].filter(
-          (point) =>
-            point.timestamp >=
-            now - (config.fallbackHours || config.historyHours) * 3600000
+        const existingHistory = nextHistory[itemName] ?? [];
+        nextHistory[itemName] = mergeHistoryPoints(
+          existingHistory,
+          [{ timestamp: now, value }],
+          retentionCutoff
         );
 
         const average = computeAverage(nextValues);
@@ -412,9 +498,6 @@ const semanticStoreRegistry = new Map<
   ReturnType<typeof createStoreForConfig>
 >();
 
-/**
- * Factory function returning stable semantic stores by property + scope key.
- */
 export const createSemanticStore = (
   config: SemanticTypeConfig,
   scopeKey = "global"

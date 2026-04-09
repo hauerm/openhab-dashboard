@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import SemanticCard from "./SemanticCard";
+import SemanticHistoryChartView from "./SemanticHistoryChartView";
 import HeliosManualModeToggle from "./HeliosManualModeToggle";
 import ErrorBoundary from "./ErrorBoundary";
 import { createSemanticStore } from "../stores/semanticStore";
@@ -153,33 +153,42 @@ const AirQualityCard: React.FC<AirQualityCardProps> = ({ location }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start mb-4">
             <div className="min-w-[250px]">
               <ErrorBoundary>
-                <SemanticCard
+                <SemanticHistoryChartView
                   semanticProperty={PROPERTY_TEMPERATURE}
                   location={location}
+                  title="Temperatur"
+                  className="h-[320px]"
+                  comfortBand={{ min: 20, max: 24, label: "Komfortzone" }}
                 />
               </ErrorBoundary>
             </div>
             <div className="min-w-[250px]">
               <ErrorBoundary>
-                <SemanticCard
+                <SemanticHistoryChartView
                   semanticProperty={PROPERTY_HUMIDITY}
                   location={location}
+                  title="Luftfeuchtigkeit"
+                  className="h-[320px]"
                 />
               </ErrorBoundary>
             </div>
             <div className="min-w-[250px]">
               <ErrorBoundary>
-                <SemanticCard
+                <SemanticHistoryChartView
                   semanticProperty={PROPERTY_CO2}
                   location={location}
+                  title="CO₂"
+                  className="h-[320px]"
                 />
               </ErrorBoundary>
             </div>
             <div className="min-w-[250px]">
               <ErrorBoundary>
-                <SemanticCard
+                <SemanticHistoryChartView
                   semanticProperty={PROPERTY_AIR_QUALITY}
                   location={location}
+                  title="Luftqualität"
+                  className="h-[320px]"
                 />
               </ErrorBoundary>
             </div>

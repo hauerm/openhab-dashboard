@@ -11,11 +11,12 @@ import {
   PROPERTY_CO2,
   PROPERTY_AIR_QUALITY,
 } from "../services/config";
+import type { HistoryRangeKey } from "./historyRanges";
 
 export interface SemanticTypeConfig {
   property: string;
-  historyHours: number;
-  fallbackHours?: number;
+  defaultHistoryRangeKey: HistoryRangeKey;
+  maxHistoryRangeKey?: HistoryRangeKey;
   unit: string;
   icon: React.ComponentType<{ className?: string }>;
   title: string;
@@ -58,8 +59,8 @@ export const BACKGROUND_TINT_CLASSES: Record<BackgroundTintLevel, string> = {
 export const SEMANTIC_CONFIGS: Record<string, SemanticTypeConfig> = {
   [PROPERTY_TEMPERATURE]: {
     property: PROPERTY_TEMPERATURE,
-    historyHours: 2, // Temperature changes more frequently, keep shorter history
-    fallbackHours: 24,
+    defaultHistoryRangeKey: "day",
+    maxHistoryRangeKey: "year",
     unit: "°C",
     icon: MdThermostat,
     title: "Temperature",
@@ -72,8 +73,8 @@ export const SEMANTIC_CONFIGS: Record<string, SemanticTypeConfig> = {
   },
   [PROPERTY_HUMIDITY]: {
     property: PROPERTY_HUMIDITY,
-    historyHours: 24,
-    fallbackHours: 24,
+    defaultHistoryRangeKey: "day",
+    maxHistoryRangeKey: "year",
     unit: "%",
     icon: MdWaterDrop,
     title: "Humidity",
@@ -86,8 +87,8 @@ export const SEMANTIC_CONFIGS: Record<string, SemanticTypeConfig> = {
   },
   [PROPERTY_CO2]: {
     property: PROPERTY_CO2,
-    historyHours: 24,
-    fallbackHours: 24,
+    defaultHistoryRangeKey: "day",
+    maxHistoryRangeKey: "year",
     unit: "ppm",
     icon: MdCo2,
     title: "CO₂",
@@ -99,8 +100,8 @@ export const SEMANTIC_CONFIGS: Record<string, SemanticTypeConfig> = {
   },
   [PROPERTY_AIR_QUALITY]: {
     property: PROPERTY_AIR_QUALITY,
-    historyHours: 24,
-    fallbackHours: 24,
+    defaultHistoryRangeKey: "day",
+    maxHistoryRangeKey: "year",
     unit: "",
     icon: MdHealthAndSafety,
     title: "Air Quality",

@@ -1,5 +1,6 @@
-import SemanticCard from "../../../components/SemanticCard";
+import SemanticHistoryChartView from "../../../components/SemanticHistoryChartView";
 import HeliosManualModeToggle from "../../../components/HeliosManualModeToggle";
+import { MdClose } from "react-icons/md";
 import {
   PROPERTY_AIR_QUALITY,
   PROPERTY_CO2,
@@ -18,11 +19,16 @@ export type EgOverlayId =
 
 const SEMANTIC_OVERLAY_CONFIG: Record<
   Exclude<EgOverlayId, "ventilation">,
-  { semanticProperty: string; title: string }
+  {
+    semanticProperty: string;
+    title: string;
+    comfortBand?: { min: number; max: number; label?: string };
+  }
 > = {
   "semantic:temp": {
     semanticProperty: PROPERTY_TEMPERATURE,
     title: "Temperatur EG",
+    comfortBand: { min: 20, max: 24, label: "Komfortzone" },
   },
   "semantic:humidity": {
     semanticProperty: PROPERTY_HUMIDITY,
@@ -52,21 +58,45 @@ const EgOverlay = ({ overlayId, onClose }: SceneViewOverlayProps) => {
 
   if (overlayId === "ventilation") {
     return (
-      <SceneOverlayShell onClose={onClose}>
-        <h2 className="mb-3 text-lg font-semibold text-white">Lüftungssteuerung</h2>
-        <HeliosManualModeToggle />
-      </SceneOverlayShell>
+      <div
+        data-testid="overlay-backdrop"
+        className="fixed inset-0 z-50 bg-black/32 backdrop-blur-sm"
+        onClick={onClose}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div
+          className="relative flex h-full w-full items-center justify-center px-4 md:px-8"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-3 top-3 z-20 rounded-full border border-white/25 bg-slate-900/60 p-1.5 text-white/90 transition hover:bg-slate-800/80 hover:text-white"
+            aria-label="Overlay schließen"
+          >
+            <MdClose className="h-5 w-5" />
+          </button>
+          <div className="w-full max-w-7xl">
+            <HeliosManualModeToggle showAutoButton={false} variant="overlay" />
+          </div>
+        </div>
+      </div>
     );
   }
 
   const config = SEMANTIC_OVERLAY_CONFIG[overlayId];
   return (
-    <SceneOverlayShell onClose={onClose}>
-      <h2 className="mb-3 text-lg font-semibold text-white">{config.title}</h2>
-      <SemanticCard semanticProperty={config.semanticProperty} location="EG" />
+    <SceneOverlayShell onClose={onClose} layout="fullscreen">
+      <SemanticHistoryChartView
+        semanticProperty={config.semanticProperty}
+        location="EG"
+        title={config.title}
+        comfortBand={config.comfortBand}
+        className="h-full"
+      />
     </SceneOverlayShell>
   );
 };
 
 export default EgOverlay;
-

@@ -85,9 +85,9 @@ vi.mock("./stores/ventilationStore", () => {
   return { useVentilationStore };
 });
 
-vi.mock("./components/SemanticCard", () => ({
-  default: ({ semanticProperty }: { semanticProperty: string }) => (
-    <div data-testid="semantic-overlay-card">{semanticProperty}</div>
+vi.mock("./components/SemanticHistoryChartView", () => ({
+  default: ({ title }: { title: string }) => (
+    <div data-testid="semantic-history-overlay">{title}</div>
   ),
 }));
 
@@ -217,10 +217,12 @@ describe("App integration", () => {
     await user.click(screen.getByTestId("dock-button-eg"));
     await user.click(screen.getByTestId("hud-metric-temp"));
 
-    expect(screen.getByTestId("semantic-overlay-card")).toBeInTheDocument();
+    expect(screen.getByTestId("semantic-history-overlay")).toBeInTheDocument();
 
     await user.click(screen.getByTestId("overlay-backdrop"));
-    expect(screen.queryByTestId("semantic-overlay-card")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("semantic-history-overlay")
+    ).not.toBeInTheDocument();
   });
 
   it("opens and closes ventilation overlay from gear hud click", async () => {
@@ -238,5 +240,19 @@ describe("App integration", () => {
 
     await user.click(screen.getByTestId("overlay-backdrop"));
     expect(screen.queryByTestId("ventilation-overlay")).not.toBeInTheDocument();
+  });
+
+  it("opens history overlay for humidity metric", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
+    });
+
+    await user.click(screen.getByTestId("dock-button-eg"));
+    await user.click(screen.getByTestId("hud-metric-humidity"));
+
+    expect(screen.getByTestId("semantic-history-overlay")).toBeInTheDocument();
   });
 });
