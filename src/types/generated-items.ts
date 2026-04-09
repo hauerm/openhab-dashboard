@@ -1,6 +1,7 @@
 // This file is auto-generated. Do not edit manually.
 // Generated on: 2025-10-26T21:20:13.570Z
 // Source: OpenHAB REST API (192.168.1.15:9443)
+// DEPRECATED: Use src/domain/hauer-items.ts (openhab-hauer-items vendor package) for new code.
 
 /**
  * OpenHAB Item Names organized by semantic types and properties

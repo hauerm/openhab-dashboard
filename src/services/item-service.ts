@@ -1,17 +1,24 @@
 import type { Item, ItemHistoryResponse } from "../types/item";
-import { OPENHAB_BASE_URL, PROPERTY_HUMIDITY } from "./config";
+import {
+  OPENHAB_BASE_URL,
+  PROPERTY_HUMIDITY,
+  getOpenHABAuthHeaders,
+} from "./config";
 
 /**
  * Service for handling OpenHAB item operations via REST API
  */
 export class ItemService {
   private static itemsCache: Item[] | null = null;
+  private static itemsCachePromise: Promise<Item[]> | null = null;
 
   /**
    * Fetch all items from OpenHAB
    */
   static async fetchItems(): Promise<Item[]> {
-    const response = await fetch(`${OPENHAB_BASE_URL}/items`);
+    const response = await fetch(`${OPENHAB_BASE_URL}/items`, {
+      headers: getOpenHABAuthHeaders(),
+    });
     if (!response.ok) {
       throw new Error("Failed to fetch items");
     }
@@ -23,8 +30,18 @@ export class ItemService {
    */
   static async fetchItemsMetadata(): Promise<Item[]> {
     if (this.itemsCache) return this.itemsCache;
-    this.itemsCache = await this.fetchItems();
-    return this.itemsCache!;
+    if (this.itemsCachePromise) return this.itemsCachePromise;
+
+    this.itemsCachePromise = this.fetchItems()
+      .then((items) => {
+        this.itemsCache = items;
+        return items;
+      })
+      .finally(() => {
+        this.itemsCachePromise = null;
+      });
+
+    return this.itemsCachePromise;
   }
 
   /**
@@ -32,7 +49,10 @@ export class ItemService {
    */
   static async fetchItem(name: string): Promise<Item> {
     const response = await fetch(
-      `${OPENHAB_BASE_URL}/items/${encodeURIComponent(name)}`
+      `${OPENHAB_BASE_URL}/items/${encodeURIComponent(name)}`,
+      {
+        headers: getOpenHABAuthHeaders(),
+      }
     );
     if (!response.ok) {
       throw new Error("Failed to fetch item");
@@ -49,6 +69,7 @@ export class ItemService {
       {
         method: "POST",
         headers: {
+          ...getOpenHABAuthHeaders(),
           "Content-Type": "text/plain",
         },
         body: command,
@@ -84,7 +105,9 @@ export class ItemService {
       itemName
     )}${searchParams.toString() ? "?" + searchParams.toString() : ""}`;
 
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: getOpenHABAuthHeaders(),
+    });
     if (!response.ok) {
       throw new Error("Failed to fetch item history");
     }
@@ -146,8 +169,14 @@ export class ItemService {
   static isLocationAncestor(
     locationName: string,
     targetLocation: string,
-    allItems: Item[]
+    allItems: Item[],
+    visited: Set<string> = new Set()
   ): boolean {
+    if (visited.has(locationName)) {
+      return false;
+    }
+    visited.add(locationName);
+
     // Find the location item
     const locationItem = allItems.find((item) => item.name === locationName);
     if (!locationItem) {
@@ -170,7 +199,12 @@ export class ItemService {
     }
 
     // Recursively check parent hierarchy
-    return this.isLocationAncestor(parentLocation, targetLocation, allItems);
+    return this.isLocationAncestor(
+      parentLocation,
+      targetLocation,
+      allItems,
+      visited
+    );
   }
 
   /**
@@ -246,6 +280,7 @@ export class ItemService {
    */
   static clearCache(): void {
     this.itemsCache = null;
+    this.itemsCachePromise = null;
   }
 }
 

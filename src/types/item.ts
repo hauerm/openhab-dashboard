@@ -44,7 +44,7 @@ export interface Item {
 
 // TypeScript interface for OpenHAB persistence API response
 export interface ItemHistoryDatapoint {
-  time: number;
+  time: number | string;
   state: string;
 }
 

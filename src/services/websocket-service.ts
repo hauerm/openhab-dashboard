@@ -1,10 +1,12 @@
 import { toast } from "react-toastify";
-import { getWebSocketUrl } from "./config";
+import { getWebSocketSubprotocols, getWebSocketUrl } from "./config";
 import { log } from "./logger";
 import type {
   OpenHABCommandType,
   OpenHABCommandPayload,
 } from "../types/openhab-types";
+import { parseOpenHABState } from "./state-parser";
+import type { ParsedStateKind } from "./state-parser";
 
 const logger = log.createLogger("WebSocket");
 
@@ -13,22 +15,130 @@ interface ItemStatePayload {
   value: string;
 }
 
+interface WebSocketEventEnvelope {
+  type?: string;
+  topic?: string;
+  payload?: string;
+}
+
+export interface WebSocketItemUpdate {
+  itemName: string;
+  rawState: string;
+  stateType: string;
+  stateKind: ParsedStateKind;
+  numericValue: number | null;
+  timestamp: number;
+}
+
+type WebSocketListener = (update: WebSocketItemUpdate) => void;
+
+interface ListenerOptions {
+  itemNames?: Iterable<string>;
+}
+
+interface ListenerRegistration {
+  listener: WebSocketListener;
+  itemNames?: Set<string>;
+}
+
 /**
  * Service for handling OpenHAB WebSocket connections and real-time updates
  */
 export class WebSocketService {
-  private static listeners: Array<(itemName: string, value: number) => void> =
-    [];
+  private static listeners = new Map<number, ListenerRegistration>();
+  private static nextListenerId = 1;
   private static manager: WebSocketManager | null = null;
   private static isInitialized = false;
+  private static initializePromise: Promise<void> | null = null;
 
   /**
-   * Register a listener for WebSocket item state changes
+   * Subscribe to item updates and get an unsubscribe function.
+   */
+  static subscribe(
+    listener: WebSocketListener,
+    options?: ListenerOptions
+  ): () => void {
+    void this.initialize();
+
+    const id = this.nextListenerId++;
+    this.listeners.set(id, {
+      listener,
+      itemNames: options?.itemNames ? new Set(options.itemNames) : undefined,
+    });
+
+    return () => {
+      this.listeners.delete(id);
+    };
+  }
+
+  /**
+   * Backward-compatible numeric-only listener.
    */
   static registerListener(
-    listener: (itemName: string, value: number) => void
-  ): void {
-    this.listeners.push(listener);
+    listener: (itemName: string, value: number) => void,
+    options?: ListenerOptions
+  ): () => void {
+    return this.subscribe((update) => {
+      if (update.numericValue === null) {
+        return;
+      }
+      listener(update.itemName, update.numericValue);
+    }, options);
+  }
+
+  private static dispatchUpdate(update: WebSocketItemUpdate): void {
+    for (const registration of this.listeners.values()) {
+      if (
+        registration.itemNames &&
+        !registration.itemNames.has(update.itemName)
+      ) {
+        continue;
+      }
+      registration.listener(update);
+    }
+  }
+
+  private static handleMessage(event: MessageEvent): void {
+    try {
+      const data = JSON.parse(String(event.data)) as WebSocketEventEnvelope;
+      if (
+        data.type !== "ItemStateEvent" &&
+        data.type !== "ItemStateChangedEvent" &&
+        data.type !== "ItemStateUpdatedEvent"
+      ) {
+        return;
+      }
+
+      if (!data.topic || typeof data.topic !== "string") {
+        return;
+      }
+
+      const topicParts = data.topic.split("/");
+      if (topicParts.length < 4 || topicParts[0] !== "openhab") {
+        return;
+      }
+      const itemName = topicParts[2];
+
+      if (!data.payload || typeof data.payload !== "string") {
+        return;
+      }
+      const payload = JSON.parse(data.payload) as ItemStatePayload;
+      if (!payload || typeof payload.value !== "string") {
+        return;
+      }
+
+      const parsed = parseOpenHABState(payload.value);
+      this.dispatchUpdate({
+        itemName,
+        rawState: parsed.raw,
+        stateType: payload.type,
+        stateKind: parsed.kind,
+        numericValue: parsed.numericValue,
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      logger.error("Error processing WebSocket message:", error);
+    }
   }
 
   /**
@@ -40,36 +150,28 @@ export class WebSocketService {
       return;
     }
 
-    try {
-      if (!this.manager) {
-        this.manager = new WebSocketManager();
-      }
+    if (this.initializePromise) {
+      return this.initializePromise;
+    }
 
-      this.manager.connect((event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (
-            data.type === "ItemStateEvent" ||
-            data.type === "ItemStateChangedEvent"
-          ) {
-            const itemName = data.topic.split("/")[2];
-            const payload = JSON.parse(data.payload) as ItemStatePayload;
-            const state = payload.value;
-            const value = parseFloat(state);
-            if (isNaN(value)) return;
-
-            // Dispatch to all registered listeners
-            this.listeners.forEach((listener) => listener(itemName, value));
-          }
-        } catch (error) {
-          logger.error("Error processing WebSocket message:", error);
+    this.initializePromise = (async () => {
+      try {
+        if (!this.manager) {
+          this.manager = new WebSocketManager();
         }
-      });
 
-      this.isInitialized = true;
-    } catch (error) {
-      logger.error("Failed to initialize WebSocket:", error);
-      toast.error("Failed to initialize WebSocket connection.");
+        this.manager.connect((event) => this.handleMessage(event));
+        this.isInitialized = true;
+      } catch (error) {
+        logger.error("Failed to initialize WebSocket:", error);
+        toast.error("Failed to initialize WebSocket connection.");
+      }
+    })();
+
+    try {
+      await this.initializePromise;
+    } finally {
+      this.initializePromise = null;
     }
   }
 
@@ -81,6 +183,7 @@ export class WebSocketService {
       this.manager.disconnect();
       this.manager = null;
       this.isInitialized = false;
+      this.initializePromise = null;
     }
   }
 
@@ -121,10 +224,13 @@ export class WebSocketService {
 class WebSocketManager {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 10;
-  private reconnectDelay = 1000; // Start with 1 second
+  private readonly maxReconnectAttempts = 10;
+  private reconnectDelay = 1000; // start with 1 second
+  private readonly maxReconnectDelay = 30000;
   private onMessageCallback: ((event: MessageEvent) => void) | null = null;
   private onErrorCallback: ((error: Event) => void) | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private shouldReconnect = true;
 
   connect(
     onMessage: (event: MessageEvent) => void,
@@ -132,10 +238,17 @@ class WebSocketManager {
   ): void {
     this.onMessageCallback = onMessage;
     this.onErrorCallback = onError || null;
+    this.shouldReconnect = true;
     this.attemptConnection();
   }
 
   private attemptConnection(): void {
+    this.clearReconnectTimer();
+
+    if (!this.shouldReconnect) {
+      return;
+    }
+
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       toast.error(
         "Failed to connect to OpenHAB WebSocket after multiple attempts."
@@ -146,7 +259,7 @@ class WebSocketManager {
     try {
       const wsUrl = getWebSocketUrl();
       logger.info(`Attempting WebSocket connection to: ${wsUrl}`);
-      this.ws = new WebSocket(wsUrl);
+      this.ws = new WebSocket(wsUrl, getWebSocketSubprotocols());
 
       this.ws.onopen = () => {
         toast.success("Connected to OpenHAB WebSocket.");
@@ -162,9 +275,13 @@ class WebSocketManager {
       };
 
       this.ws.onclose = (event) => {
+        this.ws = null;
         logger.info(
           `WebSocket closed. Code: ${event.code}, Reason: ${event.reason}`
         );
+        if (!this.shouldReconnect) {
+          return;
+        }
         if (event.code === 1006) {
           // Abnormal closure, likely certificate or network issue
           toast.error(
@@ -185,15 +302,37 @@ class WebSocketManager {
   }
 
   private scheduleReconnect(): void {
-    setTimeout(() => {
+    if (!this.shouldReconnect) {
+      return;
+    }
+
+    this.reconnectTimer = setTimeout(() => {
       this.reconnectAttempts++;
-      this.reconnectDelay *= 2; // Exponential backoff
+      this.reconnectDelay = Math.min(
+        this.reconnectDelay * 2,
+        this.maxReconnectDelay
+      );
       this.attemptConnection();
     }, this.reconnectDelay);
   }
 
+  private clearReconnectTimer(): void {
+    if (!this.reconnectTimer) {
+      return;
+    }
+    clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
+  }
+
   disconnect(): void {
+    this.shouldReconnect = false;
+    this.clearReconnectTimer();
+
     if (this.ws) {
+      this.ws.onopen = null;
+      this.ws.onmessage = null;
+      this.ws.onerror = null;
+      this.ws.onclose = null;
       this.ws.close();
       this.ws = null;
     }
@@ -239,6 +378,10 @@ class WebSocketManager {
 // Export convenience functions for backward compatibility
 export const registerWebSocketListener =
   WebSocketService.registerListener.bind(WebSocketService);
+export const subscribeWebSocketListener =
+  WebSocketService.subscribe.bind(WebSocketService);
 export const initializeWebSocket =
   WebSocketService.initialize.bind(WebSocketService);
+export const disconnectWebSocket =
+  WebSocketService.disconnect.bind(WebSocketService);
 export const webSocketManager = WebSocketService; // For backward compatibility

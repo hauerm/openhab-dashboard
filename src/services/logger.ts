@@ -9,17 +9,52 @@ interface LogLevel {
   SILENT: 5;
 }
 
+const VALID_LOG_LEVELS = new Set<loglevel.LogLevelDesc>([
+  "trace",
+  "debug",
+  "info",
+  "warn",
+  "error",
+  "silent",
+]);
+
+const normalizeLogLevel = (rawLevel?: string): loglevel.LogLevelDesc | null => {
+  if (!rawLevel) {
+    return null;
+  }
+
+  // Support `.env` values with accidental inline comments.
+  const candidate = rawLevel.split("#")[0]?.trim().toLowerCase();
+  if (!candidate) {
+    return null;
+  }
+
+  return VALID_LOG_LEVELS.has(candidate as loglevel.LogLevelDesc)
+    ? (candidate as loglevel.LogLevelDesc)
+    : null;
+};
+
 // Configure loglevel based on environment
 const configureLogger = () => {
-  // Set log level based on VITE_LOGLEVEL first, then fall back to MODE
+  // Set log level based on explicit env first, then fall back to MODE
   const env = import.meta.env.MODE || "development";
-  const explicitLogLevel = import.meta.env.VITE_LOGLEVEL;
-  let logLevelSource = "environment variable";
+  const explicitLogLevelRaw =
+    import.meta.env.VITE_LOGLEVEL || import.meta.env.VITE_LOG_LEVEL;
+  const explicitLogLevel = normalizeLogLevel(explicitLogLevelRaw);
+  let logLevelSource = "VITE_LOGLEVEL";
 
   if (explicitLogLevel) {
     // Use explicitly set log level
-    loglevel.setLevel(explicitLogLevel as loglevel.LogLevelDesc);
+    loglevel.setLevel(explicitLogLevel);
+    logLevelSource = import.meta.env.VITE_LOGLEVEL
+      ? "VITE_LOGLEVEL"
+      : "VITE_LOG_LEVEL";
   } else {
+    if (explicitLogLevelRaw) {
+      console.warn(
+        `[Logger] Ignoring invalid log level "${explicitLogLevelRaw}". Falling back to MODE defaults.`
+      );
+    }
     // Fall back to MODE-based logic
     logLevelSource = "MODE fallback";
     switch (env) {

@@ -1,21 +1,22 @@
 import React, { useState } from "react";
-import Icon from "@mdi/react";
+import { toast } from "react-toastify";
 import {
-  mdiFanOff,
-  mdiFanSpeed1,
-  mdiFanSpeed2,
-  mdiFanSpeed3,
-  mdiFanAuto,
-  mdiFanAlert,
-} from "@mdi/js";
+  MdAutoMode,
+  MdModeFanOff,
+  MdAir,
+  MdSpeed,
+} from "react-icons/md";
 import {
   HELIOS_MANUAL_LEVEL_LABELS,
   HELIOS_MANUAL_MODE_ITEM,
 } from "../types/ventilation";
 import type { HeliosManualLevel } from "../types/ventilation";
 import { useVentilationStore } from "../stores/ventilationStore";
-import { registerWebSocketListener } from "../services/websocket-service";
 import { WebSocketService } from "../services/websocket-service";
+import { sendCommand } from "../services/openhab-service";
+import { log } from "../services/logger";
+
+const logger = log.createLogger("HeliosManualModeToggle");
 
 const HeliosManualModeToggle: React.FC = () => {
   const { manualLevel, actualLevel } = useVentilationStore();
@@ -23,83 +24,109 @@ const HeliosManualModeToggle: React.FC = () => {
 
   // Initialize the store when component mounts
   React.useEffect(() => {
-    const initStore = async () => {
-      await useVentilationStore.getState().initialize();
-      registerWebSocketListener((itemName, value) =>
-        useVentilationStore.getState().handleWebSocketMessage(itemName, value)
-      );
-    };
-    initStore();
+    void useVentilationStore.getState().initialize();
   }, []); // Empty dependency array - only run once on mount
 
   const handleModeChange = async (level: HeliosManualLevel) => {
     setCommandLoading(true);
+    useVentilationStore.getState().setError(null);
     try {
-      console.log(`[Ventilation] Sending command for level: ${level}`);
+      const command = level.toString();
+      let sent = false;
 
-      // Send WebSocket command
       if (WebSocketService.isConnected()) {
-        console.log(`[Ventilation] Sending command via WebSocket: ${level}`);
-        await WebSocketService.sendCommand(
-          HELIOS_MANUAL_MODE_ITEM,
-          level.toString(),
-          "Decimal"
-        );
-      } else {
-        throw new Error("WebSocket not connected");
+        try {
+          await WebSocketService.sendCommand(
+            HELIOS_MANUAL_MODE_ITEM,
+            command,
+            "Decimal"
+          );
+          sent = true;
+          logger.debug(`Command sent via WebSocket: ${command}`);
+        } catch (error) {
+          logger.warn("WebSocket command failed, falling back to REST:", error);
+        }
       }
 
-      // Wait for WebSocket state updates (OpenHAB delay)
-      console.log(`[Ventilation] Waiting for WebSocket state update...`);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      console.log(`[Ventilation] Finished waiting for updates`);
+      if (!sent) {
+        await sendCommand(HELIOS_MANUAL_MODE_ITEM, command);
+        logger.debug(`Command sent via REST: ${command}`);
+      }
+
+      // Optimistic UI update; authoritative value still comes from OpenHAB updates.
+      useVentilationStore.getState().updateValue(HELIOS_MANUAL_MODE_ITEM, level);
     } catch (error) {
-      console.error("Failed to send ventilation command:", error);
-      // Could show user error here if command fails
+      logger.error("Failed to send ventilation command:", error);
+      useVentilationStore
+        .getState()
+        .setError("Failed to send ventilation command");
+      toast.error("Lüftungsbefehl konnte nicht gesendet werden.");
     } finally {
       setCommandLoading(false);
     }
   };
 
   const getFanIcon = (level: HeliosManualLevel) => {
-    const iconSize = 1.5; // rem units for MDI icons
+    const iconClassName = "w-11 h-11";
+
     switch (level) {
       case -1:
-        return <Icon path={mdiFanAuto} size={iconSize} />;
+        return <MdAutoMode className={iconClassName} />;
       case 0:
-        return <Icon path={mdiFanOff} size={iconSize} />;
+        return <MdModeFanOff className={iconClassName} />;
       case 1:
-        return <Icon path={mdiFanSpeed1} size={iconSize} />;
+        return (
+          <div className="relative">
+            <MdAir className={iconClassName} />
+            <span className="absolute -bottom-1 -right-1 text-xs font-extrabold leading-none text-white">
+              1
+            </span>
+          </div>
+        );
       case 2:
-        return <Icon path={mdiFanSpeed2} size={iconSize} />;
+        return (
+          <div className="relative">
+            <MdAir className={iconClassName} />
+            <span className="absolute -bottom-1 -right-1 text-xs font-extrabold leading-none text-white">
+              2
+            </span>
+          </div>
+        );
       case 3:
-        return <Icon path={mdiFanSpeed3} size={iconSize} />;
+        return (
+          <div className="relative">
+            <MdAir className={iconClassName} />
+            <span className="absolute -bottom-1 -right-1 text-xs font-extrabold leading-none text-white">
+              3
+            </span>
+          </div>
+        );
       case 4:
-        return <Icon path={mdiFanAlert} size={iconSize} />;
+        return <MdSpeed className={iconClassName} />;
     }
   };
 
-  const toggleButtons: { level: HeliosManualLevel; label: string }[] = [
-    { level: -1, label: "Auto" },
-    { level: 0, label: "Aus" },
-    { level: 1, label: "1" },
-    { level: 2, label: "2" },
-    { level: 3, label: "3" },
-    { level: 4, label: "Max" },
+  const toggleButtons: HeliosManualLevel[] = [
+    -1,
+    0,
+    1,
+    2,
+    3,
+    4,
   ];
 
   return (
     <div className="w-full">
       {/* Fancy toggle buttons */}
-      <div className="grid grid-cols-6 gap-2">
-        {toggleButtons.map(({ level }) => (
+      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3 md:gap-x-6">
+        {toggleButtons.map((level) => (
           <button
             key={level}
             onClick={() => handleModeChange(level)}
             disabled={commandLoading}
             className={`
-              relative p-3 rounded-lg font-bold text-white transition-all duration-200
-              backdrop-blur-md backdrop-saturate-150 border shadow-xl aspect-square
+              relative w-[74px] h-[74px] md:w-[84px] md:h-[84px] p-2 rounded-lg font-bold text-white transition-all duration-200
+              backdrop-blur-md backdrop-saturate-150 border shadow-xl
               ${
                 actualLevel === level
                   ? "bg-white/60 border-white/80 shadow-white/40 scale-105 shadow-2xl" // Bright white for actual operating level
@@ -115,7 +142,7 @@ const HeliosManualModeToggle: React.FC = () => {
           >
             <div className="flex items-center justify-center">
               {commandLoading ? (
-                <div className="animate-spin rounded-full h-6 w-6 border-2 border-white/60 border-t-white"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-white/60 border-t-white"></div>
               ) : (
                 <div
                   className={`${
