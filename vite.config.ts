@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
     build: {
       rolldownOptions: {
         output: {
-          manualChunks: (moduleId) => {
+          manualChunks: (moduleId: string) => {
             if (moduleId.includes("node_modules/recharts")) {
               return "charts";
             }

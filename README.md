@@ -98,6 +98,46 @@ The app follows a service/store/component split:
 - **`src/components/SemanticCard.tsx`**: generic metric card with optional history chart
 - **`src/components/HeliosManualModeToggle.tsx`**: ventilation mode controls with WS/REST fallback
 
+## Scene Images (V1: Haus + EG)
+
+All scene images are loaded from `public/scenes`.
+
+Required file layout:
+
+```text
+public/
+  scenes/
+    missing.jpg
+    house/
+      base.jpg
+      light-off.jpg
+      light-on.jpg
+    eg/
+      base.jpg
+      light-off.jpg
+      light-on.jpg
+```
+
+Supported V1 scene states:
+
+- `light:off` -> `<view>/light-off.jpg`
+- `light:on` -> `<view>/light-on.jpg`
+
+How `base.jpg` is used:
+
+- `base.jpg` is the neutral view baseline and must exist for each view.
+- It is not an extra scene state key; state switching in V1 is only `light:on|off`.
+
+Global missing-image fallback:
+
+- If any requested scene image cannot be loaded, the app uses `public/scenes/missing.jpg`.
+- A debug badge (`Missing scene asset`) is shown in the top-right corner while fallback is active.
+
+View mapping in V1:
+
+- `house` -> `public/scenes/house/*`
+- `eg` -> `public/scenes/eg/*`
+
 ## WebSocket Usage
 
 Use typed subscriptions:
