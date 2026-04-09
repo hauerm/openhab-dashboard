@@ -30,6 +30,25 @@ export interface BackgroundTintBand {
   max?: number;
 }
 
+export const getBackgroundTintLevel = (
+  value: number | null,
+  bands: BackgroundTintBand[]
+): BackgroundTintLevel | null => {
+  if (value === null) {
+    return null;
+  }
+
+  for (const band of bands) {
+    const minOk = band.min === undefined || value >= band.min;
+    const maxOk = band.max === undefined || value <= band.max;
+    if (minOk && maxOk) {
+      return band.level;
+    }
+  }
+
+  return null;
+};
+
 export const BACKGROUND_TINT_CLASSES: Record<BackgroundTintLevel, string> = {
   good: "bg-gradient-to-t from-green-500/35 to-transparent",
   moderate: "bg-gradient-to-t from-orange-500/35 to-transparent",
