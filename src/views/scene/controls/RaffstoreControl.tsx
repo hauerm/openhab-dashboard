@@ -12,6 +12,7 @@ interface RaffstoreControlProps {
   label: string;
   itemName: string;
   openingRawState?: string;
+  disabled?: boolean;
 }
 
 const parseOpeningPercent = (rawState: string | undefined): number | null => {
@@ -42,6 +43,7 @@ const RaffstoreControl = ({
   label,
   itemName,
   openingRawState,
+  disabled = false,
 }: RaffstoreControlProps) => {
   const [pendingCommand, setPendingCommand] = useState<
     "UP" | "DOWN" | "STOP" | null
@@ -52,7 +54,7 @@ const RaffstoreControl = ({
   );
 
   const sendMoveCommand = async (command: "UP" | "DOWN" | "STOP") => {
-    if (pendingCommand) {
+    if (pendingCommand || disabled) {
       return;
     }
 
@@ -89,7 +91,7 @@ const RaffstoreControl = ({
           onClick={() => {
             void sendMoveCommand("UP");
           }}
-          disabled={pendingCommand !== null}
+          disabled={pendingCommand !== null || disabled}
           className="rounded-xl p-1.5 text-white/95 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-55"
           aria-label={`${label} Raffstore hochfahren`}
         >
@@ -101,7 +103,7 @@ const RaffstoreControl = ({
           onClick={() => {
             void sendMoveCommand("STOP");
           }}
-          disabled={pendingCommand !== null}
+          disabled={pendingCommand !== null || disabled}
           className="rounded-xl p-1.5 text-white/95 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-55"
           aria-label={`${label} Raffstore stoppen`}
         >
@@ -113,7 +115,7 @@ const RaffstoreControl = ({
           onClick={() => {
             void sendMoveCommand("DOWN");
           }}
-          disabled={pendingCommand !== null}
+          disabled={pendingCommand !== null || disabled}
           className="rounded-xl p-1.5 text-white/95 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-55"
           aria-label={`${label} Raffstore runterfahren`}
         >

@@ -21,6 +21,8 @@ type SelectorHook<TState> = <TSelected>(
 
 const mocks = vi.hoisted(() => ({
   fetchItemsMetadata: vi.fn(),
+  fetchItemMetadata: vi.fn(),
+  upsertItemMetadata: vi.fn(),
   sendCommand: vi.fn(),
   subscribeWebSocketListener: vi.fn(),
   initializeWebSocket: vi.fn(),
@@ -34,6 +36,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("./services/openhab-service", () => ({
   fetchItemsMetadata: mocks.fetchItemsMetadata,
+  fetchItemMetadata: mocks.fetchItemMetadata,
+  upsertItemMetadata: mocks.upsertItemMetadata,
   sendCommand: mocks.sendCommand,
 }));
 
@@ -132,6 +136,10 @@ describe("App integration", () => {
     mocks.fetchItemsMetadata.mockResolvedValue(buildDefaultItems());
     mocks.sendCommand.mockReset();
     mocks.sendCommand.mockResolvedValue(undefined);
+    mocks.fetchItemMetadata.mockReset();
+    mocks.fetchItemMetadata.mockResolvedValue(null);
+    mocks.upsertItemMetadata.mockReset();
+    mocks.upsertItemMetadata.mockResolvedValue(undefined);
 
     mocks.initializeWebSocket.mockReset();
     mocks.initializeWebSocket.mockResolvedValue(undefined);
