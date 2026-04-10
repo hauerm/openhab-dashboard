@@ -1,9 +1,71 @@
-import type { Item, ItemHistoryResponse } from "../types/item";
+import type { Item, ItemHistoryResponse, ItemMetadataNamespace } from "../types/item";
 import {
   OPENHAB_BASE_URL,
   PROPERTY_HUMIDITY,
   getOpenHABAuthHeaders,
 } from "./config";
+
+const extractNamespaceFromMetadataPayload = (
+  payload: unknown,
+  namespace: string
+): ItemMetadataNamespace | null => {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  if (Array.isArray(payload)) {
+    const matchingEntry = payload.find((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return false;
+      }
+      const maybeNamespace = (entry as { namespace?: unknown }).namespace;
+      return maybeNamespace === namespace;
+    }) as { value?: unknown; config?: unknown; editable?: unknown } | undefined;
+
+    if (!matchingEntry || typeof matchingEntry.value !== "string") {
+      return null;
+    }
+
+    return {
+      value: matchingEntry.value,
+      config:
+        matchingEntry.config && typeof matchingEntry.config === "object"
+          ? (matchingEntry.config as Record<string, unknown>)
+          : undefined,
+      editable:
+        typeof matchingEntry.editable === "boolean"
+          ? matchingEntry.editable
+          : undefined,
+    };
+  }
+
+  const byNamespace = payload as Record<string, unknown>;
+  const rawNamespaceValue = byNamespace[namespace];
+  if (!rawNamespaceValue || typeof rawNamespaceValue !== "object") {
+    return null;
+  }
+
+  const namespaceEntry = rawNamespaceValue as {
+    value?: unknown;
+    config?: unknown;
+    editable?: unknown;
+  };
+  if (typeof namespaceEntry.value !== "string") {
+    return null;
+  }
+
+  return {
+    value: namespaceEntry.value,
+    config:
+      namespaceEntry.config && typeof namespaceEntry.config === "object"
+        ? (namespaceEntry.config as Record<string, unknown>)
+        : undefined,
+    editable:
+      typeof namespaceEntry.editable === "boolean"
+        ? namespaceEntry.editable
+        : undefined,
+  };
+};
 
 /**
  * Service for handling OpenHAB item operations via REST API
@@ -78,6 +140,111 @@ export class ItemService {
     if (!response.ok) {
       throw new Error(`Failed to send command to ${itemName}`);
     }
+  }
+
+  /**
+   * Fetch metadata of an item namespace.
+   * Returns null when namespace does not exist.
+   */
+  static async fetchItemMetadata(
+    itemName: string,
+    namespace: string
+  ): Promise<ItemMetadataNamespace | null> {
+    const singleNamespaceUrl = `${OPENHAB_BASE_URL}/items/${encodeURIComponent(
+      itemName
+    )}/metadata/${encodeURIComponent(namespace)}`;
+
+    const singleResponse = await fetch(singleNamespaceUrl, {
+      headers: getOpenHABAuthHeaders(),
+    });
+
+    if (singleResponse.ok) {
+      return singleResponse.json();
+    }
+    if (singleResponse.status === 404) {
+      return null;
+    }
+    if (singleResponse.status !== 405) {
+      throw new Error(`Failed to fetch metadata ${namespace} for ${itemName}`);
+    }
+
+    // openHAB variants may not support GET on /metadata/{namespace}; fetch item with metadata query.
+    const itemWithMetadataUrl = `${OPENHAB_BASE_URL}/items/${encodeURIComponent(
+      itemName
+    )}?metadata=${encodeURIComponent(namespace)}`;
+    const itemWithMetadataResponse = await fetch(itemWithMetadataUrl, {
+      headers: getOpenHABAuthHeaders(),
+    });
+
+    if (itemWithMetadataResponse.ok) {
+      const itemPayload = (await itemWithMetadataResponse.json()) as {
+        metadata?: Record<string, ItemMetadataNamespace>;
+      };
+      return itemPayload.metadata?.[namespace] ?? null;
+    }
+
+    if (itemWithMetadataResponse.status !== 405) {
+      if (itemWithMetadataResponse.status === 404) {
+        return null;
+      }
+      throw new Error(`Failed to fetch item metadata ${namespace} for ${itemName}`);
+    }
+
+    // Last fallback for servers exposing only /metadata list route.
+    const allNamespacesUrl = `${OPENHAB_BASE_URL}/items/${encodeURIComponent(itemName)}/metadata`;
+    const allResponse = await fetch(allNamespacesUrl, {
+      headers: getOpenHABAuthHeaders(),
+    });
+    if (!allResponse.ok) {
+      if (allResponse.status === 404) {
+        return null;
+      }
+      throw new Error(`Failed to fetch metadata list for ${itemName}`);
+    }
+    const payload: unknown = await allResponse.json();
+    return extractNamespaceFromMetadataPayload(payload, namespace);
+  }
+
+  /**
+   * Create or update metadata for an item namespace.
+   */
+  static async upsertItemMetadata(
+    itemName: string,
+    namespace: string,
+    metadata: { value: string; config?: Record<string, string> }
+  ): Promise<void> {
+    const namespaceUrl = `${OPENHAB_BASE_URL}/items/${encodeURIComponent(
+      itemName
+    )}/metadata/${encodeURIComponent(namespace)}`;
+    const requestBody = JSON.stringify(metadata);
+    const requestHeaders = {
+      ...getOpenHABAuthHeaders(),
+      "Content-Type": "application/json",
+    };
+
+    const putResponse = await fetch(namespaceUrl, {
+      method: "PUT",
+      headers: requestHeaders,
+      body: requestBody,
+    });
+
+    if (putResponse.ok) {
+      return;
+    }
+
+    // Some openHAB variants only allow POST for create.
+    if (putResponse.status === 404 || putResponse.status === 405) {
+      const postResponse = await fetch(namespaceUrl, {
+        method: "POST",
+        headers: requestHeaders,
+        body: requestBody,
+      });
+      if (postResponse.ok) {
+        return;
+      }
+    }
+
+    throw new Error(`Failed to upsert metadata ${namespace} for ${itemName}`);
   }
 
   /**
@@ -290,6 +457,8 @@ export const fetchItemsMetadata =
   ItemService.fetchItemsMetadata.bind(ItemService);
 export const fetchItem = ItemService.fetchItem.bind(ItemService);
 export const sendCommand = ItemService.sendCommand.bind(ItemService);
+export const fetchItemMetadata = ItemService.fetchItemMetadata.bind(ItemService);
+export const upsertItemMetadata = ItemService.upsertItemMetadata.bind(ItemService);
 export const getItemHistory = ItemService.getItemHistory.bind(ItemService);
 export const filterItemsBySemanticType =
   ItemService.filterItemsBySemanticType.bind(ItemService);

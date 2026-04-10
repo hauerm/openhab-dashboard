@@ -10,17 +10,17 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { SEMANTIC_CONFIGS } from "../config/semanticTypes";
-import { createSemanticStore } from "../stores/semanticStore";
-import { PROPERTY_TEMPERATURE } from "../services/config";
+import { LOCATION_PROPERTY_CONTROL_CONFIGS } from "../../../config/locationPropertyControlTypes";
+import { createLocationPropertyHistoryStore } from "../../../stores/locationPropertyHistoryStore";
+import { PROPERTY_TEMPERATURE } from "../../../services/config";
 import {
   HISTORY_RANGE_OPTIONS,
   getHistoryRangeDurationMs,
   type HistoryRangeKey,
-} from "../config/historyRanges";
+} from "../../../config/historyRanges";
 
-interface SemanticHistoryChartViewProps {
-  semanticProperty: string;
+interface LocationPropertyHistoryControlProps {
+  property: string;
   location?: string;
   title: string;
   unit?: string;
@@ -83,8 +83,8 @@ const tooltipTimeFormatter = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
 });
 
-const SemanticHistoryChartView: React.FC<SemanticHistoryChartViewProps> = ({
-  semanticProperty,
+const LocationPropertyHistoryControl: React.FC<LocationPropertyHistoryControlProps> = ({
+  property,
   location,
   title,
   unit,
@@ -94,7 +94,7 @@ const SemanticHistoryChartView: React.FC<SemanticHistoryChartViewProps> = ({
   className = "",
 }) => {
   const resolvedConfig =
-    SEMANTIC_CONFIGS[semanticProperty] ?? SEMANTIC_CONFIGS[PROPERTY_TEMPERATURE];
+    LOCATION_PROPERTY_CONTROL_CONFIGS[property] ?? LOCATION_PROPERTY_CONTROL_CONFIGS[PROPERTY_TEMPERATURE];
   const resolvedUnit = unit ?? resolvedConfig.unit;
   const initialRangeKey = defaultRangeKey ?? resolvedConfig.defaultHistoryRangeKey;
   const [activeRangeKey, setActiveRangeKey] =
@@ -102,7 +102,7 @@ const SemanticHistoryChartView: React.FC<SemanticHistoryChartViewProps> = ({
   const scopeKey = location?.trim() || "__all__";
 
   const useStore = React.useMemo(
-    () => createSemanticStore(resolvedConfig, scopeKey),
+    () => createLocationPropertyHistoryStore(resolvedConfig, scopeKey),
     [resolvedConfig, scopeKey]
   );
 
@@ -234,7 +234,7 @@ const SemanticHistoryChartView: React.FC<SemanticHistoryChartViewProps> = ({
 
   return (
     <section
-      data-testid="semantic-history-overlay"
+      data-testid="location-property-history-control-overlay"
       className={`flex h-full min-h-0 w-full flex-col rounded-3xl border border-white/20 bg-slate-900/35 p-4 shadow-2xl backdrop-blur-2xl md:p-6 ${className}`}
     >
       <header className="flex flex-wrap items-start justify-between gap-3 text-white">
@@ -406,4 +406,4 @@ const SemanticHistoryChartView: React.FC<SemanticHistoryChartViewProps> = ({
   );
 };
 
-export default SemanticHistoryChartView;
+export default LocationPropertyHistoryControl;

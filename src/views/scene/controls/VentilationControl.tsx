@@ -1,43 +1,65 @@
 import React, { useState } from "react";
 import { toast } from "react-toastify";
-import {
-  MdAutoMode,
-  MdModeFanOff,
-  MdAir,
-  MdSpeed,
-} from "react-icons/md";
+import { FaFan } from "react-icons/fa";
+import { MdAutoMode, MdModeFanOff, MdAir, MdSpeed } from "react-icons/md";
 import {
   HELIOS_MANUAL_LEVEL_LABELS,
   HELIOS_MANUAL_MODE_ITEM,
-} from "../types/ventilation";
-import type { HeliosManualLevel } from "../types/ventilation";
-import { useVentilationStore } from "../stores/ventilationStore";
-import { WebSocketService } from "../services/websocket-service";
-import { sendCommand } from "../services/openhab-service";
-import { log } from "../services/logger";
+} from "../../../types/ventilation";
+import type { HeliosManualLevel } from "../../../types/ventilation";
+import { useVentilationStore } from "../../../stores/ventilationStore";
+import { WebSocketService } from "../../../services/websocket-service";
+import { sendCommand } from "../../../services/openhab-service";
+import { log } from "../../../services/logger";
 
-const logger = log.createLogger("HeliosManualModeToggle");
+const logger = log.createLogger("VentilationControl");
 
-interface HeliosManualModeToggleProps {
-  showAutoButton?: boolean;
-  variant?: "default" | "overlay";
-}
+type VentilationControlProps =
+  | {
+      variant: "hud";
+      badge: string;
+      onActivate: () => void;
+    }
+  | {
+      variant: "overlay";
+    };
 
-const HeliosManualModeToggle: React.FC<HeliosManualModeToggleProps> = ({
-  showAutoButton = true,
-  variant = "default",
-}) => {
-  const { manualLevel, actualLevel } = useVentilationStore();
+const TEXT_SHADOW_CLASS = "[text-shadow:0_2px_8px_rgba(0,0,0,0.8)]";
+
+const VentilationControl = (props: VentilationControlProps) => {
+  if (props.variant === "hud") {
+    return (
+      <button
+        type="button"
+        data-testid="hud-metric-ventilation"
+        onClick={props.onActivate}
+        className="pointer-events-auto relative rounded-full p-1 text-white/95 transition hover:text-white"
+        aria-label="Lüftung öffnen"
+      >
+        <FaFan className="h-16 w-16 md:h-20 md:w-20" />
+        <span
+          className={`absolute bottom-1 right-0 rounded-full border border-white/30 bg-slate-900/80 px-1.5 py-0.5 text-xs font-bold text-white md:text-sm ${TEXT_SHADOW_CLASS}`}
+        >
+          {props.badge}
+        </span>
+      </button>
+    );
+  }
+
+  const manualLevel = useVentilationStore((state) => state.manualLevel);
+  const actualLevel = useVentilationStore((state) => state.actualLevel);
+  const initialize = useVentilationStore((state) => state.initialize);
+  const setError = useVentilationStore((state) => state.setError);
+  const updateValue = useVentilationStore((state) => state.updateValue);
   const [commandLoading, setCommandLoading] = useState(false);
 
-  // Initialize the store when component mounts
   React.useEffect(() => {
-    void useVentilationStore.getState().initialize();
-  }, []); // Empty dependency array - only run once on mount
+    void initialize();
+  }, [initialize]);
 
   const handleModeChange = async (level: HeliosManualLevel) => {
     setCommandLoading(true);
-    useVentilationStore.getState().setError(null);
+    setError(null);
     try {
       const command = level.toString();
       let sent = false;
@@ -61,13 +83,10 @@ const HeliosManualModeToggle: React.FC<HeliosManualModeToggleProps> = ({
         logger.debug(`Command sent via REST: ${command}`);
       }
 
-      // Optimistic UI update; authoritative value still comes from OpenHAB updates.
-      useVentilationStore.getState().updateValue(HELIOS_MANUAL_MODE_ITEM, level);
+      updateValue(HELIOS_MANUAL_MODE_ITEM, level);
     } catch (error) {
       logger.error("Failed to send ventilation command:", error);
-      useVentilationStore
-        .getState()
-        .setError("Failed to send ventilation command");
+      setError("Failed to send ventilation command");
       toast.error("Lüftungsbefehl konnte nicht gesendet werden.");
     } finally {
       setCommandLoading(false);
@@ -75,12 +94,9 @@ const HeliosManualModeToggle: React.FC<HeliosManualModeToggleProps> = ({
   };
 
   const getFanIcon = (level: HeliosManualLevel) => {
-    const iconClassName =
-      variant === "overlay" ? "h-16 w-16 md:h-24 md:w-24" : "h-11 w-11";
+    const iconClassName = "h-16 w-16 md:h-24 md:w-24";
     const stageBadgeClassName =
-      variant === "overlay"
-        ? "absolute -bottom-2 -right-2 text-xl md:text-2xl font-black leading-none text-white"
-        : "absolute -bottom-1 -right-1 text-xs font-extrabold leading-none text-white";
+      "absolute -bottom-2 -right-2 text-xl md:text-2xl font-black leading-none text-white";
 
     switch (level) {
       case -1:
@@ -93,30 +109,12 @@ const HeliosManualModeToggle: React.FC<HeliosManualModeToggleProps> = ({
           </div>
         );
       case 1:
-        return (
-          <div className="relative">
-            <MdAir className={iconClassName} />
-            <span className={stageBadgeClassName}>
-              1
-            </span>
-          </div>
-        );
       case 2:
-        return (
-          <div className="relative">
-            <MdAir className={iconClassName} />
-            <span className={stageBadgeClassName}>
-              2
-            </span>
-          </div>
-        );
       case 3:
         return (
           <div className="relative">
             <MdAir className={iconClassName} />
-            <span className={stageBadgeClassName}>
-              3
-            </span>
+            <span className={stageBadgeClassName}>{level}</span>
           </div>
         );
       case 4:
@@ -129,22 +127,12 @@ const HeliosManualModeToggle: React.FC<HeliosManualModeToggleProps> = ({
     }
   };
 
-  const toggleButtons: HeliosManualLevel[] = showAutoButton
-    ? [-1, 0, 1, 2, 3, 4]
-    : [0, 1, 2, 3, 4];
-
-  const buttonContainerClassName =
-    variant === "overlay"
-      ? "grid w-full grid-cols-5 gap-2 md:gap-5"
-      : "flex flex-wrap items-center justify-center gap-x-5 gap-y-3 md:gap-x-6";
-
-  const buttonSizeClassName =
-    variant === "overlay"
-      ? "w-full aspect-square rounded-2xl md:rounded-3xl p-2 md:p-3"
-      : "w-[74px] h-[74px] md:w-[84px] md:h-[84px] p-2 rounded-lg";
+  const toggleButtons: HeliosManualLevel[] = [-1, 0, 1, 2, 3, 4];
+  const buttonContainerClassName = "grid w-full grid-cols-6 gap-2 md:gap-5";
+  const buttonSizeClassName = "w-full aspect-square rounded-2xl md:rounded-3xl p-2 md:p-3";
 
   return (
-    <div className="w-full">
+    <div className="w-full" data-testid="ventilation-overlay">
       <div className={buttonContainerClassName}>
         {toggleButtons.map((level) => (
           <button
@@ -156,11 +144,11 @@ const HeliosManualModeToggle: React.FC<HeliosManualModeToggleProps> = ({
               backdrop-blur-md backdrop-saturate-150 border shadow-xl
               ${
                 actualLevel === level
-                  ? "bg-white/60 border-white/80 shadow-white/40 scale-105 shadow-2xl" // Bright white for actual operating level
+                  ? "bg-white/60 border-white/80 shadow-white/40 scale-105 shadow-2xl"
                   : manualLevel === level
                   ? manualLevel === -1
-                    ? "bg-green-500/30 border-green-400/50 shadow-green-400/25 scale-105 shadow-2xl" // Consistent green for automatic setpoint (matches other cards)
-                    : "bg-white/40 border-white/60 shadow-white/30 scale-105 shadow-2xl" // Softer white for manual setpoint
+                    ? "bg-green-500/30 border-green-400/50 shadow-green-400/25 scale-105 shadow-2xl"
+                    : "bg-white/40 border-white/60 shadow-white/30 scale-105 shadow-2xl"
                   : "bg-white/8 border-white/20 hover:bg-white/15 hover:scale-102 shadow-lg"
               }
               disabled:opacity-50 disabled:cursor-not-allowed
@@ -169,11 +157,7 @@ const HeliosManualModeToggle: React.FC<HeliosManualModeToggleProps> = ({
           >
             <div className="flex items-center justify-center">
               {commandLoading ? (
-                <div
-                  className={`animate-spin rounded-full border-2 border-white/60 border-t-white ${
-                    variant === "overlay" ? "h-10 w-10 md:h-12 md:w-12" : "h-8 w-8"
-                  }`}
-                ></div>
+                <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/60 border-t-white md:h-12 md:w-12" />
               ) : (
                 <div
                   className={`${
@@ -186,7 +170,6 @@ const HeliosManualModeToggle: React.FC<HeliosManualModeToggleProps> = ({
                 </div>
               )}
             </div>
-            {/* Enhanced elevation for active state */}
             {(manualLevel === level || actualLevel === level) && (
               <div
                 className={`absolute inset-0 rounded-lg bg-gradient-to-t ${
@@ -203,4 +186,4 @@ const HeliosManualModeToggle: React.FC<HeliosManualModeToggleProps> = ({
   );
 };
 
-export default HeliosManualModeToggle;
+export default VentilationControl;

@@ -13,7 +13,7 @@ import {
 } from "../services/config";
 import type { HistoryRangeKey } from "./historyRanges";
 
-export interface SemanticTypeConfig {
+export interface LocationPropertyControlConfig {
   property: string;
   defaultHistoryRangeKey: HistoryRangeKey;
   maxHistoryRangeKey?: HistoryRangeKey;
@@ -56,7 +56,7 @@ export const BACKGROUND_TINT_CLASSES: Record<BackgroundTintLevel, string> = {
   bad: "bg-gradient-to-t from-red-500/35 to-transparent",
 };
 
-export const SEMANTIC_CONFIGS: Record<string, SemanticTypeConfig> = {
+export const LOCATION_PROPERTY_CONTROL_CONFIGS: Record<string, LocationPropertyControlConfig> = {
   [PROPERTY_TEMPERATURE]: {
     property: PROPERTY_TEMPERATURE,
     defaultHistoryRangeKey: "day",

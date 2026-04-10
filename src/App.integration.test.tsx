@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Item } from "./types/item";
@@ -21,19 +21,23 @@ type SelectorHook<TState> = <TSelected>(
 
 const mocks = vi.hoisted(() => ({
   fetchItemsMetadata: vi.fn(),
+  fetchItemMetadata: vi.fn(),
+  upsertItemMetadata: vi.fn(),
   sendCommand: vi.fn(),
   subscribeWebSocketListener: vi.fn(),
   initializeWebSocket: vi.fn(),
   disconnectWebSocket: vi.fn(),
   websocketIsConnected: vi.fn(),
   websocketSendCommand: vi.fn(),
-  semanticInitialize: vi.fn(),
+  locationPropertyInitialize: vi.fn(),
   ventilationInitialize: vi.fn(),
   wsListener: null as ((update: { itemName: string; rawState: string }) => void) | null,
 }));
 
 vi.mock("./services/openhab-service", () => ({
   fetchItemsMetadata: mocks.fetchItemsMetadata,
+  fetchItemMetadata: mocks.fetchItemMetadata,
+  upsertItemMetadata: mocks.upsertItemMetadata,
   sendCommand: mocks.sendCommand,
 }));
 
@@ -47,8 +51,8 @@ vi.mock("./services/websocket-service", () => ({
   },
 }));
 
-vi.mock("./stores/semanticStore", () => ({
-  createSemanticStore: (config: { property: string }) => {
+vi.mock("./stores/locationPropertyHistoryStore", () => ({
+  createLocationPropertyHistoryStore: (config: { property: string }) => {
     const valueByProperty: Record<string, number> = {
       Property_Temperature: 22.4,
       Property_Humidity: 51,
@@ -57,7 +61,7 @@ vi.mock("./stores/semanticStore", () => ({
     };
 
     const state = {
-      initialize: mocks.semanticInitialize,
+      initialize: mocks.locationPropertyInitialize,
       currentValue: valueByProperty[config.property] ?? null,
       history: {},
       metadata: [],
@@ -79,6 +83,7 @@ vi.mock("./stores/ventilationStore", () => {
   const state = {
     manualLevel: -1 as const,
     actualLevel: 2 as const,
+    itemNames: new Set<string>(),
     initialize: mocks.ventilationInitialize,
   };
 
@@ -88,14 +93,10 @@ vi.mock("./stores/ventilationStore", () => {
   return { useVentilationStore };
 });
 
-vi.mock("./components/SemanticHistoryChartView", () => ({
+vi.mock("./views/scene/controls/LocationPropertyHistoryControl", () => ({
   default: ({ title }: { title: string }) => (
-    <div data-testid="semantic-history-overlay">{title}</div>
+    <div data-testid="location-property-history-control-overlay">{title}</div>
   ),
-}));
-
-vi.mock("./components/HeliosManualModeToggle", () => ({
-  default: () => <div data-testid="ventilation-overlay">Ventilation overlay</div>,
 }));
 
 const createItem = (
@@ -132,6 +133,10 @@ describe("App integration", () => {
     mocks.fetchItemsMetadata.mockResolvedValue(buildDefaultItems());
     mocks.sendCommand.mockReset();
     mocks.sendCommand.mockResolvedValue(undefined);
+    mocks.fetchItemMetadata.mockReset();
+    mocks.fetchItemMetadata.mockResolvedValue(null);
+    mocks.upsertItemMetadata.mockReset();
+    mocks.upsertItemMetadata.mockResolvedValue(undefined);
 
     mocks.initializeWebSocket.mockReset();
     mocks.initializeWebSocket.mockResolvedValue(undefined);
@@ -141,8 +146,8 @@ describe("App integration", () => {
     mocks.websocketIsConnected.mockReturnValue(true);
     mocks.websocketSendCommand.mockReset();
     mocks.websocketSendCommand.mockResolvedValue(undefined);
-    mocks.semanticInitialize.mockReset();
-    mocks.semanticInitialize.mockResolvedValue(undefined);
+    mocks.locationPropertyInitialize.mockReset();
+    mocks.locationPropertyInitialize.mockResolvedValue(undefined);
     mocks.ventilationInitialize.mockReset();
     mocks.ventilationInitialize.mockResolvedValue(undefined);
 
@@ -185,7 +190,7 @@ describe("App integration", () => {
     const background = screen.getByTestId("scene-background-image");
     expect(background).toHaveAttribute(
       "src",
-      expect.stringContaining("/scenes/eg/base.webp")
+      expect.stringContaining("/scenes/house/eg/base.webp")
     );
     expect(screen.getByTestId("hud-metric-temp")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-humidity")).toBeInTheDocument();
@@ -217,7 +222,7 @@ describe("App integration", () => {
     });
   });
 
-  it("opens and closes semantic overlay from eg hud click", async () => {
+  it("opens and closes location-property overlay from eg hud click", async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -228,11 +233,13 @@ describe("App integration", () => {
     await user.click(screen.getByTestId("dock-button-eg"));
     await user.click(screen.getByTestId("hud-metric-temp"));
 
-    expect(screen.getByTestId("semantic-history-overlay")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("location-property-history-control-overlay")
+    ).toBeInTheDocument();
 
     await user.click(screen.getByTestId("overlay-backdrop"));
     expect(
-      screen.queryByTestId("semantic-history-overlay")
+      screen.queryByTestId("location-property-history-control-overlay")
     ).not.toBeInTheDocument();
   });
 
@@ -264,7 +271,9 @@ describe("App integration", () => {
     await user.click(screen.getByTestId("dock-button-eg"));
     await user.click(screen.getByTestId("hud-metric-humidity"));
 
-    expect(screen.getByTestId("semantic-history-overlay")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("location-property-history-control-overlay")
+    ).toBeInTheDocument();
   });
 
   it("renders living controls and sends raffstore/light commands", async () => {
@@ -279,21 +288,76 @@ describe("App integration", () => {
 
     expect(screen.getByTestId("scene-background-image")).toHaveAttribute(
       "src",
-      expect.stringContaining("/scenes/living/base.webp")
+      expect.stringContaining("/scenes/house/eg/living/base.webp")
     );
-    expect(screen.getByTestId("raffstore-control-wohnzimmer-value")).toHaveTextContent(
-      "67%"
+    expect(
+      screen.queryByTestId(`raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}`)
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`light-control-${SAH3_Licht_Couch}`)
+    ).not.toBeInTheDocument();
+
+    expect(
+      screen.getByTestId(
+        `living-control-placeholder-icon-${KNX_JA1_Raffstore_Wohnzimmer}-raffstore-half`
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        `living-control-placeholder-icon-${KNX_JA1_Raffstore_Wohnzimmer_Strasse}-raffstore-half`
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        `living-control-placeholder-icon-${SAH3_Licht_Couch}-light-on`
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`living-control-placeholder-icon-${SAH3_Licht_TV}-light-on`)
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByTestId(`living-control-placeholder-${KNX_JA1_Raffstore_Wohnzimmer}`)
     );
-    expect(screen.getByTestId("raffstore-control-strasse-value")).toHaveTextContent(
+    expect(
+      screen.getByTestId(`raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-value`)
+    ).toHaveTextContent("67%");
+    await user.click(
+      screen.getByTestId(`raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-down`)
+    );
+    await user.click(
+      screen.getByTestId(`raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-stop`)
+    );
+    await user.click(screen.getByTestId("overlay-backdrop"));
+
+    await user.click(
+      screen.getByTestId(
+        `living-control-placeholder-${KNX_JA1_Raffstore_Wohnzimmer_Strasse}`
+      )
+    );
+    expect(
+      screen.getByTestId(
+        `raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer_Strasse}-value`
+      )
+    ).toHaveTextContent(
       "45%"
     );
-    expect(screen.getByTestId("light-control-couch-icon-on")).toBeInTheDocument();
-    expect(screen.getByTestId("light-control-tv-dimmer")).toHaveTextContent("35%");
+    await user.click(
+      screen.getByTestId(`raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer_Strasse}-up`)
+    );
+    await user.click(screen.getByTestId("overlay-backdrop"));
 
-    await user.click(screen.getByTestId("raffstore-control-wohnzimmer-down"));
-    await user.click(screen.getByTestId("raffstore-control-wohnzimmer-stop"));
-    await user.click(screen.getByTestId("raffstore-control-strasse-up"));
-    await user.click(screen.getByTestId("light-control-couch"));
+    await user.click(
+      screen.getByTestId(`living-control-placeholder-${SAH3_Licht_Couch}`)
+    );
+    expect(
+      screen.queryByTestId(`light-control-${SAH3_Licht_Couch}`)
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId(`living-control-placeholder-${SAH3_Licht_TV}`));
+    expect(
+      screen.queryByTestId(`light-control-${SAH3_Licht_TV}`)
+    ).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
@@ -316,6 +380,152 @@ describe("App integration", () => {
         "OFF",
         "OnOff"
       );
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        SAH3_Licht_TV,
+        "OFF",
+        "OnOff"
+      );
     });
+  });
+
+  it("runs RETROLux raffstore presets in overlay", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
+    });
+
+    await user.click(screen.getByTestId("dock-button-living"));
+    await user.click(
+      screen.getByTestId(`living-control-placeholder-${KNX_JA1_Raffstore_Wohnzimmer}`)
+    );
+
+    const flush = async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    };
+
+    expect(
+      screen.getByTestId(
+        `raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-preset-arbeitsstellung`
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        `raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-preset-schliessen`
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        `raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-preset-tilt-25`
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        `raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-preset-tilt-50`
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        `raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-preset-tilt-75`
+      )
+    ).toBeInTheDocument();
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(
+        screen.getByTestId(
+          `raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-preset-schliessen`
+        )
+      );
+      await flush();
+
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        1,
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "UP",
+        "UpDown"
+      );
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      await flush();
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        2,
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "STOP",
+        "StopMove"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        3,
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "DOWN",
+        "UpDown"
+      );
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      await flush();
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        4,
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "STOP",
+        "StopMove"
+      );
+
+      fireEvent.click(
+        screen.getByTestId(
+          `raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-preset-tilt-50`
+        )
+      );
+      await flush();
+
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        5,
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "UP",
+        "UpDown"
+      );
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      await flush();
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        6,
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "STOP",
+        "StopMove"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        7,
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "DOWN",
+        "UpDown"
+      );
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      await flush();
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        8,
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "STOP",
+        "StopMove"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        9,
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "UP",
+        "UpDown"
+      );
+
+      await vi.advanceTimersByTimeAsync(1_300);
+      await flush();
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        10,
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "STOP",
+        "StopMove"
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

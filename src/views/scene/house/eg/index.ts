@@ -1,4 +1,4 @@
-import type { SceneViewModule } from "../types";
+import type { SceneViewModule } from "../../types";
 import EgHud from "./EgHud";
 import EgOverlay from "./EgOverlay";
 

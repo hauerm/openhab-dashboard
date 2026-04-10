@@ -1,19 +1,19 @@
 import {
   getBackgroundTintLevel,
-  SEMANTIC_CONFIGS,
+  LOCATION_PROPERTY_CONTROL_CONFIGS,
   type BackgroundTintLevel,
-} from "../../../config/semanticTypes";
-import { getHealthIndexLabel } from "../../../config/healthIndex";
+} from "../../../../config/locationPropertyControlTypes";
+import { getHealthIndexLabel } from "../../../../config/healthIndex";
 import {
   PROPERTY_AIR_QUALITY,
   PROPERTY_CO2,
   PROPERTY_HUMIDITY,
   PROPERTY_TEMPERATURE,
-} from "../../../services/config";
+} from "../../../../services/config";
 import {
   HELIOS_MANUAL_LEVEL_LABELS,
   type HeliosManualLevel,
-} from "../../../types/ventilation";
+} from "../../../../types/ventilation";
 
 const ICON_TINT_CLASSES: Record<
   BackgroundTintLevel,
@@ -44,7 +44,7 @@ const resolveIconTint = (
 ): { container: string; icon: string } => {
   const level = getBackgroundTintLevel(
     value,
-    SEMANTIC_CONFIGS[property].backgroundTintBands
+    LOCATION_PROPERTY_CONTROL_CONFIGS[property].backgroundTintBands
   );
   if (level === null) {
     return DEFAULT_ICON_TINT;

@@ -1,4 +1,4 @@
-import type { SceneViewModule } from "../types";
+import type { SceneViewModule } from "../../../types";
 import LivingHud from "./LivingHud";
 import LivingOverlay from "./LivingOverlay";
 

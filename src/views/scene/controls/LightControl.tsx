@@ -8,6 +8,7 @@ interface LightControlProps {
   label: string;
   itemName: string;
   rawState?: string;
+  disabled?: boolean;
 }
 
 interface ParsedLightState {
@@ -48,12 +49,19 @@ const parseLightState = (rawState: string | undefined): ParsedLightState => {
   };
 };
 
-const LightControl = ({ controlId, label, itemName, rawState }: LightControlProps) => {
+const LightControl = ({
+  controlId,
+  label,
+  itemName,
+  rawState,
+  disabled = false,
+}: LightControlProps) => {
   const [sending, setSending] = useState(false);
   const lightState = useMemo(() => parseLightState(rawState), [rawState]);
+  const isDisabled = sending || disabled;
 
   const toggleLight = async () => {
-    if (sending) {
+    if (isDisabled) {
       return;
     }
 
@@ -76,7 +84,7 @@ const LightControl = ({ controlId, label, itemName, rawState }: LightControlProp
       onClick={() => {
         void toggleLight();
       }}
-      disabled={sending}
+      disabled={isDisabled}
       className="pointer-events-auto flex min-w-28 flex-col items-center rounded-2xl border border-slate-500/40 bg-white/90 px-4 py-3 text-slate-900 shadow-2xl transition hover:scale-[1.02] hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
       aria-label={`${label} Licht ${lightState.isOn ? "ausschalten" : "einschalten"}`}
     >
