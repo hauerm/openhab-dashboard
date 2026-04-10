@@ -1,6 +1,5 @@
 import type {
   SceneBinaryState,
-  SceneKey,
   SceneRawStateKind,
   SceneTrackedItemState,
   SceneViewConfig,
@@ -73,25 +72,6 @@ export const applySceneItemStateUpdate = (
   };
 };
 
-export const computeSceneKey = (
-  sceneItems: string[],
-  itemStates: Record<string, SceneTrackedItemState>
-): SceneKey =>
-  sceneItems.some((itemName) => itemStates[itemName]?.effectiveState === "on")
-    ? "light:on"
-    : "light:off";
-
-export const computeSceneKeysByView = (
-  views: Record<string, SceneViewConfig>,
-  itemStates: Record<string, SceneTrackedItemState>
-): Record<string, SceneKey> => {
-  const sceneKeyByView: Record<string, SceneKey> = {};
-  for (const [viewId, viewConfig] of Object.entries(views)) {
-    sceneKeyByView[viewId] = computeSceneKey(viewConfig.sceneItems, itemStates);
-  }
-  return sceneKeyByView;
-};
-
 export interface ResolvedSceneImage {
   requestedSceneImage: string;
   resolvedImage: string;
@@ -100,11 +80,9 @@ export interface ResolvedSceneImage {
 
 export const resolveSceneImagePath = (
   viewConfig: SceneViewConfig,
-  sceneKey: SceneKey,
   missingSceneAsset: boolean
 ): ResolvedSceneImage => {
-  const requestedSceneImage =
-    viewConfig.sceneImages[sceneKey] ?? viewConfig.baseImage;
+  const requestedSceneImage = viewConfig.baseImage;
 
   if (missingSceneAsset) {
     return {

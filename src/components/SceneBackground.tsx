@@ -1,37 +1,16 @@
-import { useEffect, useRef } from "react";
 import { SCENE_VIEWS } from "../config/sceneViews";
 import { useSceneStoreCore } from "../stores/sceneStoreCore";
 import { resolveSceneImagePath } from "../stores/sceneStore.utils";
 
 const SceneBackground = () => {
   const currentView = useSceneStoreCore((state) => state.currentView);
-  const sceneKey = useSceneStoreCore((state) => state.sceneKeyByView[currentView]);
   const missingAsset = useSceneStoreCore(
     (state) => state.missingAssetByView[currentView]
   );
   const setMissingAsset = useSceneStoreCore((state) => state.setMissingAsset);
 
   const currentViewConfig = SCENE_VIEWS[currentView];
-  const resolvedSceneImage = resolveSceneImagePath(
-    currentViewConfig,
-    sceneKey,
-    missingAsset
-  );
-  const lastRequestedSceneImageRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (
-      lastRequestedSceneImageRef.current !== null &&
-      lastRequestedSceneImageRef.current !== resolvedSceneImage.requestedSceneImage
-    ) {
-      setMissingAsset(currentView, false);
-    }
-    lastRequestedSceneImageRef.current = resolvedSceneImage.requestedSceneImage;
-  }, [
-    currentView,
-    resolvedSceneImage.requestedSceneImage,
-    setMissingAsset,
-  ]);
+  const resolvedSceneImage = resolveSceneImagePath(currentViewConfig, missingAsset);
 
   return (
     <div className="absolute inset-0">

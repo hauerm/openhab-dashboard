@@ -98,7 +98,7 @@ The app follows a service/store/component split:
 - **`src/components/SemanticCard.tsx`**: generic metric card with optional history chart
 - **`src/components/HeliosManualModeToggle.tsx`**: ventilation mode controls with WS/REST fallback
 
-## Scene Images (V1: Haus + EG)
+## Scene Images (Haus + EG, Base + HUD)
 
 All scene images are loaded from `public/scenes`.
 
@@ -109,24 +109,17 @@ public/
   scenes/
     missing.jpg
     house/
-      base.jpg
-      light-off.jpg
-      light-on.jpg
+      base.webp
     eg/
-      base.jpg
-      light-off.jpg
-      light-on.jpg
+      base.webp
+    living/
+      base.webp
 ```
 
-Supported V1 scene states:
+How `base.webp` is used:
 
-- `light:off` -> `<view>/light-off.jpg`
-- `light:on` -> `<view>/light-on.jpg`
-
-How `base.jpg` is used:
-
-- `base.jpg` is the neutral view baseline and must exist for each view.
-- It is not an extra scene state key; state switching in V1 is only `light:on|off`.
+- `base.webp` is the only background image per view.
+- Dynamic information is rendered through HUD overlays above the base image.
 
 Global missing-image fallback:
 
@@ -137,6 +130,7 @@ View mapping in V1:
 
 - `house` -> `public/scenes/house/*`
 - `eg` -> `public/scenes/eg/*`
+- `living` -> `public/scenes/living/*`
 
 ## WebSocket Usage
 

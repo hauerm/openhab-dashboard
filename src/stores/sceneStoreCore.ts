@@ -2,38 +2,22 @@ import { create } from "zustand";
 import { fetchItemsMetadata } from "../services/openhab-service";
 import { subscribeWebSocketListener } from "../services/websocket-service";
 import { log } from "../services/logger";
-import { SCENE_VIEWS, SCENE_VIEW_IDS } from "../config/sceneViews";
-import type {
-  SceneKey,
-  SceneState,
-  SceneTrackedItemState,
-  ViewId,
-} from "../types/scene";
+import { SCENE_VIEW_IDS } from "../config/sceneViews";
+import type { SceneState, SceneTrackedItemState, ViewId } from "../types/scene";
 import { SCENE_VIEW_TRACKED_ITEM_NAMES } from "../views/scene/viewDescriptors";
-import {
-  applySceneItemStateUpdate,
-  computeSceneKeysByView,
-} from "./sceneStore.utils";
+import { applySceneItemStateUpdate } from "./sceneStore.utils";
 
 const logger = log.createLogger("SceneStoreCore");
-
-const buildDefaultSceneKeys = (): Record<ViewId, SceneKey> => ({
-  house: "light:off",
-  eg: "light:off",
-});
 
 const buildDefaultMissingAssets = (): Record<ViewId, boolean> => ({
   house: false,
   eg: false,
+  living: false,
 });
 
 const collectTrackedItemNames = (): Set<string> => {
   const tracked = new Set<string>();
   for (const viewId of SCENE_VIEW_IDS) {
-    const viewConfig = SCENE_VIEWS[viewId];
-    for (const sceneItem of viewConfig.sceneItems) {
-      tracked.add(sceneItem);
-    }
     for (const trackedItemName of SCENE_VIEW_TRACKED_ITEM_NAMES[viewId]) {
       tracked.add(trackedItemName);
     }
@@ -58,7 +42,6 @@ let unsubscribeWebSocket: (() => void) | null = null;
 
 const initialState: SceneState = {
   currentView: "house",
-  sceneKeyByView: buildDefaultSceneKeys(),
   itemStates: {},
   missingAssetByView: buildDefaultMissingAssets(),
   loading: false,
@@ -94,11 +77,7 @@ export const useSceneStoreCore = create<SceneStoreCoreState>((set, get) => ({
           );
         }
 
-        const nextSceneKeys = computeSceneKeysByView(
-          SCENE_VIEWS,
-          nextItemStates
-        ) as Record<ViewId, SceneKey>;
-        set({ itemStates: nextItemStates, sceneKeyByView: nextSceneKeys });
+        set({ itemStates: nextItemStates });
 
         if (!unsubscribeWebSocket) {
           unsubscribeWebSocket = subscribeWebSocketListener(
@@ -139,10 +118,6 @@ export const useSceneStoreCore = create<SceneStoreCoreState>((set, get) => ({
 
       return {
         itemStates: nextItemStates,
-        sceneKeyByView: computeSceneKeysByView(
-          SCENE_VIEWS,
-          nextItemStates
-        ) as Record<ViewId, SceneKey>,
       };
     });
   },
@@ -170,8 +145,6 @@ export const resetSceneStoreCoreForTests = (): void => {
   hasInitialized = false;
   useSceneStoreCore.setState({
     ...initialState,
-    sceneKeyByView: buildDefaultSceneKeys(),
     missingAssetByView: buildDefaultMissingAssets(),
   });
 };
-
