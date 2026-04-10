@@ -206,7 +206,6 @@ export const useViewControlLayout = ({
         await upsertItemMetadata(itemName, metadataNamespace, {
           value: "v1",
           config: {
-            controlId,
             x: position.x.toFixed(2),
             y: position.y.toFixed(2),
           },
