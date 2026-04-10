@@ -3,19 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Item } from "./types/item";
 import {
-  KNX_SAH2_Licht_Einfahrt,
-  KNX_SAH2_Licht_Eingang,
-  KNX_SAH2_Licht_Terrasse_Saulen,
-  KNX_SAH2_Licht_Terrasse_Wand,
-  SAH1_Stromerkennung_Licht_Esstisch,
-  SAH1_Stromerkennung_Licht_Speis,
-  SAH3_Licht_Couch,
-  SAH3_Licht_TV,
-  SHA1_Stromerkennung_Licht_Kuche,
   KNX_Wetterstation_Aussentemperatur,
   KNX_Wetterstation_Regen,
   KNX_Wetterstation_Helligkeit,
   Astro_Sun_Data_Sonnenphase,
+  KNX_JA1_Raffstore_Wohnzimmer,
+  KNX_JA1_Raffstore_Wohnzimmer_Strasse,
+  SAH3_Licht_Couch,
+  SAH3_Licht_TV,
 } from "openhab-hauer-items/items";
 import { resetSceneStoreCoreForTests } from "./stores/sceneStoreCore";
 import App from "./App";
@@ -26,9 +21,12 @@ type SelectorHook<TState> = <TSelected>(
 
 const mocks = vi.hoisted(() => ({
   fetchItemsMetadata: vi.fn(),
+  sendCommand: vi.fn(),
   subscribeWebSocketListener: vi.fn(),
   initializeWebSocket: vi.fn(),
   disconnectWebSocket: vi.fn(),
+  websocketIsConnected: vi.fn(),
+  websocketSendCommand: vi.fn(),
   semanticInitialize: vi.fn(),
   ventilationInitialize: vi.fn(),
   wsListener: null as ((update: { itemName: string; rawState: string }) => void) | null,
@@ -36,12 +34,17 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("./services/openhab-service", () => ({
   fetchItemsMetadata: mocks.fetchItemsMetadata,
+  sendCommand: mocks.sendCommand,
 }));
 
 vi.mock("./services/websocket-service", () => ({
   initializeWebSocket: mocks.initializeWebSocket,
   disconnectWebSocket: mocks.disconnectWebSocket,
   subscribeWebSocketListener: mocks.subscribeWebSocketListener,
+  WebSocketService: {
+    isConnected: mocks.websocketIsConnected,
+    sendCommand: mocks.websocketSendCommand,
+  },
 }));
 
 vi.mock("./stores/semanticStore", () => ({
@@ -95,30 +98,29 @@ vi.mock("./components/HeliosManualModeToggle", () => ({
   default: () => <div data-testid="ventilation-overlay">Ventilation overlay</div>,
 }));
 
-const createItem = (name: string, state: string): Item => ({
+const createItem = (
+  name: string,
+  state: string,
+  type: Item["type"] = "Switch"
+): Item => ({
   link: `/items/${name}`,
   state,
   editable: false,
-  type: "Switch",
+  type,
   name,
   tags: [],
   groupNames: [],
 });
 
 const buildDefaultItems = (): Item[] => [
-  createItem(KNX_SAH2_Licht_Einfahrt, "OFF"),
-  createItem(KNX_SAH2_Licht_Eingang, "OFF"),
-  createItem(KNX_SAH2_Licht_Terrasse_Wand, "OFF"),
-  createItem(KNX_SAH2_Licht_Terrasse_Saulen, "OFF"),
-  createItem(SHA1_Stromerkennung_Licht_Kuche, "OFF"),
-  createItem(SAH1_Stromerkennung_Licht_Esstisch, "OFF"),
-  createItem(SAH1_Stromerkennung_Licht_Speis, "OFF"),
-  createItem(SAH3_Licht_Couch, "OFF"),
-  createItem(SAH3_Licht_TV, "OFF"),
   createItem(KNX_Wetterstation_Aussentemperatur, "14.2 °C"),
   createItem(KNX_Wetterstation_Regen, "OFF"),
   createItem(KNX_Wetterstation_Helligkeit, "1800 lx"),
   createItem(Astro_Sun_Data_Sonnenphase, "DAY"),
+  createItem(KNX_JA1_Raffstore_Wohnzimmer, "67", "Rollershutter"),
+  createItem(KNX_JA1_Raffstore_Wohnzimmer_Strasse, "45", "Rollershutter"),
+  createItem(SAH3_Licht_Couch, "ON"),
+  createItem(SAH3_Licht_TV, "35", "Dimmer"),
 ];
 
 describe("App integration", () => {
@@ -128,11 +130,17 @@ describe("App integration", () => {
 
     mocks.fetchItemsMetadata.mockReset();
     mocks.fetchItemsMetadata.mockResolvedValue(buildDefaultItems());
+    mocks.sendCommand.mockReset();
+    mocks.sendCommand.mockResolvedValue(undefined);
 
     mocks.initializeWebSocket.mockReset();
     mocks.initializeWebSocket.mockResolvedValue(undefined);
 
     mocks.disconnectWebSocket.mockReset();
+    mocks.websocketIsConnected.mockReset();
+    mocks.websocketIsConnected.mockReturnValue(true);
+    mocks.websocketSendCommand.mockReset();
+    mocks.websocketSendCommand.mockResolvedValue(undefined);
     mocks.semanticInitialize.mockReset();
     mocks.semanticInitialize.mockResolvedValue(undefined);
     mocks.ventilationInitialize.mockReset();
@@ -157,10 +165,11 @@ describe("App integration", () => {
     const background = screen.getByTestId("scene-background-image");
     expect(background).toHaveAttribute(
       "src",
-      expect.stringContaining("/scenes/house/light-off.jpg")
+      expect.stringContaining("/scenes/house/base.webp")
     );
     expect(screen.getByTestId("dock-button-house")).toBeInTheDocument();
     expect(screen.getByTestId("dock-button-eg")).toBeInTheDocument();
+    expect(screen.getByTestId("dock-button-living")).toBeInTheDocument();
   });
 
   it("switches views and updates scene background + hud", async () => {
@@ -176,7 +185,7 @@ describe("App integration", () => {
     const background = screen.getByTestId("scene-background-image");
     expect(background).toHaveAttribute(
       "src",
-      expect.stringContaining("/scenes/eg/light-off.jpg")
+      expect.stringContaining("/scenes/eg/base.webp")
     );
     expect(screen.getByTestId("hud-metric-temp")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-humidity")).toBeInTheDocument();
@@ -184,7 +193,7 @@ describe("App integration", () => {
     expect(screen.getByTestId("hud-metric-health")).toBeInTheDocument();
   });
 
-  it("reacts live to websocket scene item updates", async () => {
+  it("reacts live to websocket hud item updates without changing base image", async () => {
     render(<App />);
 
     await waitFor(() => {
@@ -193,15 +202,17 @@ describe("App integration", () => {
 
     act(() => {
       mocks.wsListener?.({
-        itemName: KNX_SAH2_Licht_Einfahrt,
-        rawState: "ON",
+        itemName: KNX_Wetterstation_Aussentemperatur,
+        rawState: "19.0 °C",
       });
     });
 
     await waitFor(() => {
+      expect(screen.getByText("19.0 °C")).toBeInTheDocument();
+      expect(screen.getByTestId("scene-background-image")).toHaveAttribute("src");
       expect(screen.getByTestId("scene-background-image")).toHaveAttribute(
         "src",
-        expect.stringContaining("/scenes/house/light-on.jpg")
+        expect.stringContaining("/scenes/house/base.webp")
       );
     });
   });
@@ -254,5 +265,57 @@ describe("App integration", () => {
     await user.click(screen.getByTestId("hud-metric-humidity"));
 
     expect(screen.getByTestId("semantic-history-overlay")).toBeInTheDocument();
+  });
+
+  it("renders living controls and sends raffstore/light commands", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
+    });
+
+    await user.click(screen.getByTestId("dock-button-living"));
+
+    expect(screen.getByTestId("scene-background-image")).toHaveAttribute(
+      "src",
+      expect.stringContaining("/scenes/living/base.webp")
+    );
+    expect(screen.getByTestId("raffstore-control-wohnzimmer-value")).toHaveTextContent(
+      "67%"
+    );
+    expect(screen.getByTestId("raffstore-control-strasse-value")).toHaveTextContent(
+      "45%"
+    );
+    expect(screen.getByTestId("light-control-couch-icon-on")).toBeInTheDocument();
+    expect(screen.getByTestId("light-control-tv-dimmer")).toHaveTextContent("35%");
+
+    await user.click(screen.getByTestId("raffstore-control-wohnzimmer-down"));
+    await user.click(screen.getByTestId("raffstore-control-wohnzimmer-stop"));
+    await user.click(screen.getByTestId("raffstore-control-strasse-up"));
+    await user.click(screen.getByTestId("light-control-couch"));
+
+    await waitFor(() => {
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "DOWN",
+        "UpDown"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "STOP",
+        "StopMove"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        KNX_JA1_Raffstore_Wohnzimmer_Strasse,
+        "UP",
+        "UpDown"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        SAH3_Licht_Couch,
+        "OFF",
+        "OnOff"
+      );
+    });
   });
 });
