@@ -1,13 +1,13 @@
 import { useEffect, useMemo } from "react";
-import { createSemanticStore } from "../../../stores/semanticStore";
-import { useVentilationStore } from "../../../stores/ventilationStore";
-import { SEMANTIC_CONFIGS } from "../../../config/semanticTypes";
+import { createSemanticStore } from "../../../../stores/semanticStore";
+import { useVentilationStore } from "../../../../stores/ventilationStore";
+import { SEMANTIC_CONFIGS } from "../../../../config/semanticTypes";
 import {
   PROPERTY_AIR_QUALITY,
   PROPERTY_CO2,
   PROPERTY_HUMIDITY,
   PROPERTY_TEMPERATURE,
-} from "../../../services/config";
+} from "../../../../services/config";
 import {
   formatEgCo2Value,
   formatEgHealthStatus,

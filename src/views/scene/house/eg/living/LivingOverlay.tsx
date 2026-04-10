@@ -1,4 +1,4 @@
-import type { SceneViewOverlayProps } from "../types";
+import type { SceneViewOverlayProps } from "../../../types";
 
 const LivingOverlay = ({ overlayId, onClose }: SceneViewOverlayProps) => {
   void overlayId;

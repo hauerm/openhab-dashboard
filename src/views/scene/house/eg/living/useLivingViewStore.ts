@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useSceneStoreCore } from "../../../stores/sceneStoreCore";
+import { useSceneStoreCore } from "../../../../../stores/sceneStoreCore";
 import {
   KNX_JA1_Raffstore_Wohnzimmer,
   KNX_JA1_Raffstore_Wohnzimmer_Strasse,

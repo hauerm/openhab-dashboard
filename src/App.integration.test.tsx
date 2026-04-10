@@ -185,7 +185,7 @@ describe("App integration", () => {
     const background = screen.getByTestId("scene-background-image");
     expect(background).toHaveAttribute(
       "src",
-      expect.stringContaining("/scenes/eg/base.webp")
+      expect.stringContaining("/scenes/house/eg/base.webp")
     );
     expect(screen.getByTestId("hud-metric-temp")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-humidity")).toBeInTheDocument();
@@ -279,7 +279,7 @@ describe("App integration", () => {
 
     expect(screen.getByTestId("scene-background-image")).toHaveAttribute(
       "src",
-      expect.stringContaining("/scenes/living/base.webp")
+      expect.stringContaining("/scenes/house/eg/living/base.webp")
     );
     expect(screen.getByTestId("raffstore-control-wohnzimmer-value")).toHaveTextContent(
       "67%"

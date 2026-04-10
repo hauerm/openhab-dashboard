@@ -2,18 +2,18 @@ import {
   getBackgroundTintLevel,
   SEMANTIC_CONFIGS,
   type BackgroundTintLevel,
-} from "../../../config/semanticTypes";
-import { getHealthIndexLabel } from "../../../config/healthIndex";
+} from "../../../../config/semanticTypes";
+import { getHealthIndexLabel } from "../../../../config/healthIndex";
 import {
   PROPERTY_AIR_QUALITY,
   PROPERTY_CO2,
   PROPERTY_HUMIDITY,
   PROPERTY_TEMPERATURE,
-} from "../../../services/config";
+} from "../../../../services/config";
 import {
   HELIOS_MANUAL_LEVEL_LABELS,
   type HeliosManualLevel,
-} from "../../../types/ventilation";
+} from "../../../../types/ventilation";
 
 const ICON_TINT_CLASSES: Record<
   BackgroundTintLevel,

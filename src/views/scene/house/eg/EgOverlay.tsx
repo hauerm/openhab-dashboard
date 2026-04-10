@@ -1,14 +1,14 @@
-import SemanticHistoryChartView from "../../../components/SemanticHistoryChartView";
-import HeliosManualModeToggle from "../../../components/HeliosManualModeToggle";
+import SemanticHistoryChartView from "../../../../components/SemanticHistoryChartView";
+import HeliosManualModeToggle from "../../../../components/HeliosManualModeToggle";
 import { MdClose } from "react-icons/md";
 import {
   PROPERTY_AIR_QUALITY,
   PROPERTY_CO2,
   PROPERTY_HUMIDITY,
   PROPERTY_TEMPERATURE,
-} from "../../../services/config";
-import type { SceneViewOverlayProps } from "../types";
-import SceneOverlayShell from "../SceneOverlayShell";
+} from "../../../../services/config";
+import type { SceneViewOverlayProps } from "../../types";
+import SceneOverlayShell from "../../SceneOverlayShell";
 
 export type EgOverlayId =
   | "semantic:temp"

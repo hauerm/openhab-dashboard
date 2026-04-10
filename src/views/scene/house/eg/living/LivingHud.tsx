@@ -1,6 +1,6 @@
-import type { SceneViewHudProps } from "../types";
-import LightControl from "../controls/LightControl";
-import RaffstoreControl from "../controls/RaffstoreControl";
+import type { SceneViewHudProps } from "../../../types";
+import LightControl from "../../../controls/LightControl";
+import RaffstoreControl from "../../../controls/RaffstoreControl";
 import { useLivingViewStore } from "./useLivingViewStore";
 
 const LivingHud = ({ onOpenOverlay }: SceneViewHudProps) => {

@@ -5,7 +5,7 @@ import {
   MdThermostat,
   MdWaterDrop,
 } from "react-icons/md";
-import type { SceneViewHudProps } from "../types";
+import type { SceneViewHudProps } from "../../types";
 import { useEgViewStore } from "./useEgViewStore";
 import type { EgOverlayId } from "./EgOverlay";
 

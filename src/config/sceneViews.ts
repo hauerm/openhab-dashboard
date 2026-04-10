@@ -9,10 +9,10 @@ export const SCENE_VIEWS: Record<ViewId, SceneViewConfig> = {
   },
   eg: {
     label: "EG",
-    baseImage: "/scenes/eg/base.webp",
+    baseImage: "/scenes/house/eg/base.webp",
   },
   living: {
     label: "Wohnzimmer",
-    baseImage: "/scenes/living/base.webp",
+    baseImage: "/scenes/house/eg/living/base.webp",
   },
 };

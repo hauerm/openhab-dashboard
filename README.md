@@ -110,10 +110,13 @@ public/
     missing.jpg
     house/
       base.webp
-    eg/
-      base.webp
-    living/
-      base.webp
+      eg/
+        base.webp
+        living/
+          base.webp
+      kg/
+        buero/
+          buero_cellar.webp
 ```
 
 How `base.webp` is used:
@@ -129,8 +132,8 @@ Global missing-image fallback:
 View mapping in V1:
 
 - `house` -> `public/scenes/house/*`
-- `eg` -> `public/scenes/eg/*`
-- `living` -> `public/scenes/living/*`
+- `eg` -> `public/scenes/house/eg/*`
+- `living` -> `public/scenes/house/eg/living/*`
 
 ## WebSocket Usage
 
