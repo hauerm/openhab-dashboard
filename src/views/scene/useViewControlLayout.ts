@@ -21,7 +21,7 @@ export interface ViewControlPosition {
 
 export interface ViewControlDescriptor {
   controlId: string;
-  itemName: string;
+  metadataItemNames: string[];
   defaultPosition: ViewControlPosition;
 }
 
@@ -33,7 +33,7 @@ interface UseViewControlLayoutOptions {
 
 interface DragState {
   controlId: string;
-  itemName: string;
+  metadataItemNames: string[];
   pointerId: number;
 }
 
@@ -53,6 +53,15 @@ const parsePositionValue = (value: unknown): number | null => {
   return null;
 };
 
+const normalizeMetadataItemNames = (itemNames: string[]): string[] =>
+  Array.from(
+    new Set(
+      itemNames
+        .map((itemName) => itemName.trim())
+        .filter((itemName) => itemName.length > 0)
+    )
+  );
+
 export const useViewControlLayout = ({
   viewId,
   controls,
@@ -63,7 +72,7 @@ export const useViewControlLayout = ({
     () =>
       controls.map((control) => ({
         controlId: control.controlId,
-        itemName: control.itemName,
+        metadataItemNames: normalizeMetadataItemNames(control.metadataItemNames),
         defaultPosition: {
           x: control.defaultPosition.x,
           y: control.defaultPosition.y,
@@ -108,24 +117,27 @@ export const useViewControlLayout = ({
 
       await Promise.all(
         canonicalControls.map(async (control) => {
-          try {
-            const metadata = await fetchItemMetadata(control.itemName, metadataNamespace);
-            if (!metadata?.config) {
-              return;
-            }
+          for (const itemName of control.metadataItemNames) {
+            try {
+              const metadata = await fetchItemMetadata(itemName, metadataNamespace);
+              if (!metadata?.config) {
+                continue;
+              }
 
-            const x = parsePositionValue(metadata.config.x);
-            const y = parsePositionValue(metadata.config.y);
-            if (x === null || y === null) {
-              return;
-            }
+              const x = parsePositionValue(metadata.config.x);
+              const y = parsePositionValue(metadata.config.y);
+              if (x === null || y === null) {
+                continue;
+              }
 
-            loadedPositions[control.controlId] = { x, y };
-          } catch (error) {
-            logger.warn(
-              `Failed to load ${metadataNamespace} for ${control.itemName}:`,
-              error
-            );
+              loadedPositions[control.controlId] = { x, y };
+              break;
+            } catch (error) {
+              logger.warn(
+                `Failed to load ${metadataNamespace} for ${itemName}:`,
+                error
+              );
+            }
           }
         })
       );
@@ -196,25 +208,41 @@ export const useViewControlLayout = ({
   );
 
   const persistPosition = useCallback(
-    async (controlId: string, itemName: string) => {
+    async (controlId: string, metadataItemNames: string[]) => {
       const position = positionsRef.current[controlId];
-      if (!position) {
+      if (!position || metadataItemNames.length === 0) {
         return;
       }
 
-      try {
-        await upsertItemMetadata(itemName, metadataNamespace, {
-          value: "v1",
-          config: {
-            x: position.x.toFixed(2),
-            y: position.y.toFixed(2),
-          },
-        });
-      } catch (error) {
-        logger.error(
-          `Failed to persist ${metadataNamespace} for ${itemName}:`,
-          error
+      const persistencePayload = {
+        value: "v1",
+        config: {
+          x: position.x.toFixed(2),
+          y: position.y.toFixed(2),
+        },
+      };
+
+      const persistenceResults = await Promise.allSettled(
+        metadataItemNames.map(async (itemName) => {
+          await upsertItemMetadata(itemName, metadataNamespace, persistencePayload);
+        })
+      );
+
+      const rejectedIndices = persistenceResults
+        .map((result, index) => ({ result, index }))
+        .filter(
+          (entry): entry is { result: PromiseRejectedResult; index: number } =>
+            entry.result.status === "rejected"
         );
+
+      if (rejectedIndices.length > 0) {
+        for (const entry of rejectedIndices) {
+          const itemName = metadataItemNames[entry.index] ?? "unknown-item";
+          logger.error(
+            `Failed to persist ${metadataNamespace} for ${itemName}:`,
+            entry.result.reason
+          );
+        }
         toast.error("Control-Position konnte nicht gespeichert werden.");
       }
     },
@@ -224,7 +252,7 @@ export const useViewControlLayout = ({
   const handleControlPointerDown = useCallback(
     (
       controlId: string,
-      itemName: string,
+      metadataItemNames: string[],
       event: ReactPointerEvent<HTMLDivElement>
     ) => {
       if (!dragEnabled || event.button !== 0) {
@@ -235,7 +263,7 @@ export const useViewControlLayout = ({
       event.currentTarget.setPointerCapture(event.pointerId);
       dragStateRef.current = {
         controlId,
-        itemName,
+        metadataItemNames,
         pointerId: event.pointerId,
       };
       updateControlPosition(controlId, event.clientX, event.clientY);
@@ -285,7 +313,7 @@ export const useViewControlLayout = ({
 
       dragStateRef.current = null;
       if (persist) {
-        void persistPosition(controlId, dragState.itemName);
+        void persistPosition(controlId, dragState.metadataItemNames);
       }
     },
     [persistPosition]

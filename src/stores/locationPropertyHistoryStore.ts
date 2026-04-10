@@ -6,7 +6,7 @@ import {
   filterItems,
 } from "../services/openhab-service";
 import { log } from "../services/logger";
-import type { SemanticTypeConfig } from "../config/semanticTypes";
+import type { LocationPropertyControlConfig } from "../config/locationPropertyControlTypes";
 import { parseOpenHABState } from "../services/state-parser";
 import type { ParsedStateKind } from "../services/state-parser";
 import type { WebSocketItemUpdate } from "../services/websocket-service";
@@ -21,11 +21,11 @@ interface HistoryPoint {
   value: number;
 }
 
-type SemanticCurrentStatus = "ready" | "unavailable";
+type LocationPropertyCurrentStatus = "ready" | "unavailable";
 
-interface SemanticState {
+interface LocationPropertyState {
   currentValue: number | null;
-  currentValueStatus: SemanticCurrentStatus;
+  currentValueStatus: LocationPropertyCurrentStatus;
   history: Record<string, HistoryPoint[]>;
   metadata: Item[];
   itemNames: Set<string>;
@@ -36,7 +36,7 @@ interface SemanticState {
   error: string | null;
 }
 
-interface SemanticActions {
+interface LocationPropertyActions {
   initialize: (location?: string) => Promise<void>;
   ensureHistoryRange: (rangeKey: HistoryRangeKey) => Promise<void>;
   updateValue: (
@@ -59,10 +59,10 @@ interface SemanticActions {
 
 const HISTORY_FETCH_CONCURRENCY = 5;
 
-const buildStoreKey = (config: SemanticTypeConfig, scopeKey: string): string =>
+const buildStoreKey = (config: LocationPropertyControlConfig, scopeKey: string): string =>
   `${config.property}::${scopeKey}`;
 
-const isSemanticDebugEnabled = (): boolean => {
+const isLocationPropertyHistoryDebugEnabled = (): boolean => {
   const rawLevel = (
     import.meta.env.VITE_LOGLEVEL || import.meta.env.VITE_LOG_LEVEL || ""
   ).toLowerCase();
@@ -155,9 +155,9 @@ const runWithConcurrency = async <T>(
   );
 };
 
-const createStoreForConfig = (config: SemanticTypeConfig) => {
+const createStoreForConfig = (config: LocationPropertyControlConfig) => {
   const logger = log.createLogger(config.title);
-  const debugSemanticProperty = isSemanticDebugEnabled();
+  const debugLocationPropertyHistory = isLocationPropertyHistoryDebugEnabled();
   const maxRetentionDurationMs = getHistoryRangeDurationMs(
     config.maxHistoryRangeKey ?? "year"
   );
@@ -169,7 +169,7 @@ const createStoreForConfig = (config: SemanticTypeConfig) => {
   let initializedLocationKey: string | null = null;
   let unsubscribeWebSocket: (() => void) | null = null;
 
-  return create<SemanticState & SemanticActions>((set, get) => ({
+  return create<LocationPropertyState & LocationPropertyActions>((set, get) => ({
     currentValue: null,
     currentValueStatus: "unavailable",
     history: {},
@@ -252,7 +252,7 @@ const createStoreForConfig = (config: SemanticTypeConfig) => {
 
           initializedLocationKey = locationKey;
 
-          if (debugSemanticProperty) {
+          if (debugLocationPropertyHistory) {
             logger.debug(
               `[Debug] Initialized ${config.property} for ${locationKey} with ${filteredItems.length} items`
             );
@@ -493,22 +493,22 @@ const createStoreForConfig = (config: SemanticTypeConfig) => {
   }));
 };
 
-const semanticStoreRegistry = new Map<
+const locationPropertyHistoryStoreRegistry = new Map<
   string,
   ReturnType<typeof createStoreForConfig>
 >();
 
-export const createSemanticStore = (
-  config: SemanticTypeConfig,
+export const createLocationPropertyHistoryStore = (
+  config: LocationPropertyControlConfig,
   scopeKey = "global"
 ) => {
   const key = buildStoreKey(config, scopeKey);
-  const existingStore = semanticStoreRegistry.get(key);
+  const existingStore = locationPropertyHistoryStoreRegistry.get(key);
   if (existingStore) {
     return existingStore;
   }
 
   const store = createStoreForConfig(config);
-  semanticStoreRegistry.set(key, store);
+  locationPropertyHistoryStoreRegistry.set(key, store);
   return store;
 };

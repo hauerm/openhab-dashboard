@@ -29,7 +29,7 @@ const mocks = vi.hoisted(() => ({
   disconnectWebSocket: vi.fn(),
   websocketIsConnected: vi.fn(),
   websocketSendCommand: vi.fn(),
-  semanticInitialize: vi.fn(),
+  locationPropertyInitialize: vi.fn(),
   ventilationInitialize: vi.fn(),
   wsListener: null as ((update: { itemName: string; rawState: string }) => void) | null,
 }));
@@ -51,8 +51,8 @@ vi.mock("./services/websocket-service", () => ({
   },
 }));
 
-vi.mock("./stores/semanticStore", () => ({
-  createSemanticStore: (config: { property: string }) => {
+vi.mock("./stores/locationPropertyHistoryStore", () => ({
+  createLocationPropertyHistoryStore: (config: { property: string }) => {
     const valueByProperty: Record<string, number> = {
       Property_Temperature: 22.4,
       Property_Humidity: 51,
@@ -61,7 +61,7 @@ vi.mock("./stores/semanticStore", () => ({
     };
 
     const state = {
-      initialize: mocks.semanticInitialize,
+      initialize: mocks.locationPropertyInitialize,
       currentValue: valueByProperty[config.property] ?? null,
       history: {},
       metadata: [],
@@ -83,6 +83,7 @@ vi.mock("./stores/ventilationStore", () => {
   const state = {
     manualLevel: -1 as const,
     actualLevel: 2 as const,
+    itemNames: new Set<string>(),
     initialize: mocks.ventilationInitialize,
   };
 
@@ -92,14 +93,10 @@ vi.mock("./stores/ventilationStore", () => {
   return { useVentilationStore };
 });
 
-vi.mock("./components/SemanticHistoryChartView", () => ({
+vi.mock("./views/scene/controls/LocationPropertyHistoryControl", () => ({
   default: ({ title }: { title: string }) => (
-    <div data-testid="semantic-history-overlay">{title}</div>
+    <div data-testid="location-property-history-control-overlay">{title}</div>
   ),
-}));
-
-vi.mock("./components/HeliosManualModeToggle", () => ({
-  default: () => <div data-testid="ventilation-overlay">Ventilation overlay</div>,
 }));
 
 const createItem = (
@@ -149,8 +146,8 @@ describe("App integration", () => {
     mocks.websocketIsConnected.mockReturnValue(true);
     mocks.websocketSendCommand.mockReset();
     mocks.websocketSendCommand.mockResolvedValue(undefined);
-    mocks.semanticInitialize.mockReset();
-    mocks.semanticInitialize.mockResolvedValue(undefined);
+    mocks.locationPropertyInitialize.mockReset();
+    mocks.locationPropertyInitialize.mockResolvedValue(undefined);
     mocks.ventilationInitialize.mockReset();
     mocks.ventilationInitialize.mockResolvedValue(undefined);
 
@@ -225,7 +222,7 @@ describe("App integration", () => {
     });
   });
 
-  it("opens and closes semantic overlay from eg hud click", async () => {
+  it("opens and closes location-property overlay from eg hud click", async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -236,11 +233,13 @@ describe("App integration", () => {
     await user.click(screen.getByTestId("dock-button-eg"));
     await user.click(screen.getByTestId("hud-metric-temp"));
 
-    expect(screen.getByTestId("semantic-history-overlay")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("location-property-history-control-overlay")
+    ).toBeInTheDocument();
 
     await user.click(screen.getByTestId("overlay-backdrop"));
     expect(
-      screen.queryByTestId("semantic-history-overlay")
+      screen.queryByTestId("location-property-history-control-overlay")
     ).not.toBeInTheDocument();
   });
 
@@ -272,7 +271,9 @@ describe("App integration", () => {
     await user.click(screen.getByTestId("dock-button-eg"));
     await user.click(screen.getByTestId("hud-metric-humidity"));
 
-    expect(screen.getByTestId("semantic-history-overlay")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("location-property-history-control-overlay")
+    ).toBeInTheDocument();
   });
 
   it("renders living controls and sends raffstore/light commands", async () => {

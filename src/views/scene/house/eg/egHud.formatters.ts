@@ -1,8 +1,8 @@
 import {
   getBackgroundTintLevel,
-  SEMANTIC_CONFIGS,
+  LOCATION_PROPERTY_CONTROL_CONFIGS,
   type BackgroundTintLevel,
-} from "../../../../config/semanticTypes";
+} from "../../../../config/locationPropertyControlTypes";
 import { getHealthIndexLabel } from "../../../../config/healthIndex";
 import {
   PROPERTY_AIR_QUALITY,
@@ -44,7 +44,7 @@ const resolveIconTint = (
 ): { container: string; icon: string } => {
   const level = getBackgroundTintLevel(
     value,
-    SEMANTIC_CONFIGS[property].backgroundTintBands
+    LOCATION_PROPERTY_CONTROL_CONFIGS[property].backgroundTintBands
   );
   if (level === null) {
     return DEFAULT_ICON_TINT;

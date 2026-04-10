@@ -30,12 +30,17 @@ const HUD_ICON_CLASS_BY_STATE = {
   "raffstore-open": "text-white",
   "raffstore-half": "text-white",
   "raffstore-closed": "text-white",
-  "light-on": "text-white",
+  "light-on": "text-amber-100",
   "light-off": "text-white",
 } as const;
 
-const HUD_CIRCLE_CLASS =
-  "pointer-events-auto flex h-20 w-20 items-center justify-center rounded-full bg-black/30 shadow-xl backdrop-blur-sm transition hover:bg-black/45 md:h-24 md:w-24";
+const HUD_CIRCLE_BASE_CLASS =
+  "pointer-events-auto flex h-20 w-20 items-center justify-center rounded-full backdrop-blur-sm transition md:h-24 md:w-24";
+
+const HUD_CIRCLE_LIGHT_ON_CLASS =
+  "bg-amber-100/70 shadow-[0_0_90px_28px_rgba(255,221,140,0.5)] hover:bg-amber-100/80";
+
+const HUD_CIRCLE_LIGHT_OFF_CLASS = "bg-black/30 shadow-xl hover:bg-black/45";
 
 const HUD_WRAPPER_CLASS =
   "pointer-events-auto absolute touch-none select-none";
@@ -55,8 +60,8 @@ const HUD_LAYOUT_TOGGLE_EDIT_CLASS =
 const HUD_LAYOUT_TOGGLE_DEFAULT_CLASS =
   "border-white/35 bg-black/55 text-white hover:bg-black/70";
 
-const HUD_ROOT_CLASS = "pointer-events-none absolute inset-0 z-20 p-4 md:p-6";
-const HUD_CONTAINER_CLASS = "relative mx-auto h-full max-w-6xl";
+const HUD_ROOT_CLASS = "pointer-events-none absolute inset-0 z-20";
+const HUD_CONTAINER_CLASS = "relative h-full w-full";
 
 const HUD_LAYOUT_SECTION_CLASS = "contents";
 
@@ -79,6 +84,18 @@ const getHudIconClassName = (
     | "light-on"
     | "light-off"
 ): string => `${HUD_ICON_CLASS} ${HUD_ICON_CLASS_BY_STATE[state]}`;
+
+const getHudCircleClassName = (
+  state:
+    | "raffstore-open"
+    | "raffstore-half"
+    | "raffstore-closed"
+    | "light-on"
+    | "light-off"
+): string =>
+  state === "light-on"
+    ? `${HUD_CIRCLE_BASE_CLASS} ${HUD_CIRCLE_LIGHT_ON_CLASS}`
+    : `${HUD_CIRCLE_BASE_CLASS} ${HUD_CIRCLE_LIGHT_OFF_CLASS}`;
 
 const getHudIconTestId = (
   itemName: string,
@@ -111,7 +128,7 @@ const LivingHud = ({ onOpenOverlay }: SceneViewHudProps) => {
     () =>
       controls.map((control) => ({
         controlId: getPositionControlId(control.itemName),
-        itemName: control.itemName,
+        metadataItemNames: [control.itemName],
         defaultPosition: getDefaultPosition(
           control.defaultPosition.x,
           control.defaultPosition.y
@@ -187,7 +204,7 @@ const LivingHud = ({ onOpenOverlay }: SceneViewHudProps) => {
                 ref={setControlElementRef(controlId)}
                 style={getControlPositionStyle(controlId)}
                 onPointerDown={(event) => {
-                  handleControlPointerDown(controlId, control.itemName, event);
+                  handleControlPointerDown(controlId, [control.itemName], event);
                 }}
                 onPointerMove={(event) => {
                   handleControlPointerMove(controlId, event);
@@ -223,7 +240,7 @@ const LivingHud = ({ onOpenOverlay }: SceneViewHudProps) => {
                   className={HUD_ICON_CONTAINER_CLASS}
                   aria-label={getHudAriaLabel(control.label, control.kind)}
                 >
-                  <span className={HUD_CIRCLE_CLASS}>
+                  <span className={getHudCircleClassName(control.hudState)}>
                     <Icon
                       data-testid={getHudIconTestId(control.itemName, control.hudState)}
                       className={getHudIconClassName(control.hudState)}

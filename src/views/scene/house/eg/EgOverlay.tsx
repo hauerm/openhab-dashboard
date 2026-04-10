@@ -1,62 +1,19 @@
-import SemanticHistoryChartView from "../../../../components/SemanticHistoryChartView";
-import HeliosManualModeToggle from "../../../../components/HeliosManualModeToggle";
+import LocationPropertyHistoryControl from "../../controls/LocationPropertyHistoryControl";
+import VentilationControl from "../../controls/VentilationControl";
 import { MdClose } from "react-icons/md";
-import {
-  PROPERTY_AIR_QUALITY,
-  PROPERTY_CO2,
-  PROPERTY_HUMIDITY,
-  PROPERTY_TEMPERATURE,
-} from "../../../../services/config";
 import type { SceneViewOverlayProps } from "../../types";
 import SceneOverlayShell from "../../SceneOverlayShell";
-
-export type EgOverlayId =
-  | "semantic:temp"
-  | "semantic:humidity"
-  | "semantic:co2"
-  | "semantic:health"
-  | "ventilation";
-
-const SEMANTIC_OVERLAY_CONFIG: Record<
-  Exclude<EgOverlayId, "ventilation">,
-  {
-    semanticProperty: string;
-    title: string;
-    comfortBand?: { min: number; max: number; label?: string };
-  }
-> = {
-  "semantic:temp": {
-    semanticProperty: PROPERTY_TEMPERATURE,
-    title: "Temperatur EG",
-    comfortBand: { min: 20, max: 24, label: "Komfortzone" },
-  },
-  "semantic:humidity": {
-    semanticProperty: PROPERTY_HUMIDITY,
-    title: "Luftfeuchte EG",
-  },
-  "semantic:co2": {
-    semanticProperty: PROPERTY_CO2,
-    title: "CO₂ EG",
-  },
-  "semantic:health": {
-    semanticProperty: PROPERTY_AIR_QUALITY,
-    title: "Air Quality EG",
-  },
-};
-
-const isEgOverlayId = (overlayId: string): overlayId is EgOverlayId =>
-  overlayId === "semantic:temp" ||
-  overlayId === "semantic:humidity" ||
-  overlayId === "semantic:co2" ||
-  overlayId === "semantic:health" ||
-  overlayId === "ventilation";
+import { useEgViewStore } from "./useEgViewStore";
 
 const EgOverlay = ({ overlayId, onClose }: SceneViewOverlayProps) => {
-  if (!overlayId || !isEgOverlayId(overlayId)) {
+  const { controls } = useEgViewStore();
+  const control = controls.find((entry) => entry.overlayId === overlayId);
+
+  if (!overlayId || !control) {
     return null;
   }
 
-  if (overlayId === "ventilation") {
+  if (control.kind === "ventilation") {
     return (
       <div
         data-testid="overlay-backdrop"
@@ -78,21 +35,20 @@ const EgOverlay = ({ overlayId, onClose }: SceneViewOverlayProps) => {
             <MdClose className="h-5 w-5" />
           </button>
           <div className="w-full max-w-7xl">
-            <HeliosManualModeToggle showAutoButton={false} variant="overlay" />
+            <VentilationControl variant="overlay" />
           </div>
         </div>
       </div>
     );
   }
 
-  const config = SEMANTIC_OVERLAY_CONFIG[overlayId];
   return (
     <SceneOverlayShell onClose={onClose} layout="fullscreen">
-      <SemanticHistoryChartView
-        semanticProperty={config.semanticProperty}
+      <LocationPropertyHistoryControl
+        property={control.property}
         location="EG"
-        title={config.title}
-        comfortBand={config.comfortBand}
+        title={control.title}
+        comfortBand={control.comfortBand}
         className="h-full"
       />
     </SceneOverlayShell>
