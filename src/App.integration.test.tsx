@@ -11,6 +11,11 @@ import {
   KNX_JA1_Raffstore_Wohnzimmer_Strasse,
   SAH3_Licht_Couch,
   SAH3_Licht_TV,
+  Samsung_TV_Wohnzimmer_Application,
+  Samsung_TV_Wohnzimmer_Kanal,
+  Samsung_TV_Wohnzimmer_Kanalnummer,
+  Samsung_TV_Wohnzimmer_Power,
+  Samsung_TV_Wohnzimmer_Titel,
 } from "openhab-hauer-items/items";
 import { resetSceneStoreCoreForTests } from "./stores/sceneStoreCore";
 import App from "./App";
@@ -30,7 +35,10 @@ const mocks = vi.hoisted(() => ({
   websocketIsConnected: vi.fn(),
   websocketSendCommand: vi.fn(),
   locationPropertyInitialize: vi.fn(),
+  locationPropertyEnsureHistoryRange: vi.fn(),
   ventilationInitialize: vi.fn(),
+  ventilationSetError: vi.fn(),
+  ventilationUpdateValue: vi.fn(),
   wsListener: null as ((update: { itemName: string; rawState: string }) => void) | null,
 }));
 
@@ -62,6 +70,7 @@ vi.mock("./stores/locationPropertyHistoryStore", () => ({
 
     const state = {
       initialize: mocks.locationPropertyInitialize,
+      ensureHistoryRange: mocks.locationPropertyEnsureHistoryRange,
       currentValue: valueByProperty[config.property] ?? null,
       history: {},
       metadata: [],
@@ -85,6 +94,8 @@ vi.mock("./stores/ventilationStore", () => {
     actualLevel: 2 as const,
     itemNames: new Set<string>(),
     initialize: mocks.ventilationInitialize,
+    setError: mocks.ventilationSetError,
+    updateValue: mocks.ventilationUpdateValue,
   };
 
   const useVentilationStore: SelectorHook<typeof state> = (selector) =>
@@ -92,13 +103,6 @@ vi.mock("./stores/ventilationStore", () => {
 
   return { useVentilationStore };
 });
-
-vi.mock("./views/scene/controls/LocationPropertyHistoryControl", () => ({
-  default: ({ title }: { title: string }) => (
-    <div data-testid="location-property-history-control-overlay">{title}</div>
-  ),
-}));
-
 const createItem = (
   name: string,
   state: string,
@@ -122,6 +126,11 @@ const buildDefaultItems = (): Item[] => [
   createItem(KNX_JA1_Raffstore_Wohnzimmer_Strasse, "45", "Rollershutter"),
   createItem(SAH3_Licht_Couch, "ON"),
   createItem(SAH3_Licht_TV, "35", "Dimmer"),
+  createItem(Samsung_TV_Wohnzimmer_Power, "ON"),
+  createItem(Samsung_TV_Wohnzimmer_Application, "NULL", "String"),
+  createItem(Samsung_TV_Wohnzimmer_Kanal, "ORF 1", "String"),
+  createItem(Samsung_TV_Wohnzimmer_Kanalnummer, "1", "String"),
+  createItem(Samsung_TV_Wohnzimmer_Titel, "ZIB", "String"),
 ];
 
 describe("App integration", () => {
@@ -148,8 +157,12 @@ describe("App integration", () => {
     mocks.websocketSendCommand.mockResolvedValue(undefined);
     mocks.locationPropertyInitialize.mockReset();
     mocks.locationPropertyInitialize.mockResolvedValue(undefined);
+    mocks.locationPropertyEnsureHistoryRange.mockReset();
+    mocks.locationPropertyEnsureHistoryRange.mockResolvedValue(undefined);
     mocks.ventilationInitialize.mockReset();
     mocks.ventilationInitialize.mockResolvedValue(undefined);
+    mocks.ventilationSetError.mockReset();
+    mocks.ventilationUpdateValue.mockReset();
 
     mocks.subscribeWebSocketListener.mockReset();
     mocks.subscribeWebSocketListener.mockImplementation((listener) => {
@@ -260,6 +273,23 @@ describe("App integration", () => {
     expect(screen.queryByTestId("ventilation-overlay")).not.toBeInTheDocument();
   });
 
+  it("closes ventilation overlay when clicking a free fullscreen background area", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
+    });
+
+    await user.click(screen.getByTestId("dock-button-eg"));
+    await user.click(screen.getByTestId("hud-metric-ventilation"));
+
+    expect(screen.getByTestId("ventilation-overlay")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("overlay-close-area"));
+    expect(screen.queryByTestId("ventilation-overlay")).not.toBeInTheDocument();
+  });
+
   it("opens history overlay for humidity metric", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -315,6 +345,17 @@ describe("App integration", () => {
     expect(
       screen.getByTestId(`living-control-placeholder-icon-${SAH3_Licht_TV}-light-on`)
     ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        `living-control-placeholder-icon-${Samsung_TV_Wohnzimmer_Power}-tv-on`
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`living-control-tv-small-${Samsung_TV_Wohnzimmer_Power}`)
+    ).toHaveTextContent("1 ORF 1");
+    expect(
+      screen.getByTestId(`living-control-tv-large-${Samsung_TV_Wohnzimmer_Power}`)
+    ).toHaveTextContent("ZIB");
 
     await user.click(
       screen.getByTestId(`living-control-placeholder-${KNX_JA1_Raffstore_Wohnzimmer}`)
@@ -359,6 +400,23 @@ describe("App integration", () => {
       screen.queryByTestId(`light-control-${SAH3_Licht_TV}`)
     ).not.toBeInTheDocument();
 
+    await user.click(
+      screen.getByTestId(`living-control-placeholder-${Samsung_TV_Wohnzimmer_Power}`)
+    );
+    expect(
+      screen.getByTestId(`living-tv-overlay-power-${Samsung_TV_Wohnzimmer_Power}`)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`living-tv-overlay-state-${Samsung_TV_Wohnzimmer_Power}`)
+    ).toHaveTextContent("1 ORF 1");
+    expect(
+      screen.getByTestId(`living-tv-overlay-content-${Samsung_TV_Wohnzimmer_Power}`)
+    ).toHaveTextContent("ZIB");
+    await user.click(
+      screen.getByTestId(`living-tv-overlay-power-${Samsung_TV_Wohnzimmer_Power}`)
+    );
+    await user.click(screen.getByTestId("overlay-backdrop"));
+
     await waitFor(() => {
       expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
         KNX_JA1_Raffstore_Wohnzimmer,
@@ -385,7 +443,72 @@ describe("App integration", () => {
         "OFF",
         "OnOff"
       );
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        Samsung_TV_Wohnzimmer_Power,
+        "OFF",
+        "OnOff"
+      );
     });
+  });
+
+  it("updates the living tv hud from program mode to streaming app logo", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
+    });
+
+    await user.click(screen.getByTestId("dock-button-living"));
+
+    act(() => {
+      mocks.wsListener?.({
+        itemName: Samsung_TV_Wohnzimmer_Application,
+        rawState: "Netflix",
+      });
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`living-control-tv-logo-${Samsung_TV_Wohnzimmer_Power}-netflix`)
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByTestId(`living-control-tv-small-${Samsung_TV_Wohnzimmer_Power}`)
+    ).not.toBeInTheDocument();
+  });
+
+  it("closes fullscreen living overlays when clicking a free background area", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
+    });
+
+    await user.click(screen.getByTestId("dock-button-living"));
+
+    await user.click(
+      screen.getByTestId(`living-control-placeholder-${KNX_JA1_Raffstore_Wohnzimmer}`)
+    );
+    expect(
+      screen.getByTestId(`raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-value`)
+    ).toBeInTheDocument();
+    await user.click(screen.getByTestId("overlay-close-area"));
+    expect(
+      screen.queryByTestId(`raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-value`)
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByTestId(`living-control-placeholder-${Samsung_TV_Wohnzimmer_Power}`)
+    );
+    expect(
+      screen.getByTestId(`living-tv-overlay-power-${Samsung_TV_Wohnzimmer_Power}`)
+    ).toBeInTheDocument();
+    await user.click(screen.getByTestId("overlay-close-area"));
+    expect(
+      screen.queryByTestId(`living-tv-overlay-power-${Samsung_TV_Wohnzimmer_Power}`)
+    ).not.toBeInTheDocument();
   });
 
   it("runs RETROLux raffstore presets in overlay", async () => {

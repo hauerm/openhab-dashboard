@@ -1,60 +1,41 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
+  MdBlinds,
+  MdBlindsClosed,
   MdKeyboardArrowDown,
   MdKeyboardArrowUp,
   MdStop,
+  MdWindow,
 } from "react-icons/md";
 import { toast } from "react-toastify";
-import { sendSceneItemCommand } from "./sceneItemCommand";
+import SceneOverlayShell from "../../SceneOverlayShell";
+import type { RaffstoreControlDefinition } from "../controlDefinitions";
+import { sendSceneItemCommand } from "../sceneItemCommand";
+import { useRaffstoreControlModel } from "./model";
 import {
   createRaffstoreSequenceController,
   type RaffstoreMotionCommand,
   type RaffstoreSequenceController,
   type RaffstoreTiltPreset,
-} from "./raffstoreRetroLuxSequences";
+} from "./sequences";
 
-interface RaffstoreControlProps {
-  controlId: string;
-  label: string;
-  itemName: string;
-  openingRawState?: string;
+interface RaffstoreHudControlProps {
+  definition: RaffstoreControlDefinition;
   disabled?: boolean;
-  variant?: "card" | "overlay-fullscreen";
+  interactive?: boolean;
+  onOpenControl: (controlId: string) => void;
 }
 
-const parseOpeningPercent = (rawState: string | undefined): number | null => {
-  if (!rawState) {
-    return null;
-  }
+interface RaffstoreOverlayControlProps {
+  definition: RaffstoreControlDefinition;
+  onClose: () => void;
+}
 
-  const normalized = rawState.trim().toUpperCase();
-  if (normalized === "UNDEF" || normalized === "NULL" || normalized === "-") {
-    return null;
-  }
-
-  const match = normalized.match(/-?\d+(?:[.,]\d+)?/);
-  if (!match) {
-    return null;
-  }
-
-  const parsed = Number.parseFloat(match[0].replace(",", "."));
-  if (Number.isNaN(parsed)) {
-    return null;
-  }
-
-  return Math.max(0, Math.min(100, Math.round(parsed)));
-};
-
-const sendRaffstoreCommand = async (
-  itemName: string,
-  command: RaffstoreMotionCommand
-): Promise<void> => {
-  if (command === "STOP") {
-    await sendSceneItemCommand(itemName, command, "StopMove");
-    return;
-  }
-  await sendSceneItemCommand(itemName, command, "UpDown");
-};
+const HUD_ICON_BY_STATE = {
+  "raffstore-open": MdWindow,
+  "raffstore-half": MdBlinds,
+  "raffstore-closed": MdBlindsClosed,
+} as const;
 
 const PRESET_BUTTON_CLASS =
   "flex h-full min-h-0 w-full items-center justify-center overflow-hidden rounded-2xl bg-white/15 text-white/95 transition hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-55";
@@ -112,38 +93,57 @@ const TiltSectionIcon = ({ angleDeg }: { angleDeg: number }) => {
   );
 };
 
-const RaffstoreControl = ({
-  controlId,
-  label,
-  itemName,
-  openingRawState,
+const sendRaffstoreCommand = async (
+  itemName: string,
+  command: RaffstoreMotionCommand
+): Promise<void> => {
+  if (command === "STOP") {
+    await sendSceneItemCommand(itemName, command, "StopMove");
+    return;
+  }
+  await sendSceneItemCommand(itemName, command, "UpDown");
+};
+
+export const RaffstoreHudControl = ({
+  definition,
   disabled = false,
-  variant = "card",
-}: RaffstoreControlProps) => {
-  const openingPercent = useMemo(
-    () => parseOpeningPercent(openingRawState),
-    [openingRawState]
+  interactive = true,
+  onOpenControl,
+}: RaffstoreHudControlProps) => {
+  const { hudState } = useRaffstoreControlModel(definition);
+  const Icon = HUD_ICON_BY_STATE[hudState];
+
+  return (
+    <button
+      type="button"
+      data-testid={`living-control-placeholder-${definition.itemRefs.itemName}`}
+      disabled={disabled}
+      onClick={() => {
+        if (!interactive) {
+          return;
+        }
+        onOpenControl(definition.controlId);
+      }}
+      className="flex items-center justify-center"
+      aria-label={`${definition.label} (Raffstore öffnen)`}
+    >
+      <span className="pointer-events-auto flex h-20 w-20 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm shadow-xl transition hover:bg-black/45 md:h-24 md:w-24">
+        <Icon
+          data-testid={`living-control-placeholder-icon-${definition.itemRefs.itemName}-${hudState}`}
+          className="h-10 w-10 text-white md:h-12 md:w-12"
+        />
+      </span>
+    </button>
   );
-  const openingDisplayValue = useMemo(() => {
-    if (openingPercent === null) {
-      return "--";
-    }
-    if (openingPercent === 0) {
-      return "Oben";
-    }
-    if (openingPercent === 100) {
-      return "Unten";
-    }
-    return `${openingPercent}%`;
-  }, [openingPercent]);
+};
 
-  const itemNameRef = useRef(itemName);
-  const openingPercentRef = useRef<number | null>(openingPercent);
+export const RaffstoreOverlayControl = ({
+  definition,
+  onClose,
+}: RaffstoreOverlayControlProps) => {
+  const { openingPercent, openingDisplayValue } = useRaffstoreControlModel(definition);
   const sequenceControllerRef = useRef<RaffstoreSequenceController | null>(null);
-
-  useEffect(() => {
-    itemNameRef.current = itemName;
-  }, [itemName]);
+  const openingPercentRef = useRef<number | null>(openingPercent);
 
   useEffect(() => {
     openingPercentRef.current = openingPercent;
@@ -152,7 +152,7 @@ const RaffstoreControl = ({
   useEffect(() => {
     sequenceControllerRef.current = createRaffstoreSequenceController({
       sendCommand: async (command) =>
-        sendRaffstoreCommand(itemNameRef.current, command),
+        sendRaffstoreCommand(definition.itemRefs.itemName, command),
       getOpeningPercent: () => openingPercentRef.current,
     });
 
@@ -160,7 +160,7 @@ const RaffstoreControl = ({
       void sequenceControllerRef.current?.cancel();
       sequenceControllerRef.current = null;
     };
-  }, []);
+  }, [definition.itemRefs.itemName]);
 
   const withController = async (
     executor: (controller: RaffstoreSequenceController) => Promise<void>
@@ -176,10 +176,6 @@ const RaffstoreControl = ({
     action: () => Promise<void>,
     errorMessage: string
   ): Promise<void> => {
-    if (disabled) {
-      return;
-    }
-
     try {
       await action();
     } catch (error) {
@@ -191,44 +187,44 @@ const RaffstoreControl = ({
   const runManualCommand = async (command: RaffstoreMotionCommand): Promise<void> => {
     await executeAction(
       async () => withController((controller) => controller.runManualCommand(command)),
-      `Raffstore-Befehl für ${label} konnte nicht gesendet werden.`
+      `Raffstore-Befehl für ${definition.label} konnte nicht gesendet werden.`
     );
   };
 
   const runTiltPreset = async (preset: RaffstoreTiltPreset): Promise<void> => {
     await executeAction(
       async () => withController((controller) => controller.runTiltPreset(preset)),
-      `Lamellen-Preset für ${label} konnte nicht ausgeführt werden.`
+      `Lamellen-Preset für ${definition.label} konnte nicht ausgeführt werden.`
     );
   };
 
   const runArbeitsstellung = async (): Promise<void> => {
     await executeAction(
       async () => withController((controller) => controller.runArbeitsstellung()),
-      `Arbeitsstellung für ${label} konnte nicht ausgeführt werden.`
+      `Arbeitsstellung für ${definition.label} konnte nicht ausgeführt werden.`
     );
   };
 
   const runSchliessen = async (): Promise<void> => {
     await executeAction(
       async () => withController((controller) => controller.runSchliessen()),
-      `Schließen für ${label} konnte nicht ausgeführt werden.`
+      `Schließen für ${definition.label} konnte nicht ausgeführt werden.`
     );
   };
 
-  if (variant === "overlay-fullscreen") {
-    return (
+  return (
+    <SceneOverlayShell onClose={onClose} layout="fullscreen">
       <div
-        data-testid={`raffstore-control-${controlId}`}
-        className="relative h-full w-full overflow-hidden"
+        data-testid={`raffstore-control-${definition.controlId}`}
+        className="pointer-events-none relative h-full w-full overflow-hidden"
       >
         <div className="pointer-events-none grid h-full min-h-0 w-full grid-cols-4 gap-2 p-2 md:gap-3 md:p-3">
           <section className="pointer-events-none flex flex-col justify-start">
             <p className="text-xs font-semibold tracking-wide text-white/80 md:text-sm">
-              {label}
+              {definition.label}
             </p>
             <p
-              data-testid={`raffstore-control-${controlId}-value`}
+              data-testid={`raffstore-control-${definition.controlId}-value`}
               className="text-4xl font-bold text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.9)] md:text-6xl"
             >
               {openingDisplayValue}
@@ -241,37 +237,34 @@ const RaffstoreControl = ({
           >
             <button
               type="button"
-              data-testid={`raffstore-control-${controlId}-up`}
+              data-testid={`raffstore-control-${definition.controlId}-up`}
               onClick={() => {
                 void runManualCommand("UP");
               }}
-              disabled={disabled}
               className={MANUAL_BUTTON_CLASS}
-              aria-label={`${label} Raffstore hochfahren`}
+              aria-label={`${definition.label} Raffstore hochfahren`}
             >
               <MdKeyboardArrowUp className={MANUAL_BUTTON_ICON_CLASS} />
             </button>
             <button
               type="button"
-              data-testid={`raffstore-control-${controlId}-stop`}
+              data-testid={`raffstore-control-${definition.controlId}-stop`}
               onClick={() => {
                 void runManualCommand("STOP");
               }}
-              disabled={disabled}
               className={MANUAL_BUTTON_CLASS}
-              aria-label={`${label} Raffstore stoppen`}
+              aria-label={`${definition.label} Raffstore stoppen`}
             >
               <MdStop className={STOP_BUTTON_ICON_CLASS} />
             </button>
             <button
               type="button"
-              data-testid={`raffstore-control-${controlId}-down`}
+              data-testid={`raffstore-control-${definition.controlId}-down`}
               onClick={() => {
                 void runManualCommand("DOWN");
               }}
-              disabled={disabled}
               className={MANUAL_BUTTON_CLASS}
-              aria-label={`${label} Raffstore runterfahren`}
+              aria-label={`${definition.label} Raffstore runterfahren`}
             >
               <MdKeyboardArrowDown className={MANUAL_BUTTON_ICON_CLASS} />
             </button>
@@ -283,61 +276,56 @@ const RaffstoreControl = ({
           >
             <button
               type="button"
-              data-testid={`raffstore-control-${controlId}-preset-arbeitsstellung`}
+              data-testid={`raffstore-control-${definition.controlId}-preset-arbeitsstellung`}
               onClick={() => {
                 void runArbeitsstellung();
               }}
-              disabled={disabled}
               className={PRESET_STACK_BUTTON_CLASS}
-              aria-label={`${label} Arbeitsstellung`}
+              aria-label={`${definition.label} Arbeitsstellung`}
             >
               <TiltSectionIcon angleDeg={0} />
             </button>
             <button
               type="button"
-              data-testid={`raffstore-control-${controlId}-preset-tilt-25`}
+              data-testid={`raffstore-control-${definition.controlId}-preset-tilt-25`}
               onClick={() => {
                 void runTiltPreset(25);
               }}
-              disabled={disabled}
               className={PRESET_STACK_BUTTON_CLASS}
-              aria-label={`${label} Lamelle 25 Prozent`}
+              aria-label={`${definition.label} Lamelle 25 Prozent`}
             >
               <TiltSectionIcon angleDeg={TILT_ANGLE_BY_PRESET[25]} />
             </button>
             <button
               type="button"
-              data-testid={`raffstore-control-${controlId}-preset-tilt-50`}
+              data-testid={`raffstore-control-${definition.controlId}-preset-tilt-50`}
               onClick={() => {
                 void runTiltPreset(50);
               }}
-              disabled={disabled}
               className={PRESET_STACK_BUTTON_CLASS}
-              aria-label={`${label} Lamelle 50 Prozent`}
+              aria-label={`${definition.label} Lamelle 50 Prozent`}
             >
               <TiltSectionIcon angleDeg={TILT_ANGLE_BY_PRESET[50]} />
             </button>
             <button
               type="button"
-              data-testid={`raffstore-control-${controlId}-preset-tilt-75`}
+              data-testid={`raffstore-control-${definition.controlId}-preset-tilt-75`}
               onClick={() => {
                 void runTiltPreset(75);
               }}
-              disabled={disabled}
               className={PRESET_STACK_BUTTON_CLASS}
-              aria-label={`${label} Lamelle 75 Prozent`}
+              aria-label={`${definition.label} Lamelle 75 Prozent`}
             >
               <TiltSectionIcon angleDeg={TILT_ANGLE_BY_PRESET[75]} />
             </button>
             <button
               type="button"
-              data-testid={`raffstore-control-${controlId}-preset-schliessen`}
+              data-testid={`raffstore-control-${definition.controlId}-preset-schliessen`}
               onClick={() => {
                 void runSchliessen();
               }}
-              disabled={disabled}
               className={PRESET_STACK_BUTTON_CLASS}
-              aria-label={`${label} Schließen`}
+              aria-label={`${definition.label} Schließen`}
             >
               <TiltSectionIcon angleDeg={85} />
             </button>
@@ -346,60 +334,6 @@ const RaffstoreControl = ({
           <section className="pointer-events-none" />
         </div>
       </div>
-    );
-  }
-
-  return (
-    <div
-      data-testid={`raffstore-control-${controlId}`}
-      className="pointer-events-auto rounded-2xl border border-white/30 bg-slate-900/60 p-3 text-white shadow-2xl backdrop-blur-md"
-    >
-      <p
-        data-testid={`raffstore-control-${controlId}-value`}
-        className="mb-2 text-center text-xs font-semibold tracking-wide text-white/75"
-      >
-        {openingDisplayValue}
-      </p>
-      <div className="flex flex-col items-center gap-1">
-        <button
-          type="button"
-          data-testid={`raffstore-control-${controlId}-up`}
-          onClick={() => {
-            void runManualCommand("UP");
-          }}
-          disabled={disabled}
-          className="rounded-xl p-1.5 text-white/95 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-55"
-          aria-label={`${label} Raffstore hochfahren`}
-        >
-          <MdKeyboardArrowUp className="h-9 w-9" />
-        </button>
-        <button
-          type="button"
-          data-testid={`raffstore-control-${controlId}-stop`}
-          onClick={() => {
-            void runManualCommand("STOP");
-          }}
-          disabled={disabled}
-          className="rounded-xl p-1.5 text-white/95 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-55"
-          aria-label={`${label} Raffstore stoppen`}
-        >
-          <MdStop className="h-8 w-8" />
-        </button>
-        <button
-          type="button"
-          data-testid={`raffstore-control-${controlId}-down`}
-          onClick={() => {
-            void runManualCommand("DOWN");
-          }}
-          disabled={disabled}
-          className="rounded-xl p-1.5 text-white/95 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-55"
-          aria-label={`${label} Raffstore runterfahren`}
-        >
-          <MdKeyboardArrowDown className="h-9 w-9" />
-        </button>
-      </div>
-    </div>
+    </SceneOverlayShell>
   );
 };
-
-export default RaffstoreControl;

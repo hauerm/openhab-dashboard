@@ -43,6 +43,15 @@ const SceneOverlayShell = ({
       aria-modal="true"
     >
       <div className={panelClassName} onClick={(event) => event.stopPropagation()}>
+        {layout === "fullscreen" ? (
+          <button
+            type="button"
+            data-testid="overlay-close-area"
+            className="absolute inset-0 z-0"
+            onClick={onClose}
+            aria-label="Overlay schließen"
+          />
+        ) : null}
         <button
           type="button"
           onClick={onClose}
@@ -51,7 +60,11 @@ const SceneOverlayShell = ({
         >
           <MdClose className="h-5 w-5" />
         </button>
-        {children}
+        {layout === "fullscreen" ? (
+          <div className="relative z-10 h-full min-h-0">{children}</div>
+        ) : (
+          children
+        )}
       </div>
     </div>
   );

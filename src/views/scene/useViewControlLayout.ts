@@ -21,7 +21,7 @@ export interface ViewControlPosition {
 
 export interface ViewControlDescriptor {
   controlId: string;
-  metadataItemNames: string[];
+  metadataItemNames: readonly string[];
   defaultPosition: ViewControlPosition;
 }
 
@@ -53,7 +53,7 @@ const parsePositionValue = (value: unknown): number | null => {
   return null;
 };
 
-const normalizeMetadataItemNames = (itemNames: string[]): string[] =>
+const normalizeMetadataItemNames = (itemNames: readonly string[]): string[] =>
   Array.from(
     new Set(
       itemNames

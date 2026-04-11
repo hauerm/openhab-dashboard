@@ -87,16 +87,83 @@ the OpenHAB generator environment configured in `openhab-automation`.
 
 ## Architecture
 
-The app follows a service/store/component split:
+### Scene Shell
 
-- **`src/services/config.ts`**: openHAB host/protocol/port/auth helpers
-- **`src/services/state-parser.ts`**: normalized parsing of openHAB states (`numeric`, `undef`, `null`, `unknown`)
-- **`src/services/item-service.ts`**: REST API wrapper with in-flight metadata caching
-- **`src/services/websocket-service.ts`**: connection lifecycle, typed updates, reconnect/backoff, listener subscription
-- **`src/stores/semanticStore.ts`**: scoped semantic stores (property + scope key), history + current aggregate values
-- **`src/stores/ventilationStore.ts`**: Helios manual/actual level tracking and live updates
-- **`src/components/SemanticCard.tsx`**: generic metric card with optional history chart
-- **`src/components/HeliosManualModeToggle.tsx`**: ventilation mode controls with WS/REST fallback
+- `src/App.tsx` initializes WebSocket + `sceneStoreCore` once and keeps the active scene control as `{ viewId, controlId }`.
+- `src/views/scene/SceneViewLayer.tsx` renders exactly one active scene view.
+- Each scene view has exactly one orchestration file:
+  - `src/views/scene/house/House.tsx`
+  - `src/views/scene/house/eg/Eg.tsx`
+  - `src/views/scene/house/eg/living/Living.tsx`
+- The current in-scope scene hierarchy is:
+  - `house`: Start-/Index-Ansicht
+  - `eg`: Erdgeschoss-Übersicht
+  - `living`: Wohnzimmer
+  - `kg`: aktuell noch nicht im Scene-Refactor ausgebaut
+
+### View Rules
+
+- Views orchestrate only:
+  - load their control registry
+  - wire `useViewControlLayout`
+  - render HUD controls
+  - render the active overlay control
+- Views do not parse raw openHAB state.
+- Views do not send domain commands directly.
+- Views do not initialize specialized domain stores.
+
+### Control Registries
+
+- Every view has a descriptor file with static control definitions:
+  - `src/views/scene/house/houseView.descriptor.ts`
+  - `src/views/scene/house/eg/egView.descriptor.ts`
+  - `src/views/scene/house/eg/living/livingView.descriptor.ts`
+- A control definition contains:
+  - `controlId`
+  - `controlType`
+  - `label`
+  - `itemRefs`
+  - `layoutMetadataItemNames`
+  - `defaultPosition`
+- `sceneStoreCore` tracked item names are derived from control definitions where controls use scene-backed item refs.
+
+### Controls
+
+- Controls live under `src/views/scene/controls/<control>/`.
+- Folder convention:
+  - `index.tsx`: HUD + Overlay presentation exports
+  - `model.ts`: state derivation, commands, lazy store initialization
+  - `shared.ts`: optional parsing/helpers
+  - local tests next to the control
+- Current scene controls:
+  - `scene-metric`
+  - `location-property-history`
+  - `ventilation`
+  - `light`
+  - `raffstore`
+  - `tv`
+- Controls receive only static config plus the relevant item refs for that control. They resolve live values internally.
+
+### Stores
+
+- `src/stores/sceneStoreCore.ts`
+  - global, eager, initialized once in `App.tsx`
+  - holds current scene item states for scene-backed controls
+  - subscribes to scene WebSocket updates
+- `src/stores/locationPropertyHistoryStore.ts`
+  - scoped/cached history stores
+  - initialized lazily inside `location-property-history/model.ts`
+- `src/stores/ventilationStore.ts`
+  - Helios manual/actual level store
+  - initialized lazily inside `ventilation/model.ts`
+
+### Supporting Modules
+
+- `src/services/config.ts`: openHAB host/protocol/port/auth helpers
+- `src/services/state-parser.ts`: normalized parsing of openHAB states (`numeric`, `undef`, `null`, `unknown`)
+- `src/services/openhab-service.ts`: REST API wrapper for metadata, history, and commands
+- `src/services/websocket-service.ts`: connection lifecycle, typed updates, reconnect/backoff, listener subscription
+- `src/views/scene/useViewControlLayout.ts`: draggable HUD positioning persisted via item metadata
 
 ## Scene Images (Haus + EG, Base + HUD)
 
@@ -160,6 +227,7 @@ const unsubscribe = subscribeWebSocketListener((update) => {
 ## Quality Checks
 
 ```bash
+npm test
 npm run lint
 npm run build
 npm run test:contracts
