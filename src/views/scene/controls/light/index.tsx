@@ -46,14 +46,14 @@ export const LightHudControl = ({
       <span
         className={`pointer-events-auto flex h-20 w-20 items-center justify-center rounded-full backdrop-blur-sm transition md:h-24 md:w-24 ${
           isOn
-            ? "bg-amber-100/70 shadow-[0_0_90px_28px_rgba(255,221,140,0.5)] hover:bg-amber-100/80"
+            ? "bg-[rgba(253,237,0,0.72)] shadow-[0_0_90px_28px_rgba(253,237,0,0.52)] hover:bg-[rgba(253,237,0,0.82)]"
             : "bg-black/30 shadow-xl hover:bg-black/45"
         }`}
       >
         {isOn ? (
           <MdEmojiObjects
             data-testid={`living-control-placeholder-icon-${definition.itemRefs.itemName}-${hudState}`}
-            className="h-10 w-10 text-amber-100 md:h-12 md:w-12"
+            className="h-10 w-10 text-[#FDED00] md:h-12 md:w-12"
           />
         ) : (
           <MdOutlineLightbulb
@@ -98,7 +98,7 @@ export const LightOverlayControl = ({
             {isOn ? (
               <MdEmojiObjects
                 data-testid={`light-control-${definition.controlId}-icon-on`}
-                className="h-10 w-10 text-amber-400"
+                className="h-10 w-10 text-[#FDED00]"
               />
             ) : (
               <MdOutlineLightbulb

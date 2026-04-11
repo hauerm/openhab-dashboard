@@ -99,13 +99,16 @@ export const VentilationOverlayControl = ({
         className="pointer-events-none flex h-full w-full items-center justify-center px-4 md:px-8"
         data-testid="ventilation-overlay"
       >
-        <div className="pointer-events-auto w-full max-w-7xl">
+        <div className="pointer-events-none w-full max-w-7xl">
           <div className="mb-8 flex items-end justify-between gap-4 text-white">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
                 {definition.label}
               </p>
-              <p className="text-4xl font-bold [text-shadow:0_2px_10px_rgba(0,0,0,0.9)] md:text-6xl">
+              <p
+                data-testid="ventilation-overlay-status"
+                className="text-4xl font-bold [text-shadow:0_2px_10px_rgba(0,0,0,0.9)] md:text-6xl"
+              >
                 {actualLevel === null ? "--" : HELIOS_MANUAL_LEVEL_LABELS[actualLevel]}
               </p>
             </div>
@@ -121,6 +124,7 @@ export const VentilationOverlayControl = ({
                 }}
                 disabled={sending}
                 className={`
+                  pointer-events-auto
                   relative aspect-square w-full rounded-2xl p-2 font-bold text-white transition-all duration-200
                   border shadow-xl backdrop-blur-md backdrop-saturate-150 md:rounded-3xl md:p-3
                   ${

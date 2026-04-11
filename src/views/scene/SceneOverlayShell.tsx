@@ -55,13 +55,15 @@ const SceneOverlayShell = ({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-3 top-3 z-20 rounded-full border border-white/25 bg-slate-900/60 p-1.5 text-white/90 transition hover:bg-slate-800/80 hover:text-white"
+          className="pointer-events-auto absolute right-3 top-3 z-20 rounded-full border border-white/25 bg-slate-900/60 p-1.5 text-white/90 transition hover:bg-slate-800/80 hover:text-white"
           aria-label="Overlay schließen"
         >
           <MdClose className="h-5 w-5" />
         </button>
         {layout === "fullscreen" ? (
-          <div className="relative z-10 h-full min-h-0">{children}</div>
+          <div className="pointer-events-none relative z-10 h-full min-h-0">
+            {children}
+          </div>
         ) : (
           children
         )}

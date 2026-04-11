@@ -263,7 +263,7 @@ export const LocationPropertyHistoryOverlayControl = ({
     <SceneOverlayShell onClose={onClose} layout="fullscreen">
       <section
         data-testid="location-property-history-control-overlay"
-        className="flex h-full min-h-0 w-full flex-col rounded-3xl border border-white/20 bg-slate-900/35 p-4 shadow-2xl backdrop-blur-2xl md:p-6"
+        className="pointer-events-none flex h-full min-h-0 w-full flex-col rounded-3xl border border-white/20 bg-slate-900/35 p-4 shadow-2xl backdrop-blur-2xl md:p-6"
       >
         <header className="flex flex-wrap items-start justify-between gap-3 text-white">
           <div>
@@ -283,7 +283,7 @@ export const LocationPropertyHistoryOverlayControl = ({
                   key={option.key}
                   type="button"
                   onClick={() => setActiveRangeKey(option.key)}
-                  className={`rounded-md border px-2.5 py-1 text-xs font-medium transition md:text-sm ${
+                  className={`pointer-events-auto rounded-md border px-2.5 py-1 text-xs font-medium transition md:text-sm ${
                     isActive
                       ? "border-white/65 bg-white/20 text-white"
                       : "border-white/20 bg-black/20 text-white/75 hover:border-white/40 hover:text-white"

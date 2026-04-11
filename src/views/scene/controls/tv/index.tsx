@@ -199,10 +199,7 @@ export const TvOverlayControl = ({
             ) : null}
           </section>
 
-          <section
-            className="pointer-events-auto grid h-full min-h-0 grid-rows-[minmax(0,1fr)] gap-2"
-            onClick={(event) => event.stopPropagation()}
-          >
+          <section className="pointer-events-none grid h-full min-h-0 grid-rows-[minmax(0,1fr)] gap-2">
             <button
               type="button"
               data-testid={`living-tv-overlay-power-${itemName}`}
@@ -210,7 +207,7 @@ export const TvOverlayControl = ({
                 void toggleTvPower();
               }}
               disabled={sending}
-              className="flex h-full min-h-0 w-full items-center justify-center overflow-hidden rounded-2xl bg-white/15 text-white/95 transition hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-70"
+              className="pointer-events-auto flex h-full min-h-0 w-full items-center justify-center overflow-hidden rounded-2xl bg-white/15 text-white/95 transition hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-70"
               aria-label={isOn ? "TV ausschalten" : "TV einschalten"}
             >
               <MdPowerSettingsNew

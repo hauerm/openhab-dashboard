@@ -231,17 +231,14 @@ export const RaffstoreOverlayControl = ({
             </p>
           </section>
 
-          <section
-            className="pointer-events-auto grid h-full min-h-0 grid-rows-[repeat(3,minmax(0,1fr))] gap-2 overflow-hidden"
-            onClick={(event) => event.stopPropagation()}
-          >
+          <section className="pointer-events-none grid h-full min-h-0 grid-rows-[repeat(3,minmax(0,1fr))] gap-2 overflow-hidden">
             <button
               type="button"
               data-testid={`raffstore-control-${definition.controlId}-up`}
               onClick={() => {
                 void runManualCommand("UP");
               }}
-              className={MANUAL_BUTTON_CLASS}
+              className={`pointer-events-auto ${MANUAL_BUTTON_CLASS}`}
               aria-label={`${definition.label} Raffstore hochfahren`}
             >
               <MdKeyboardArrowUp className={MANUAL_BUTTON_ICON_CLASS} />
@@ -252,7 +249,7 @@ export const RaffstoreOverlayControl = ({
               onClick={() => {
                 void runManualCommand("STOP");
               }}
-              className={MANUAL_BUTTON_CLASS}
+              className={`pointer-events-auto ${MANUAL_BUTTON_CLASS}`}
               aria-label={`${definition.label} Raffstore stoppen`}
             >
               <MdStop className={STOP_BUTTON_ICON_CLASS} />
@@ -263,24 +260,21 @@ export const RaffstoreOverlayControl = ({
               onClick={() => {
                 void runManualCommand("DOWN");
               }}
-              className={MANUAL_BUTTON_CLASS}
+              className={`pointer-events-auto ${MANUAL_BUTTON_CLASS}`}
               aria-label={`${definition.label} Raffstore runterfahren`}
             >
               <MdKeyboardArrowDown className={MANUAL_BUTTON_ICON_CLASS} />
             </button>
           </section>
 
-          <section
-            className="pointer-events-auto grid h-full min-h-0 grid-rows-[repeat(5,minmax(0,1fr))] gap-2 overflow-hidden"
-            onClick={(event) => event.stopPropagation()}
-          >
+          <section className="pointer-events-none grid h-full min-h-0 grid-rows-[repeat(5,minmax(0,1fr))] gap-2 overflow-hidden">
             <button
               type="button"
               data-testid={`raffstore-control-${definition.controlId}-preset-arbeitsstellung`}
               onClick={() => {
                 void runArbeitsstellung();
               }}
-              className={PRESET_STACK_BUTTON_CLASS}
+              className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
               aria-label={`${definition.label} Arbeitsstellung`}
             >
               <TiltSectionIcon angleDeg={0} />
@@ -291,7 +285,7 @@ export const RaffstoreOverlayControl = ({
               onClick={() => {
                 void runTiltPreset(25);
               }}
-              className={PRESET_STACK_BUTTON_CLASS}
+              className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
               aria-label={`${definition.label} Lamelle 25 Prozent`}
             >
               <TiltSectionIcon angleDeg={TILT_ANGLE_BY_PRESET[25]} />
@@ -302,7 +296,7 @@ export const RaffstoreOverlayControl = ({
               onClick={() => {
                 void runTiltPreset(50);
               }}
-              className={PRESET_STACK_BUTTON_CLASS}
+              className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
               aria-label={`${definition.label} Lamelle 50 Prozent`}
             >
               <TiltSectionIcon angleDeg={TILT_ANGLE_BY_PRESET[50]} />
@@ -313,7 +307,7 @@ export const RaffstoreOverlayControl = ({
               onClick={() => {
                 void runTiltPreset(75);
               }}
-              className={PRESET_STACK_BUTTON_CLASS}
+              className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
               aria-label={`${definition.label} Lamelle 75 Prozent`}
             >
               <TiltSectionIcon angleDeg={TILT_ANGLE_BY_PRESET[75]} />
@@ -324,7 +318,7 @@ export const RaffstoreOverlayControl = ({
               onClick={() => {
                 void runSchliessen();
               }}
-              className={PRESET_STACK_BUTTON_CLASS}
+              className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
               aria-label={`${definition.label} Schließen`}
             >
               <TiltSectionIcon angleDeg={85} />
