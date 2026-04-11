@@ -5,9 +5,9 @@ import {
   runSchliessen,
   runTiltPreset,
   type RaffstoreMotionCommand,
-} from "./raffstoreRetroLuxSequences";
+} from "./sequences";
 
-describe("raffstoreRetroLuxSequences", () => {
+describe("raffstore sequences", () => {
   beforeEach(() => {
     vi.useRealTimers();
   });

@@ -9,8 +9,7 @@ import SceneBackground from "./components/SceneBackground";
 import BottomDock from "./components/BottomDock";
 import { useSceneStoreCore } from "./stores/sceneStoreCore";
 import type { ActiveSceneOverlay } from "./types/overlay";
-import SceneViewHudLayer from "./views/scene/SceneViewHudLayer";
-import SceneViewOverlayLayer from "./views/scene/SceneViewOverlayLayer";
+import SceneViewLayer from "./views/scene/SceneViewLayer";
 
 function App() {
   const [activeOverlay, setActiveOverlay] = useState<ActiveSceneOverlay | null>(null);
@@ -35,19 +34,17 @@ function App() {
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-slate-950 text-white">
       <SceneBackground />
-      <SceneViewHudLayer
-        onOpenOverlay={(overlayId) => {
-          setActiveOverlay({ viewId: currentView, overlayId });
+      <SceneViewLayer
+        activeControlId={visibleOverlay?.controlId ?? null}
+        onOpenControl={(controlId) => {
+          setActiveOverlay({ viewId: currentView, controlId });
         }}
+        onCloseControl={() => setActiveOverlay(null)}
       />
       <BottomDock
         onViewChange={() => {
           setActiveOverlay(null);
         }}
-      />
-      <SceneViewOverlayLayer
-        activeOverlay={visibleOverlay}
-        onClose={() => setActiveOverlay(null)}
       />
       <ToastContainer
         position="top-right"
