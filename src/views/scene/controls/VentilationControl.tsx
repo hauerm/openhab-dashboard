@@ -26,26 +26,27 @@ type VentilationControlProps =
 
 const TEXT_SHADOW_CLASS = "[text-shadow:0_2px_8px_rgba(0,0,0,0.8)]";
 
-const VentilationControl = (props: VentilationControlProps) => {
-  if (props.variant === "hud") {
-    return (
-      <button
-        type="button"
-        data-testid="hud-metric-ventilation"
-        onClick={props.onActivate}
-        className="pointer-events-auto relative rounded-full p-1 text-white/95 transition hover:text-white"
-        aria-label="Lüftung öffnen"
-      >
-        <FaFan className="h-16 w-16 md:h-20 md:w-20" />
-        <span
-          className={`absolute bottom-1 right-0 rounded-full border border-white/30 bg-slate-900/80 px-1.5 py-0.5 text-xs font-bold text-white md:text-sm ${TEXT_SHADOW_CLASS}`}
-        >
-          {props.badge}
-        </span>
-      </button>
-    );
-  }
+const VentilationHudControl = ({
+  badge,
+  onActivate,
+}: Extract<VentilationControlProps, { variant: "hud" }>) => (
+  <button
+    type="button"
+    data-testid="hud-metric-ventilation"
+    onClick={onActivate}
+    className="pointer-events-auto relative rounded-full p-1 text-white/95 transition hover:text-white"
+    aria-label="Lüftung öffnen"
+  >
+    <FaFan className="h-16 w-16 md:h-20 md:w-20" />
+    <span
+      className={`absolute bottom-1 right-0 rounded-full border border-white/30 bg-slate-900/80 px-1.5 py-0.5 text-xs font-bold text-white md:text-sm ${TEXT_SHADOW_CLASS}`}
+    >
+      {badge}
+    </span>
+  </button>
+);
 
+const VentilationOverlayControl = () => {
   const manualLevel = useVentilationStore((state) => state.manualLevel);
   const actualLevel = useVentilationStore((state) => state.actualLevel);
   const initialize = useVentilationStore((state) => state.initialize);
@@ -185,5 +186,12 @@ const VentilationControl = (props: VentilationControlProps) => {
     </div>
   );
 };
+
+const VentilationControl = (props: VentilationControlProps) =>
+  props.variant === "hud" ? (
+    <VentilationHudControl {...props} />
+  ) : (
+    <VentilationOverlayControl />
+  );
 
 export default VentilationControl;
