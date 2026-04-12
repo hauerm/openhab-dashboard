@@ -1,20 +1,22 @@
 import { create } from "zustand";
 import type { Item } from "../types/item";
+import type {
+  LocationPropertyControlConfig,
+} from "../views/scene/controls/location-property-history/config";
+import {
+  getHistoryRangeDurationMs,
+  type HistoryRangeKey,
+} from "../views/scene/controls/location-property-history/config";
 import {
   fetchItemsMetadata,
   getItemHistory,
   filterItems,
 } from "../services/openhab-service";
 import { log } from "../services/logger";
-import type { LocationPropertyControlConfig } from "../config/locationPropertyControlTypes";
 import { parseOpenHABState } from "../services/state-parser";
 import type { ParsedStateKind } from "../services/state-parser";
 import type { WebSocketItemUpdate } from "../services/websocket-service";
 import { subscribeWebSocketListener } from "../services/websocket-service";
-import {
-  getHistoryRangeDurationMs,
-  type HistoryRangeKey,
-} from "../config/historyRanges";
 
 interface HistoryPoint {
   timestamp: number;

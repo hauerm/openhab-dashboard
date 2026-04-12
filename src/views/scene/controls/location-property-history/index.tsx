@@ -14,8 +14,8 @@ import {
   HISTORY_RANGE_OPTIONS,
   getHistoryRangeDurationMs,
   type HistoryRangeKey,
-} from "../../../../config/historyRanges";
-import { LOCATION_PROPERTY_CONTROL_CONFIGS } from "../../../../config/locationPropertyControlTypes";
+} from "./config";
+import { LOCATION_PROPERTY_CONTROL_CONFIGS } from "./config";
 import SceneOverlayShell from "../../SceneOverlayShell";
 import type { LocationPropertyHistoryControlDefinition } from "../controlDefinitions";
 import {

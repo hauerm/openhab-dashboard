@@ -8,7 +8,7 @@ import {
   HELIOS_MANUAL_MODE_ITEM,
   type HeliosManualLevel,
 } from "../../../../types/ventilation";
-import { formatVentilationBadge } from "../../house/eg/egHud.formatters";
+import { formatVentilationBadge } from "./presentation";
 
 const logger = log.createLogger("VentilationControl");
 

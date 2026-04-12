@@ -3,7 +3,7 @@ import {
   PROPERTY_CO2,
   PROPERTY_HUMIDITY,
   PROPERTY_TEMPERATURE,
-} from "../../../../services/config";
+} from "../../../../domain/openhab-properties";
 import {
   type LocationPropertyHistoryControlDefinition,
   type VentilationControlDefinition,

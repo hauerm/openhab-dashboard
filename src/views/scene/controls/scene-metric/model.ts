@@ -5,7 +5,7 @@ import {
   formatHouseTemperature,
   formatNightStatus,
   formatWeatherStatus,
-} from "../../house/houseHud.formatters";
+} from "./presentation";
 
 export const useSceneMetricControlValue = (
   definition: SceneMetricControlDefinition

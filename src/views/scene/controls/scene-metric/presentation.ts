@@ -6,10 +6,12 @@ const parseNumericFromRawState = (
   if (!rawState) {
     return null;
   }
+
   const numericMatch = rawState.trim().match(NUMERIC_PREFIX_REGEX);
   if (!numericMatch) {
     return null;
   }
+
   const parsed = Number.parseFloat(numericMatch[0].replace(",", "."));
   return Number.isNaN(parsed) ? null : parsed;
 };
@@ -19,6 +21,7 @@ export const formatHouseTemperature = (rawState: string | undefined): string => 
   if (value === null) {
     return "--";
   }
+
   return `${value.toFixed(1)} °C`;
 };
 
@@ -26,6 +29,7 @@ const isOnToken = (value: string | undefined): boolean | null => {
   if (!value) {
     return null;
   }
+
   const normalized = value.trim().toUpperCase();
   if (normalized === "ON") {
     return true;
@@ -36,6 +40,7 @@ const isOnToken = (value: string | undefined): boolean | null => {
   if (normalized === "UNDEF" || normalized === "NULL" || normalized === "-") {
     return null;
   }
+
   return null;
 };
 
@@ -68,6 +73,7 @@ export const formatNightStatus = (phaseRawState: string | undefined): string => 
   if (!phaseRawState) {
     return "--";
   }
+
   const normalized = phaseRawState.trim().toUpperCase();
   if (normalized.includes("NIGHT") || normalized.includes("NACHT")) {
     return "Nacht";
@@ -75,6 +81,6 @@ export const formatNightStatus = (phaseRawState: string | undefined): string => 
   if (normalized.includes("DAY") || normalized.includes("TAG")) {
     return "Tag";
   }
+
   return phaseRawState;
 };
-
