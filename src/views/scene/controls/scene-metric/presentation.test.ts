@@ -3,9 +3,9 @@ import {
   formatHouseTemperature,
   formatNightStatus,
   formatWeatherStatus,
-} from "./houseHud.formatters";
+} from "./presentation";
 
-describe("house hud formatters", () => {
+describe("scene-metric presentation", () => {
   it("formats outdoor temperature", () => {
     expect(formatHouseTemperature("21.45 °C")).toBe("21.4 °C");
     expect(formatHouseTemperature("UNDEF")).toBe("--");
@@ -23,4 +23,3 @@ describe("house hud formatters", () => {
     expect(formatNightStatus(undefined)).toBe("--");
   });
 });
-

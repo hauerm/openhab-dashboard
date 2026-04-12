@@ -3,7 +3,7 @@ import {
   KNX_Wetterstation_Aussentemperatur,
   KNX_Wetterstation_Helligkeit,
   KNX_Wetterstation_Regen,
-} from "openhab-hauer-items/items";
+} from "../../../domain/hauer-items";
 import {
   type SceneMetricControlDefinition,
   collectTrackedItemNamesFromControlDefinitions,

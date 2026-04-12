@@ -1,24 +1,53 @@
-import React from "react";
+import type { ComponentType } from "react";
 import {
-  MdThermostat,
-  MdWaterDrop,
   MdCo2,
   MdHealthAndSafety,
+  MdThermostat,
+  MdWaterDrop,
 } from "react-icons/md";
 import {
+  PROPERTY_AIR_QUALITY,
+  PROPERTY_CO2,
   PROPERTY_HUMIDITY,
   PROPERTY_TEMPERATURE,
-  PROPERTY_CO2,
-  PROPERTY_AIR_QUALITY,
-} from "../services/config";
-import type { HistoryRangeKey } from "./historyRanges";
+} from "../../../../domain/openhab-properties";
+
+export type HistoryRangeKey = "year" | "month" | "week" | "day" | "8h" | "4h" | "2h";
+
+export interface HistoryRangeOption {
+  key: HistoryRangeKey;
+  label: string;
+  durationMs: number;
+}
+
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+
+export const HISTORY_RANGE_OPTIONS: HistoryRangeOption[] = [
+  { key: "year", label: "Jahr", durationMs: 365 * DAY_MS },
+  { key: "month", label: "Monat", durationMs: 30 * DAY_MS },
+  { key: "week", label: "Woche", durationMs: 7 * DAY_MS },
+  { key: "day", label: "Tag", durationMs: DAY_MS },
+  { key: "8h", label: "8h", durationMs: 8 * HOUR_MS },
+  { key: "4h", label: "4h", durationMs: 4 * HOUR_MS },
+  { key: "2h", label: "2h", durationMs: 2 * HOUR_MS },
+];
+
+const RANGE_DURATION_BY_KEY: Record<HistoryRangeKey, number> =
+  HISTORY_RANGE_OPTIONS.reduce((acc, option) => {
+    acc[option.key] = option.durationMs;
+    return acc;
+  }, {} as Record<HistoryRangeKey, number>);
+
+export const getHistoryRangeDurationMs = (key: HistoryRangeKey): number =>
+  RANGE_DURATION_BY_KEY[key];
 
 export interface LocationPropertyControlConfig {
   property: string;
   defaultHistoryRangeKey: HistoryRangeKey;
   maxHistoryRangeKey?: HistoryRangeKey;
   unit: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   title: string;
   backgroundTintBands: BackgroundTintBand[];
 }
@@ -50,13 +79,10 @@ export const getBackgroundTintLevel = (
   return null;
 };
 
-export const BACKGROUND_TINT_CLASSES: Record<BackgroundTintLevel, string> = {
-  good: "bg-gradient-to-t from-green-500/35 to-transparent",
-  moderate: "bg-gradient-to-t from-orange-500/35 to-transparent",
-  bad: "bg-gradient-to-t from-red-500/35 to-transparent",
-};
-
-export const LOCATION_PROPERTY_CONTROL_CONFIGS: Record<string, LocationPropertyControlConfig> = {
+export const LOCATION_PROPERTY_CONTROL_CONFIGS: Record<
+  string,
+  LocationPropertyControlConfig
+> = {
   [PROPERTY_TEMPERATURE]: {
     property: PROPERTY_TEMPERATURE,
     defaultHistoryRangeKey: "day",
@@ -105,8 +131,6 @@ export const LOCATION_PROPERTY_CONTROL_CONFIGS: Record<string, LocationPropertyC
     unit: "",
     icon: MdHealthAndSafety,
     title: "Air Quality",
-    // AQI Health Index: 0 healthy, 1 fine, 2 fair, 3 poor, 4 unhealthy
-    // Bands use rounding boundaries so tint matches displayed mapped label.
     backgroundTintBands: [
       { level: "good", max: 1.49 },
       { level: "moderate", min: 1.5, max: 2.49 },

@@ -8,7 +8,7 @@ import {
   Samsung_TV_Wohnzimmer_Kanalnummer,
   Samsung_TV_Wohnzimmer_Power,
   Samsung_TV_Wohnzimmer_Titel,
-} from "openhab-hauer-items/items";
+} from "../../../../../domain/hauer-items";
 import {
   type LightControlDefinition,
   type RaffstoreControlDefinition,

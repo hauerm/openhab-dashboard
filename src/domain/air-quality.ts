@@ -26,5 +26,6 @@ export const getHealthIndexLabel = (value: number): string | null => {
   if (level === null) {
     return null;
   }
+
   return HEALTH_INDEX_LABELS_DE[level];
 };

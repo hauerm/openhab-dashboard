@@ -1,9 +1,11 @@
 import type { Item, ItemHistoryResponse, ItemMetadataNamespace } from "../types/item";
 import {
   OPENHAB_BASE_URL,
-  PROPERTY_HUMIDITY,
   getOpenHABAuthHeaders,
 } from "./config";
+import {
+  PROPERTY_HUMIDITY,
+} from "../domain/openhab-properties";
 
 const extractNamespaceFromMetadataPayload = (
   payload: unknown,
@@ -477,4 +479,4 @@ export {
   PROPERTY_TEMPERATURE,
   PROPERTY_CO2,
   PROPERTY_AIR_QUALITY,
-} from "./config";
+} from "../domain/openhab-properties";
