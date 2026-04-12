@@ -2,11 +2,11 @@ import { create } from "zustand";
 import type { Item } from "../types/item";
 import type {
   LocationPropertyControlConfig,
-} from "../views/scene/controls/location-property-history/config";
+} from "../views/controls/location-property-history/config";
 import {
   getHistoryRangeDurationMs,
   type HistoryRangeKey,
-} from "../views/scene/controls/location-property-history/config";
+} from "../views/controls/location-property-history/config";
 import {
   fetchItemsMetadata,
   getItemHistory,
@@ -186,8 +186,7 @@ const createStoreForConfig = (config: LocationPropertyControlConfig) => {
     initialize: async (location?: string) => {
       const locationKey = location?.trim() || "__all__";
 
-      if (initializedLocationKey === locationKey && get().itemNames.size > 0) {
-        await get().ensureHistoryRange(config.defaultHistoryRangeKey);
+      if (initializedLocationKey === locationKey) {
         return;
       }
 
@@ -259,8 +258,6 @@ const createStoreForConfig = (config: LocationPropertyControlConfig) => {
               `[Debug] Initialized ${config.property} for ${locationKey} with ${filteredItems.length} items`
             );
           }
-
-          await get().ensureHistoryRange(config.defaultHistoryRangeKey);
         } catch (error) {
           set({
             error: `Failed to initialize ${config.title.toLowerCase()} data`,

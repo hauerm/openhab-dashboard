@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MdChevronLeft, MdChevronRight, MdKeyboardArrowUp } from "react-icons/md";
-import { SCENE_VIEW_IDS, SCENE_VIEWS } from "../config/sceneViews";
-import { useSceneStoreCore } from "../stores/sceneStoreCore";
-import type { ViewId } from "../types/scene";
+import { VIEW_IDS, VIEWS } from "../config/views";
+import { useViewStore } from "../stores/viewStore";
+import type { ViewId } from "../types/view";
 
 interface BottomDockProps {
   onViewChange?: (viewId: ViewId) => void;
@@ -15,8 +15,8 @@ const SCROLL_STEP_FACTOR = 0.82;
 const AUTO_HIDE_DELAY_MS = 7000;
 
 const BottomDock = ({ onViewChange }: BottomDockProps) => {
-  const currentView = useSceneStoreCore((state) => state.currentView);
-  const setCurrentView = useSceneStoreCore((state) => state.setCurrentView);
+  const currentView = useViewStore((state) => state.currentView);
+  const setCurrentView = useViewStore((state) => state.setCurrentView);
   const [isDockVisible, setIsDockVisible] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const hideTimerRef = useRef<number | null>(null);
@@ -146,7 +146,7 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
   return (
     <div className="fixed inset-x-0 bottom-0 z-40">
       <div className={dockPanelClassName}>
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-ui-surface-shell via-ui-surface-overlay to-transparent" />
 
         <div className="relative">
           <div
@@ -158,8 +158,8 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
             }`}
             style={{ touchAction: "pan-x" }}
           >
-            {SCENE_VIEW_IDS.map((viewId) => {
-              const viewConfig = SCENE_VIEWS[viewId];
+            {VIEW_IDS.map((viewId) => {
+              const viewConfig = VIEWS[viewId];
               const isActive = currentView === viewId;
 
               return (
@@ -172,7 +172,7 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
                     setCurrentView(viewId);
                     showDock();
                   }}
-                  className="group relative h-32 aspect-[4/3] shrink-0 overflow-hidden bg-slate-900 text-left transition md:h-40"
+                  className="group relative h-32 aspect-[4/3] shrink-0 overflow-hidden bg-ui-surface-panel text-left transition md:h-40"
                   aria-label={`Wechsel zu ${viewConfig.label}`}
                   aria-current={isActive ? "page" : undefined}
                 >
@@ -186,20 +186,24 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
                         return;
                       }
                       event.currentTarget.dataset.fallback = "1";
-                      event.currentTarget.src = "/scenes/missing.jpg";
+                      event.currentTarget.src = "/views/missing.jpg";
                     }}
                   />
                   <div
                     className={`absolute inset-0 transition ${
-                      isActive ? "bg-black/20" : "bg-black/35 group-hover:bg-black/25"
+                      isActive
+                        ? "bg-ui-surface-image"
+                        : "bg-ui-surface-image-strong group-hover:bg-ui-surface-image"
                     }`}
                   />
-                  <div className="absolute inset-x-0 bottom-0 bg-black/70 px-3 py-1.5 text-sm font-semibold text-white md:text-base">
+                  <div className="absolute inset-x-0 bottom-0 bg-ui-surface-image-strong px-3 py-1.5 text-sm font-semibold text-ui-foreground md:text-base">
                     {viewConfig.label}
                   </div>
                   <div
                     className={`absolute inset-x-0 bottom-0 h-1 transition ${
-                      isActive ? "bg-white" : "bg-transparent group-hover:bg-white/40"
+                      isActive
+                        ? "bg-ui-foreground"
+                        : "bg-transparent group-hover:bg-ui-border-strong"
                     }`}
                   />
                 </button>
@@ -214,8 +218,8 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
                 data-testid="dock-scroll-left"
                 aria-label="Thumbnails nach links scrollen"
                 onClick={() => scrollByDirection("left")}
-                className={`pointer-events-auto absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/80 p-1.5 text-white shadow-lg transition ${
-                  canScrollLeft ? "opacity-100 hover:bg-black/90" : "opacity-40"
+                className={`pointer-events-auto absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-ui-surface-image-strong p-1.5 text-ui-foreground shadow-lg transition ${
+                  canScrollLeft ? "opacity-100 hover:bg-ui-surface-panel" : "opacity-40"
                 }`}
               >
                 <MdChevronLeft className="h-10 w-10" />
@@ -225,8 +229,8 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
                 data-testid="dock-scroll-right"
                 aria-label="Thumbnails nach rechts scrollen"
                 onClick={() => scrollByDirection("right")}
-                className={`pointer-events-auto absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/80 p-1.5 text-white shadow-lg transition ${
-                  canScrollRight ? "opacity-100 hover:bg-black/90" : "opacity-40"
+                className={`pointer-events-auto absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-ui-surface-image-strong p-1.5 text-ui-foreground shadow-lg transition ${
+                  canScrollRight ? "opacity-100 hover:bg-ui-surface-panel" : "opacity-40"
                 }`}
               >
                 <MdChevronRight className="h-10 w-10" />
@@ -239,7 +243,7 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
             data-testid="dock-hide-button"
             aria-label="Dock ausblenden"
             onClick={hideDock}
-            className="pointer-events-auto absolute bottom-1 right-2 rounded-sm bg-black/45 px-2 py-1 text-xs font-medium text-white/85 transition hover:bg-black/65 hover:text-white"
+            className="pointer-events-auto absolute bottom-1 right-2 rounded-sm bg-ui-surface-overlay px-2 py-1 text-xs font-medium text-ui-foreground-muted transition hover:bg-ui-surface-panel hover:text-ui-foreground"
           >
             Ausblenden
           </button>
@@ -253,7 +257,7 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
         onClick={showDock}
         className={dockToggleClassName}
       >
-        <span className="inline-flex items-center justify-center rounded-sm bg-black/45 px-1 text-white/90 transition hover:bg-black/65 hover:text-white">
+        <span className="inline-flex items-center justify-center rounded-sm bg-ui-surface-overlay px-1 text-ui-foreground transition hover:bg-ui-surface-panel">
           <MdKeyboardArrowUp className="h-9 w-9" />
         </span>
       </button>
