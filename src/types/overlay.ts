@@ -1,6 +1,6 @@
-import type { ViewId } from "./scene";
+import type { ViewId } from "./view";
 
-export interface ActiveSceneOverlay {
+export interface ActiveViewOverlay {
   viewId: ViewId;
   controlId: string;
 }

@@ -87,19 +87,19 @@ the OpenHAB generator environment configured in `openhab-automation`.
 
 ## Architecture
 
-### Scene Shell
+### View Shell
 
-- `src/App.tsx` initializes WebSocket + `sceneStoreCore` once and keeps the active scene control as `{ viewId, controlId }`.
-- `src/views/scene/SceneViewLayer.tsx` renders exactly one active scene view.
-- Each scene view has exactly one orchestration file:
-  - `src/views/scene/house/House.tsx`
-  - `src/views/scene/house/eg/Eg.tsx`
-  - `src/views/scene/house/eg/living/Living.tsx`
-- The current in-scope scene hierarchy is:
+- `src/App.tsx` initializes WebSocket + `viewStore` once and keeps the active view control as `{ viewId, controlId }`.
+- `src/views/ViewLayer.tsx` renders exactly one active view.
+- Each view has exactly one orchestration file:
+  - `src/views/house/House.tsx`
+  - `src/views/house/eg/Eg.tsx`
+  - `src/views/house/eg/living/Living.tsx`
+- The current in-scope view hierarchy is:
   - `house`: Start-/Index-Ansicht
   - `eg`: Erdgeschoss-Übersicht
   - `living`: Wohnzimmer
-  - `kg`: aktuell noch nicht im Scene-Refactor ausgebaut
+  - `kg`: aktuell noch nicht im View-Refactor ausgebaut
 
 ### View Rules
 
@@ -107,6 +107,7 @@ the OpenHAB generator environment configured in `openhab-automation`.
   - load their control registry
   - wire `useViewControlLayout`
   - render HUD controls
+  - render the optional left sidebar for location-backed semantic properties
   - render the active overlay control
 - Views do not parse raw openHAB state.
 - Views do not send domain commands directly.
@@ -115,9 +116,9 @@ the OpenHAB generator environment configured in `openhab-automation`.
 ### Control Registries
 
 - Every view has a descriptor file with static control definitions:
-  - `src/views/scene/house/houseView.descriptor.ts`
-  - `src/views/scene/house/eg/egView.descriptor.ts`
-  - `src/views/scene/house/eg/living/livingView.descriptor.ts`
+  - `src/views/house/houseView.descriptor.ts`
+  - `src/views/house/eg/egView.descriptor.ts`
+  - `src/views/house/eg/living/livingView.descriptor.ts`
 - A control definition contains:
   - `controlId`
   - `controlType`
@@ -125,18 +126,18 @@ the OpenHAB generator environment configured in `openhab-automation`.
   - `itemRefs`
   - `layoutMetadataItemNames`
   - `defaultPosition`
-- `sceneStoreCore` tracked item names are derived from control definitions where controls use scene-backed item refs.
+- `viewStore` tracked item names are derived from control definitions where controls use view-backed item refs.
 
 ### Controls
 
-- Controls live under `src/views/scene/controls/<control>/`.
+- Controls live under `src/views/controls/<control>/`.
 - Folder convention:
   - `index.tsx`: HUD + Overlay presentation exports
   - `model.ts`: state derivation, commands, lazy store initialization
   - `shared.ts`: optional parsing/helpers
   - local tests next to the control
-- Current scene controls:
-  - `scene-metric`
+- Current view controls:
+  - `view-metric`
   - `location-property-history`
   - `ventilation`
   - `light`
@@ -146,10 +147,10 @@ the OpenHAB generator environment configured in `openhab-automation`.
 
 ### Stores
 
-- `src/stores/sceneStoreCore.ts`
+- `src/stores/viewStore.ts`
   - global, eager, initialized once in `App.tsx`
-  - holds current scene item states for scene-backed controls
-  - subscribes to scene WebSocket updates
+  - holds current view item states for view-backed controls
+  - subscribes to view WebSocket updates
 - `src/stores/locationPropertyHistoryStore.ts`
   - scoped/cached history stores
   - initialized lazily inside `location-property-history/model.ts`
@@ -163,17 +164,17 @@ the OpenHAB generator environment configured in `openhab-automation`.
 - `src/services/state-parser.ts`: normalized parsing of openHAB states (`numeric`, `undef`, `null`, `unknown`)
 - `src/services/openhab-service.ts`: REST API wrapper for metadata, history, and commands
 - `src/services/websocket-service.ts`: connection lifecycle, typed updates, reconnect/backoff, listener subscription
-- `src/views/scene/useViewControlLayout.ts`: draggable HUD positioning persisted via item metadata
+- `src/views/useViewControlLayout.ts`: draggable HUD positioning persisted via item metadata
 
-## Scene Images (Haus + EG, Base + HUD)
+## View Images (Haus + EG, Base + HUD)
 
-All scene images are loaded from `public/scenes`.
+All view images are loaded from `public/views`.
 
 Required file layout:
 
 ```text
 public/
-  scenes/
+  views/
     missing.jpg
     house/
       base.webp
@@ -193,14 +194,14 @@ How `base.webp` is used:
 
 Global missing-image fallback:
 
-- If any requested scene image cannot be loaded, the app uses `public/scenes/missing.jpg`.
-- A debug badge (`Missing scene asset`) is shown in the top-right corner while fallback is active.
+- If any requested view image cannot be loaded, the app uses `public/views/missing.jpg`.
+- A debug badge (`Missing view asset`) is shown in the top-right corner while fallback is active.
 
 View mapping in V1:
 
-- `house` -> `public/scenes/house/*`
-- `eg` -> `public/scenes/house/eg/*`
-- `living` -> `public/scenes/house/eg/living/*`
+- `house` -> `public/views/house/*`
+- `eg` -> `public/views/house/eg/*`
+- `living` -> `public/views/house/eg/living/*`
 
 ## WebSocket Usage
 

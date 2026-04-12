@@ -1,1 +1,52 @@
 @import "tailwindcss";
+
+@theme {
+  --color-ui-surface-shell: #020617;
+  --color-ui-surface-overlay: #0206178c;
+  --color-ui-surface-panel: #0f172abf;
+  --color-ui-surface-muted: #1e293b99;
+  --color-ui-surface-image: #02061773;
+  --color-ui-surface-image-strong: #020617b3;
+  --color-ui-backdrop-soft: #02061752;
+  --color-ui-backdrop-strong: #02061799;
+  --color-ui-border-subtle: #ffffff26;
+  --color-ui-border-strong: #ffffff59;
+  --color-ui-foreground: #f8fafc;
+  --color-ui-foreground-muted: #cbd5e1;
+  --color-ui-shadow-text: #000000cc;
+
+  --color-ui-warning-solid: #f59e0bdd;
+  --color-ui-warning-border: #fcd34d;
+  --color-ui-warning-foreground: #0f172a;
+
+  --color-semantic-light-solid: #fde047;
+  --color-semantic-light-glow: #fde047bf;
+  --color-semantic-active-solid: #22c55e;
+  --color-semantic-active-glow: #22c55eb0;
+
+  --color-status-good-surface: #10b98140;
+  --color-status-good-emphasis: #10b98166;
+  --color-status-good-foreground: #ecfdf5;
+  --color-status-moderate-surface: #f59e0b40;
+  --color-status-moderate-emphasis: #f59e0b66;
+  --color-status-moderate-foreground: #fffbeb;
+  --color-status-critical-surface: #f43f5e40;
+  --color-status-critical-emphasis: #f43f5e66;
+  --color-status-critical-foreground: #fff1f2;
+  --color-status-neutral-surface: #64748b59;
+  --color-status-neutral-emphasis: #94a3b8;
+  --color-status-neutral-foreground: #f8fafc;
+
+  --color-chart-series-1: #38bdf8;
+  --color-chart-series-2: #34d399;
+  --color-chart-series-3: #f59e0b;
+  --color-chart-series-4: #f97316;
+  --color-chart-series-5: #f43f5e;
+  --color-chart-series-6: #14b8a6;
+  --color-chart-average: #ffffff;
+  --color-chart-grid: #ffffff29;
+  --color-chart-axis: #ffffff52;
+  --color-chart-tooltip-bg: #0f172aeb;
+  --color-chart-tooltip-border: #ffffff2e;
+  --color-chart-reference-band: #22c55e30;
+}

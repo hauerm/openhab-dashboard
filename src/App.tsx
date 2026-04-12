@@ -5,24 +5,26 @@ import {
   initializeWebSocket,
   disconnectWebSocket,
 } from "./services/websocket-service";
-import SceneBackground from "./components/SceneBackground";
+import ViewBackground from "./components/ViewBackground";
 import BottomDock from "./components/BottomDock";
-import { useSceneStoreCore } from "./stores/sceneStoreCore";
-import type { ActiveSceneOverlay } from "./types/overlay";
-import SceneViewLayer from "./views/scene/SceneViewLayer";
+import { VIEWS } from "./config/views";
+import { useViewStore } from "./stores/viewStore";
+import type { ActiveViewOverlay } from "./types/overlay";
+import ViewSidebar, { VIEW_SIDEBAR_SAFE_ZONE_PX } from "./views/ViewSidebar";
+import ViewLayer from "./views/ViewLayer";
 
 function App() {
-  const [activeOverlay, setActiveOverlay] = useState<ActiveSceneOverlay | null>(null);
-  const initializeSceneStoreCore = useSceneStoreCore((state) => state.initialize);
-  const currentView = useSceneStoreCore((state) => state.currentView);
+  const [activeOverlay, setActiveOverlay] = useState<ActiveViewOverlay | null>(null);
+  const initializeViewStore = useViewStore((state) => state.initialize);
+  const currentView = useViewStore((state) => state.currentView);
 
   useEffect(() => {
     void initializeWebSocket();
-    void initializeSceneStoreCore();
+    void initializeViewStore();
     return () => {
       disconnectWebSocket();
     };
-  }, [initializeSceneStoreCore]);
+  }, [initializeViewStore]);
 
   const visibleOverlay = useMemo(() => {
     if (!activeOverlay) {
@@ -31,11 +33,25 @@ function App() {
     return activeOverlay.viewId === currentView ? activeOverlay : null;
   }, [activeOverlay, currentView]);
 
+  const hasSidebar = Boolean(VIEWS[currentView].location);
+  const blockedLeftPx = hasSidebar ? VIEW_SIDEBAR_SAFE_ZONE_PX : 0;
+
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-slate-950 text-white">
-      <SceneBackground />
-      <SceneViewLayer
+    <div className="relative min-h-screen w-full overflow-hidden bg-ui-surface-shell text-ui-foreground">
+      <ViewBackground />
+      {hasSidebar ? (
+        <ViewSidebar
+          viewId={currentView}
+          activeControlId={visibleOverlay?.controlId ?? null}
+          onOpenControl={(controlId) => {
+            setActiveOverlay({ viewId: currentView, controlId });
+          }}
+          onCloseControl={() => setActiveOverlay(null)}
+        />
+      ) : null}
+      <ViewLayer
         activeControlId={visibleOverlay?.controlId ?? null}
+        blockedLeftPx={blockedLeftPx}
         onOpenControl={(controlId) => {
           setActiveOverlay({ viewId: currentView, controlId });
         }}

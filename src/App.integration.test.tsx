@@ -17,7 +17,7 @@ import {
   Samsung_TV_Wohnzimmer_Power,
   Samsung_TV_Wohnzimmer_Titel,
 } from "./domain/hauer-items";
-import { resetSceneStoreCoreForTests } from "./stores/sceneStoreCore";
+import { resetViewStoreForTests } from "./stores/viewStore";
 import App from "./App";
 
 type SelectorHook<TState> = <TSelected>(
@@ -74,7 +74,7 @@ vi.mock("./stores/locationPropertyHistoryStore", () => ({
       currentValue: valueByProperty[config.property] ?? null,
       history: {},
       metadata: [],
-      itemNames: new Set<string>(),
+      itemNames: new Set<string>([`${config.property}-item`]),
       latestValues: {},
       latestRawStates: {},
       latestStateKinds: {},
@@ -135,7 +135,7 @@ const buildDefaultItems = (): Item[] => [
 
 describe("App integration", () => {
   beforeEach(() => {
-    resetSceneStoreCoreForTests();
+    resetViewStoreForTests();
     mocks.wsListener = null;
 
     mocks.fetchItemsMetadata.mockReset();
@@ -180,17 +180,22 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
     });
 
-    const background = screen.getByTestId("scene-background-image");
+    const background = screen.getByTestId("view-background-image");
     expect(background).toHaveAttribute(
       "src",
-      expect.stringContaining("/scenes/house/base.webp")
+      expect.stringContaining("/views/house/base.webp")
     );
     expect(screen.getByTestId("dock-button-house")).toBeInTheDocument();
     expect(screen.getByTestId("dock-button-eg")).toBeInTheDocument();
     expect(screen.getByTestId("dock-button-living")).toBeInTheDocument();
+    expect(screen.getByTestId("view-sidebar")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-temp")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-humidity")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-co2")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-health")).toBeInTheDocument();
   });
 
-  it("switches views and updates scene background + hud", async () => {
+  it("switches views and updates the view background + hud", async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -200,14 +205,31 @@ describe("App integration", () => {
 
     await user.click(screen.getByTestId("dock-button-eg"));
 
-    const background = screen.getByTestId("scene-background-image");
+    const background = screen.getByTestId("view-background-image");
     expect(background).toHaveAttribute(
       "src",
-      expect.stringContaining("/scenes/house/eg/base.webp")
+      expect.stringContaining("/views/house/eg/base.webp")
     );
     expect(screen.getByTestId("hud-metric-temp")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-humidity")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-co2")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-health")).toBeInTheDocument();
+  });
+
+  it("keeps the sidebar visible across location-backed views", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
+    });
+
+    expect(screen.getByTestId("view-sidebar")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("dock-button-living"));
+
+    expect(screen.getByTestId("view-sidebar")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-temp")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-health")).toBeInTheDocument();
   });
 
@@ -227,10 +249,10 @@ describe("App integration", () => {
 
     await waitFor(() => {
       expect(screen.getByText("19.0 °C")).toBeInTheDocument();
-      expect(screen.getByTestId("scene-background-image")).toHaveAttribute("src");
-      expect(screen.getByTestId("scene-background-image")).toHaveAttribute(
+      expect(screen.getByTestId("view-background-image")).toHaveAttribute("src");
+      expect(screen.getByTestId("view-background-image")).toHaveAttribute(
         "src",
-        expect.stringContaining("/scenes/house/base.webp")
+        expect.stringContaining("/views/house/base.webp")
       );
     });
   });
@@ -316,9 +338,9 @@ describe("App integration", () => {
 
     await user.click(screen.getByTestId("dock-button-living"));
 
-    expect(screen.getByTestId("scene-background-image")).toHaveAttribute(
+    expect(screen.getByTestId("view-background-image")).toHaveAttribute(
       "src",
-      expect.stringContaining("/scenes/house/eg/living/base.webp")
+      expect.stringContaining("/views/house/eg/living/base.webp")
     );
     expect(
       screen.queryByTestId(`raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}`)
