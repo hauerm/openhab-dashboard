@@ -4,7 +4,6 @@ import type { ViewMetricControlDefinition } from "../controlDefinitions";
 import {
   formatHouseTemperature,
   formatNightStatus,
-  formatWeatherStatus,
 } from "./presentation";
 
 export const useViewMetricControlValue = (
@@ -18,15 +17,6 @@ export const useViewMetricControlValue = (
         return formatHouseTemperature(
           definition.itemRefs.primaryItemName
             ? itemStates[definition.itemRefs.primaryItemName]?.rawState
-            : undefined
-        );
-      case "house-weather":
-        return formatWeatherStatus(
-          definition.itemRefs.primaryItemName
-            ? itemStates[definition.itemRefs.primaryItemName]?.rawState
-            : undefined,
-          definition.itemRefs.secondaryItemName
-            ? itemStates[definition.itemRefs.secondaryItemName]?.rawState
             : undefined
         );
       case "house-night-status":

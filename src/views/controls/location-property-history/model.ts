@@ -6,6 +6,7 @@ import {
 } from "./config";
 import {
   formatLocationPropertyValue,
+  resolveIlluminancePresentation,
   resolveLocationPropertyTint,
 } from "./presentation";
 
@@ -54,13 +55,20 @@ export const useLocationPropertyHistoryControlModel = (
 
   return useMemo(() => {
     const resolvedConfig = LOCATION_PROPERTY_CONTROL_CONFIGS[definition.property];
+    const illuminancePresentation =
+      definition.metricKey === "illuminance"
+        ? resolveIlluminancePresentation(currentValue)
+        : null;
 
     return {
       icon: resolvedConfig.icon,
       unit: resolvedConfig.unit,
       hasItems: itemCount > 0,
       value: formatValue(definition.metricKey, currentValue),
-      tint: resolveLocationPropertyTint(definition.property, currentValue),
+      tint:
+        illuminancePresentation?.tint ??
+        resolveLocationPropertyTint(definition.property, currentValue),
+      illuminancePresentation,
     };
   }, [currentValue, definition.metricKey, definition.property, itemCount]);
 };

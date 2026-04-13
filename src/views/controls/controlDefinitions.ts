@@ -21,13 +21,11 @@ interface ControlDefinitionBase<
 
 export interface ViewMetricControlItemRefs {
   primaryItemName?: string;
-  secondaryItemName?: string;
-  tertiaryItemName?: string;
 }
 
 export interface ViewMetricControlDefinition
   extends ControlDefinitionBase<"view-metric", ViewMetricControlItemRefs> {
-  metricKey: "house-temperature" | "house-weather" | "house-night-status";
+  metricKey: "house-temperature" | "house-night-status";
 }
 
 export interface LightControlItemRefs {
@@ -63,7 +61,7 @@ export type TvControlDefinition = ControlDefinitionBase<
 
 export interface LocationPropertyHistoryControlDefinition
   extends ControlDefinitionBase<"location-property-history", Record<string, never>> {
-  metricKey: "temperature" | "humidity" | "co2" | "air-quality";
+  metricKey: "temperature" | "humidity" | "illuminance" | "co2" | "air-quality";
   property: string;
   location?: string;
   locationScope?: LocationScope;

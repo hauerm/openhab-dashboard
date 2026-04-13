@@ -25,50 +25,6 @@ export const formatHouseTemperature = (rawState: string | undefined): string => 
   return `${value.toFixed(1)} °C`;
 };
 
-const isOnToken = (value: string | undefined): boolean | null => {
-  if (!value) {
-    return null;
-  }
-
-  const normalized = value.trim().toUpperCase();
-  if (normalized === "ON") {
-    return true;
-  }
-  if (normalized === "OFF") {
-    return false;
-  }
-  if (normalized === "UNDEF" || normalized === "NULL" || normalized === "-") {
-    return null;
-  }
-
-  return null;
-};
-
-export const formatWeatherStatus = (
-  rainRawState: string | undefined,
-  brightnessRawState?: string
-): string => {
-  const rain = isOnToken(rainRawState);
-  if (rain === true) {
-    return "Regen";
-  }
-
-  const brightness = parseNumericFromRawState(brightnessRawState);
-
-  if (rain === false) {
-    if (brightness === null) {
-      return "Trocken";
-    }
-    return brightness < 1000 ? "Trocken (dunkel)" : "Trocken";
-  }
-
-  if (brightness !== null) {
-    return `Helligkeit ${Math.round(brightness)} lx`;
-  }
-
-  return "--";
-};
-
 export const formatNightStatus = (phaseRawState: string | undefined): string => {
   if (!phaseRawState) {
     return "--";

@@ -37,6 +37,22 @@
   --color-status-neutral-emphasis: #94a3b8;
   --color-status-neutral-foreground: #f8fafc;
 
+  --color-illuminance-night-surface: #172554d9;
+  --color-illuminance-night-emphasis: #1d4ed8a6;
+  --color-illuminance-night-foreground: #dbeafe;
+  --color-illuminance-dim-surface: #334155d9;
+  --color-illuminance-dim-emphasis: #64748bb3;
+  --color-illuminance-dim-foreground: #f8fafc;
+  --color-illuminance-soft-surface: #475569cc;
+  --color-illuminance-soft-emphasis: #94a3b8a6;
+  --color-illuminance-soft-foreground: #f8fafc;
+  --color-illuminance-bright-surface: #0f766ebf;
+  --color-illuminance-bright-emphasis: #67e8f9b3;
+  --color-illuminance-bright-foreground: #ecfeff;
+  --color-illuminance-sunny-surface: #ca8a04cc;
+  --color-illuminance-sunny-emphasis: #fde047bf;
+  --color-illuminance-sunny-foreground: #fefce8;
+
   --color-chart-series-1: #38bdf8;
   --color-chart-series-2: #34d399;
   --color-chart-series-3: #f59e0b;
