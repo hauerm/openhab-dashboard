@@ -1,3 +1,5 @@
+import type { LocationScope } from "../../types/view";
+
 export interface ControlPosition {
   x: number;
   y: number;
@@ -64,6 +66,7 @@ export interface LocationPropertyHistoryControlDefinition
   metricKey: "temperature" | "humidity" | "co2" | "air-quality";
   property: string;
   location?: string;
+  locationScope?: LocationScope;
   title: string;
   comfortBand?: {
     min: number;

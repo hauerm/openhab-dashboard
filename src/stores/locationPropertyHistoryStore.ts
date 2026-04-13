@@ -17,6 +17,7 @@ import { parseOpenHABState } from "../services/state-parser";
 import type { ParsedStateKind } from "../services/state-parser";
 import type { WebSocketItemUpdate } from "../services/websocket-service";
 import { subscribeWebSocketListener } from "../services/websocket-service";
+import type { LocationScope } from "../types/view";
 
 interface HistoryPoint {
   timestamp: number;
@@ -39,7 +40,7 @@ interface LocationPropertyState {
 }
 
 interface LocationPropertyActions {
-  initialize: (location?: string) => Promise<void>;
+  initialize: (location?: string, locationScope?: LocationScope) => Promise<void>;
   ensureHistoryRange: (rangeKey: HistoryRangeKey) => Promise<void>;
   updateValue: (
     itemName: string,
@@ -183,10 +184,14 @@ const createStoreForConfig = (config: LocationPropertyControlConfig) => {
     loading: false,
     error: null,
 
-    initialize: async (location?: string) => {
+    initialize: async (
+      location?: string,
+      locationScope: LocationScope = "descendants"
+    ) => {
       const locationKey = location?.trim() || "__all__";
+      const locationScopeKey = `${locationKey}::${locationScope}`;
 
-      if (initializedLocationKey === locationKey) {
+      if (initializedLocationKey === locationScopeKey) {
         return;
       }
 
@@ -217,6 +222,7 @@ const createStoreForConfig = (config: LocationPropertyControlConfig) => {
           const filteredItems = filterItems(items, {
             property: config.property,
             location,
+            locationScope,
           });
 
           const itemNames = new Set(filteredItems.map((item) => item.name));
@@ -251,11 +257,11 @@ const createStoreForConfig = (config: LocationPropertyControlConfig) => {
             );
           }
 
-          initializedLocationKey = locationKey;
+          initializedLocationKey = locationScopeKey;
 
           if (debugLocationPropertyHistory) {
             logger.debug(
-              `[Debug] Initialized ${config.property} for ${locationKey} with ${filteredItems.length} items`
+              `[Debug] Initialized ${config.property} for ${locationScopeKey} with ${filteredItems.length} items`
             );
           }
         } catch (error) {
