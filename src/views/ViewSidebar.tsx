@@ -42,11 +42,13 @@ const ViewSidebar = ({
   onOpenControl,
   onCloseControl,
 }: ViewSidebarProps) => {
-  const location = VIEWS[viewId].location!.trim();
+  const viewConfig = VIEWS[viewId];
+  const location = viewConfig.location!.trim();
+  const locationScope = viewConfig.locationScope ?? "descendants";
 
   const definitions = useMemo(
-    () => createLocationPropertySidebarDefinitions(viewId, location),
-    [location, viewId]
+    () => createLocationPropertySidebarDefinitions(viewId, location, locationScope),
+    [location, locationScope, viewId]
   );
 
   const [

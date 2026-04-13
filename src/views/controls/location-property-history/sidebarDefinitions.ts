@@ -4,7 +4,7 @@ import {
   PROPERTY_HUMIDITY,
   PROPERTY_TEMPERATURE,
 } from "../../../domain/openhab-properties";
-import type { ViewId } from "../../../types/view";
+import type { LocationScope, ViewId } from "../../../types/view";
 import type { LocationPropertyHistoryControlDefinition } from "../controlDefinitions";
 
 type SidebarMetricDefinition = Pick<
@@ -47,7 +47,8 @@ const toSidebarControlId = (viewId: ViewId, metricKey: SidebarMetricDefinition["
 
 export const createLocationPropertySidebarDefinitions = (
   viewId: ViewId,
-  location: string
+  location: string,
+  locationScope: LocationScope = "descendants"
 ): readonly LocationPropertyHistoryControlDefinition[] =>
   SIDEBAR_LOCATION_METRICS.map((metricDefinition) => ({
     controlId: toSidebarControlId(viewId, metricDefinition.metricKey),
@@ -56,6 +57,7 @@ export const createLocationPropertySidebarDefinitions = (
     metricKey: metricDefinition.metricKey,
     property: metricDefinition.property,
     location,
+    locationScope,
     title: `${metricDefinition.title} ${location}`,
     comfortBand: metricDefinition.comfortBand,
     itemRefs: {},

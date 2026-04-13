@@ -1,4 +1,5 @@
 import type { Item, ItemHistoryResponse, ItemMetadataNamespace } from "../types/item";
+import type { LocationScope } from "../types/view";
 import {
   OPENHAB_BASE_URL,
   getOpenHABAuthHeaders,
@@ -75,6 +76,15 @@ const extractNamespaceFromMetadataPayload = (
 export class ItemService {
   private static itemsCache: Item[] | null = null;
   private static itemsCachePromise: Promise<Item[]> | null = null;
+
+  private static getDirectLocation(item: Item): string | null {
+    const directLocation =
+      item.type === "Group"
+        ? item.metadata?.semantics?.config?.isPartOf
+        : item.metadata?.semantics?.config?.hasLocation;
+
+    return typeof directLocation === "string" ? directLocation : null;
+  }
 
   /**
    * Fetch all items from OpenHAB
@@ -299,23 +309,25 @@ export class ItemService {
   static hasLocation(
     item: Item,
     targetLocation: string,
-    allItems?: Item[]
+    allItems?: Item[],
+    options: {
+      locationScope?: LocationScope;
+    } = {}
   ): boolean {
-    // Get the direct location of the item
-    // For regular items: check hasLocation
-    // For Group items (locations): check isPartOf
-    const directLocation =
-      item.type === "Group"
-        ? item.metadata?.semantics?.config?.isPartOf
-        : item.metadata?.semantics?.config?.hasLocation;
+    const { locationScope = "descendants" } = options;
+    const directLocation = this.getDirectLocation(item);
 
-    if (typeof directLocation !== "string") {
+    if (directLocation === null) {
       return false;
     }
 
     // If direct location matches, return true
     if (directLocation === targetLocation) {
       return true;
+    }
+
+    if (locationScope === "direct") {
+      return false;
     }
 
     // If no allItems provided, we can't traverse hierarchy
@@ -352,13 +364,9 @@ export class ItemService {
       return false;
     }
 
-    // For location Group items, check isPartOf; for regular items, check hasLocation
-    const parentLocation =
-      locationItem.type === "Group"
-        ? locationItem.metadata?.semantics?.config?.isPartOf
-        : locationItem.metadata?.semantics?.config?.hasLocation;
+    const parentLocation = this.getDirectLocation(locationItem);
 
-    if (typeof parentLocation !== "string") {
+    if (parentLocation === null) {
       return false;
     }
 
@@ -402,9 +410,10 @@ export class ItemService {
     options: {
       property?: string;
       location?: string;
+      locationScope?: LocationScope;
     } = {}
   ): Item[] {
-    const { property, location } = options;
+    const { property, location, locationScope = "descendants" } = options;
 
     const filtered = items.filter((item) => {
       // Check semantic property if specified
@@ -413,7 +422,10 @@ export class ItemService {
       }
 
       // Check location if specified - use semantic location hierarchy
-      if (location && !this.hasLocation(item, location, items)) {
+      if (
+        location &&
+        !this.hasLocation(item, location, items, { locationScope })
+      ) {
         return false;
       }
 
