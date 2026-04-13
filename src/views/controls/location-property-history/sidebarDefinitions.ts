@@ -2,6 +2,7 @@ import {
   PROPERTY_AIR_QUALITY,
   PROPERTY_CO2,
   PROPERTY_HUMIDITY,
+  PROPERTY_ILLUMINANCE,
   PROPERTY_TEMPERATURE,
 } from "../../../domain/openhab-properties";
 import type { LocationScope, ViewId } from "../../../types/view";
@@ -27,6 +28,12 @@ const SIDEBAR_LOCATION_METRICS: readonly SidebarMetricDefinition[] = [
     property: PROPERTY_HUMIDITY,
     label: "Luftfeuchte",
     title: "Luftfeuchte",
+  },
+  {
+    metricKey: "illuminance",
+    property: PROPERTY_ILLUMINANCE,
+    label: "Helligkeit",
+    title: "Helligkeit",
   },
   {
     metricKey: "co2",

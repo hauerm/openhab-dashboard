@@ -64,6 +64,7 @@ vi.mock("./stores/locationPropertyHistoryStore", () => ({
     const valueByProperty: Record<string, number> = {
       Property_Temperature: 22.4,
       Property_Humidity: 51,
+      Property_Illuminance: 1800,
       Property_AirQuality_CO2: 810,
       Property_AirQuality_AQI: 1,
     };
@@ -191,6 +192,15 @@ describe("App integration", () => {
     expect(screen.getByTestId("view-sidebar")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-temp")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-humidity")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-illuminance")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-illuminance")).toHaveAttribute(
+      "data-illuminance-state",
+      "soft"
+    );
+    expect(
+      screen.getByTestId("hud-metric-illuminance-display-icon")
+    ).toBeInTheDocument();
+    expect(screen.queryByText("1.800 lx")).not.toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-co2")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-health")).toBeInTheDocument();
   });
@@ -212,6 +222,7 @@ describe("App integration", () => {
     );
     expect(screen.getByTestId("hud-metric-temp")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-humidity")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-illuminance")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-co2")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-health")).toBeInTheDocument();
   });
@@ -230,6 +241,7 @@ describe("App integration", () => {
 
     expect(screen.getByTestId("view-sidebar")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-temp")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-illuminance")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-health")).toBeInTheDocument();
   });
 

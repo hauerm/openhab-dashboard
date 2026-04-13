@@ -10,6 +10,7 @@ export const VIEW_SIDEBAR_SAFE_ZONE_PX = 208;
 const TEST_ID_SUFFIX_BY_METRIC_KEY = {
   temperature: "temp",
   humidity: "humidity",
+  illuminance: "illuminance",
   co2: "co2",
   "air-quality": "health",
 } as const;
@@ -54,12 +55,14 @@ const ViewSidebar = ({
   const [
     temperatureDefinition,
     humidityDefinition,
+    illuminanceDefinition,
     co2Definition,
     airQualityDefinition,
   ] = definitions;
 
   const temperatureModel = useLocationPropertyHistoryControlModel(temperatureDefinition);
   const humidityModel = useLocationPropertyHistoryControlModel(humidityDefinition);
+  const illuminanceModel = useLocationPropertyHistoryControlModel(illuminanceDefinition);
   const co2Model = useLocationPropertyHistoryControlModel(co2Definition);
   const airQualityModel = useLocationPropertyHistoryControlModel(airQualityDefinition);
 
@@ -68,6 +71,7 @@ const ViewSidebar = ({
       [
         { definition: temperatureDefinition, model: temperatureModel },
         { definition: humidityDefinition, model: humidityModel },
+        { definition: illuminanceDefinition, model: illuminanceModel },
         { definition: co2Definition, model: co2Model },
         { definition: airQualityDefinition, model: airQualityModel },
       ].filter((entry) => entry.model.hasItems),
@@ -78,6 +82,8 @@ const ViewSidebar = ({
       co2Model,
       humidityDefinition,
       humidityModel,
+      illuminanceDefinition,
+      illuminanceModel,
       temperatureDefinition,
       temperatureModel,
     ]
@@ -119,12 +125,19 @@ const ViewSidebar = ({
                 definition.metricKey === "air-quality"
                   ? "text-2xl md:text-[2rem]"
                   : "text-3xl md:text-[2.4rem]";
+              const isIlluminance = definition.metricKey === "illuminance";
+              const IlluminanceStateIcon = model.illuminancePresentation?.icon ?? Icon;
 
               return (
                 <button
                   key={definition.controlId}
                   type="button"
                   data-testid={`hud-metric-${TEST_ID_SUFFIX_BY_METRIC_KEY[definition.metricKey]}`}
+                  data-illuminance-state={
+                    isIlluminance
+                      ? model.illuminancePresentation?.state ?? "unknown"
+                      : undefined
+                  }
                   onClick={() => onOpenControl(definition.controlId)}
                   className={`group flex min-h-28 w-full flex-col justify-between border-r border-ui-border-subtle px-4 py-4 text-left text-ui-foreground backdrop-blur-xl transition hover:brightness-110 ${getSidebarShapeClassName(
                     shape
@@ -142,9 +155,19 @@ const ViewSidebar = ({
                   </span>
 
                   <span className="mt-4 flex items-end justify-between gap-3">
-                    <span className={`font-semibold leading-none ${valueClassName}`}>
-                      {model.value}
-                    </span>
+                    {isIlluminance ? (
+                      <span
+                        data-testid="hud-metric-illuminance-display-icon"
+                        className={`flex items-center justify-center ${model.tint.icon}`}
+                        aria-label={model.illuminancePresentation?.label}
+                      >
+                        <IlluminanceStateIcon className="h-11 w-11 md:h-12 md:w-12" />
+                      </span>
+                    ) : (
+                      <span className={`font-semibold leading-none ${valueClassName}`}>
+                        {model.value}
+                      </span>
+                    )}
                   </span>
                 </button>
               );

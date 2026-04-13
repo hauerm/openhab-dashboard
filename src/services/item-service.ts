@@ -489,6 +489,7 @@ export const isLocationAncestor =
 export {
   PROPERTY_HUMIDITY,
   PROPERTY_TEMPERATURE,
+  PROPERTY_ILLUMINANCE,
   PROPERTY_CO2,
   PROPERTY_AIR_QUALITY,
 } from "../domain/openhab-properties";

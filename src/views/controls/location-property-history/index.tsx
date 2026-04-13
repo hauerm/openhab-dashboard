@@ -48,6 +48,7 @@ type ChartRow = {
 const TEST_ID_SUFFIX_BY_METRIC_KEY = {
   temperature: "temp",
   humidity: "humidity",
+  illuminance: "illuminance",
   co2: "co2",
   "air-quality": "health",
 } as const;

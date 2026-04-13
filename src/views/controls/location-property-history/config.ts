@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import {
   MdCo2,
   MdHealthAndSafety,
+  MdLightMode,
   MdThermostat,
   MdWaterDrop,
 } from "react-icons/md";
@@ -9,6 +10,7 @@ import {
   PROPERTY_AIR_QUALITY,
   PROPERTY_CO2,
   PROPERTY_HUMIDITY,
+  PROPERTY_ILLUMINANCE,
   PROPERTY_TEMPERATURE,
 } from "../../../domain/openhab-properties";
 
@@ -110,6 +112,15 @@ export const LOCATION_PROPERTY_CONTROL_CONFIGS: Record<
       { level: "moderate", min: 60, max: 70 },
       { level: "bad", min: 70 },
     ],
+  },
+  [PROPERTY_ILLUMINANCE]: {
+    property: PROPERTY_ILLUMINANCE,
+    defaultHistoryRangeKey: "day",
+    maxHistoryRangeKey: "year",
+    unit: "lx",
+    icon: MdLightMode,
+    title: "Illuminance",
+    backgroundTintBands: [],
   },
   [PROPERTY_CO2]: {
     property: PROPERTY_CO2,
