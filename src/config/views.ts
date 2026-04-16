@@ -4,7 +4,7 @@ export const VIEW_IDS: ViewId[] = ["house", "eg", "living"];
 
 export const VIEWS: Record<ViewId, ViewConfig> = {
   house: {
-    label: "Haus",
+    label: "Hauer",
     baseImage: "/views/house/base.webp",
     location: "Hauer",
     locationScope: "direct",

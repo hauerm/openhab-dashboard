@@ -2,7 +2,8 @@ import { create } from "zustand";
 import { fetchItemsMetadata } from "../services/openhab-service";
 import { subscribeWebSocketListener } from "../services/websocket-service";
 import { log } from "../services/logger";
-import { VIEW_IDS } from "../config/views";
+import { VIEW_IDS, VIEWS } from "../config/views";
+import type { Item } from "../types/item";
 import type { ViewId, ViewState, ViewTrackedItemState } from "../types/view";
 import { VIEW_TRACKED_ITEM_NAMES_BY_VIEW } from "../views/viewDescriptors";
 import { applyViewItemStateUpdate } from "./viewStore.utils";
@@ -14,6 +15,25 @@ const buildDefaultMissingAssets = (): Record<ViewId, boolean> => ({
   eg: false,
   living: false,
 });
+
+const buildDefaultViewLabels = (): Record<ViewId, string> => ({
+  house: VIEWS.house.label,
+  eg: VIEWS.eg.label,
+  living: VIEWS.living.label,
+});
+
+const resolveViewLabelsFromItems = (items: Item[]): Record<ViewId, string> => {
+  const itemsByName = new Map(items.map((item) => [item.name, item]));
+
+  return VIEW_IDS.reduce<Record<ViewId, string>>((labels, viewId) => {
+    const viewConfig = VIEWS[viewId];
+    const locationLabel =
+      viewConfig.location ? itemsByName.get(viewConfig.location)?.label?.trim() : null;
+
+    labels[viewId] = locationLabel || viewConfig.label;
+    return labels;
+  }, buildDefaultViewLabels());
+};
 
 const collectTrackedItemNames = (): Set<string> => {
   const tracked = new Set<string>();
@@ -42,6 +62,7 @@ let unsubscribeWebSocket: (() => void) | null = null;
 
 const initialState: ViewState = {
   currentView: "house",
+  viewLabels: buildDefaultViewLabels(),
   itemStates: {},
   missingAssetByView: buildDefaultMissingAssets(),
   loading: false,
@@ -77,7 +98,10 @@ export const useViewStore = create<ViewStoreState>((set, get) => ({
           );
         }
 
-        set({ itemStates: nextItemStates });
+        set({
+          itemStates: nextItemStates,
+          viewLabels: resolveViewLabelsFromItems(items),
+        });
 
         if (!unsubscribeWebSocket) {
           unsubscribeWebSocket = subscribeWebSocketListener(
@@ -145,6 +169,7 @@ export const resetViewStoreForTests = (): void => {
   hasInitialized = false;
   useViewStore.setState({
     ...initialState,
+    viewLabels: buildDefaultViewLabels(),
     missingAssetByView: buildDefaultMissingAssets(),
   });
 };

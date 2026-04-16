@@ -3,10 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Item } from "./types/item";
 import {
-  KNX_Wetterstation_Aussentemperatur,
   KNX_Wetterstation_Regen,
   KNX_Wetterstation_Helligkeit,
-  Astro_Sun_Data_Sonnenphase,
   KNX_JA1_Raffstore_Wohnzimmer,
   KNX_JA1_Raffstore_Wohnzimmer_Strasse,
   SAH3_Licht_Couch,
@@ -107,22 +105,25 @@ vi.mock("./stores/ventilationStore", () => {
 const createItem = (
   name: string,
   state: string,
-  type: Item["type"] = "Switch"
+  type: Item["type"] = "Switch",
+  label?: string
 ): Item => ({
   link: `/items/${name}`,
   state,
   editable: false,
   type,
   name,
+  ...(label ? { label } : {}),
   tags: [],
   groupNames: [],
 });
 
 const buildDefaultItems = (): Item[] => [
-  createItem(KNX_Wetterstation_Aussentemperatur, "14.2 °C"),
+  createItem("Hauer", "NULL", "Group", "Adresse Hauer"),
+  createItem("EG", "NULL", "Group", "EG"),
+  createItem("Wohnzimmer", "NULL", "Group", "Wohnzimmer"),
   createItem(KNX_Wetterstation_Regen, "OFF"),
   createItem(KNX_Wetterstation_Helligkeit, "1800 lx"),
-  createItem(Astro_Sun_Data_Sonnenphase, "DAY"),
   createItem(KNX_JA1_Raffstore_Wohnzimmer, "67", "Rollershutter"),
   createItem(KNX_JA1_Raffstore_Wohnzimmer_Strasse, "45", "Rollershutter"),
   createItem(SAH3_Licht_Couch, "ON"),
@@ -186,7 +187,12 @@ describe("App integration", () => {
       "src",
       expect.stringContaining("/views/house/base.webp")
     );
-    expect(screen.getByTestId("dock-button-house")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(background).toHaveAttribute("alt", "Adresse Hauer Kontextfoto");
+      expect(screen.getByTestId("dock-button-house")).toHaveTextContent(
+        "Adresse Hauer"
+      );
+    });
     expect(screen.getByTestId("dock-button-eg")).toBeInTheDocument();
     expect(screen.getByTestId("dock-button-living")).toBeInTheDocument();
     expect(screen.getByTestId("view-sidebar")).toBeInTheDocument();
@@ -245,30 +251,6 @@ describe("App integration", () => {
     expect(screen.getByTestId("hud-metric-health")).toBeInTheDocument();
   });
 
-  it("reacts live to websocket hud item updates without changing base image", async () => {
-    render(<App />);
-
-    await waitFor(() => {
-      expect(mocks.wsListener).toBeTypeOf("function");
-    });
-
-    act(() => {
-      mocks.wsListener?.({
-        itemName: KNX_Wetterstation_Aussentemperatur,
-        rawState: "19.0 °C",
-      });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("19.0 °C")).toBeInTheDocument();
-      expect(screen.getByTestId("view-background-image")).toHaveAttribute("src");
-      expect(screen.getByTestId("view-background-image")).toHaveAttribute(
-        "src",
-        expect.stringContaining("/views/house/base.webp")
-      );
-    });
-  });
-
   it("opens and closes location-property overlay from eg hud click", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -302,6 +284,18 @@ describe("App integration", () => {
     await user.click(screen.getByTestId("hud-metric-ventilation"));
 
     expect(screen.getByTestId("ventilation-overlay")).toBeInTheDocument();
+    expect(screen.getByTestId("ventilation-overlay-status")).toHaveTextContent("Stufe 2");
+    expect(screen.getByTestId("ventilation-overlay-mode")).toHaveTextContent("Automatik");
+    expect(screen.getByTestId("ventilation-control-auto")).toBeInTheDocument();
+    expect(screen.getByTestId("ventilation-control-manual-0")).toBeInTheDocument();
+    expect(screen.getByTestId("ventilation-control-manual-4")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("ventilation-control-manual-3"));
+    expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+      "KNX_Helios_ManualMode",
+      "3",
+      "Decimal"
+    );
 
     await user.click(screen.getByTestId("overlay-backdrop"));
     expect(screen.queryByTestId("ventilation-overlay")).not.toBeInTheDocument();

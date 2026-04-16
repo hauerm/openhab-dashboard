@@ -120,13 +120,13 @@ const ViewSidebar = ({
                   : index === entries.length - 1
                   ? "last"
                   : "middle";
-              const Icon = model.icon;
               const valueClassName =
                 definition.metricKey === "air-quality"
                   ? "text-2xl md:text-[2rem]"
                   : "text-3xl md:text-[2.4rem]";
               const isIlluminance = definition.metricKey === "illuminance";
-              const IlluminanceStateIcon = model.illuminancePresentation?.icon ?? Icon;
+              const isAirQuality = definition.metricKey === "air-quality";
+              const IlluminanceStateIcon = model.illuminancePresentation?.icon;
 
               return (
                 <button
@@ -139,32 +139,34 @@ const ViewSidebar = ({
                       : undefined
                   }
                   onClick={() => onOpenControl(definition.controlId)}
-                  className={`group flex min-h-28 w-full flex-col justify-between border-r border-ui-border-subtle px-4 py-4 text-left text-ui-foreground backdrop-blur-xl transition hover:brightness-110 ${getSidebarShapeClassName(
+                  className={`group flex min-h-24 w-full items-center gap-4 border-r px-5 py-4 text-left text-ui-foreground backdrop-blur-xl transition hover:brightness-110 ${
+                    isIlluminance ? "" : "border-ui-border-subtle"
+                  } ${getSidebarShapeClassName(
                     shape
                   )} ${model.tint.block}`}
                 >
-                  <span className="flex items-center gap-3">
-                    <span
-                      className={`flex h-11 w-11 items-center justify-center rounded-2xl ${model.tint.iconContainer}`}
-                    >
-                      <Icon className={`h-6 w-6 ${model.tint.icon}`} />
-                    </span>
-                    <span className="text-xs font-semibold uppercase tracking-[0.22em] text-ui-foreground-muted">
-                      {definition.label}
-                    </span>
-                  </span>
-
-                  <span className="mt-4 flex items-end justify-between gap-3">
-                    {isIlluminance ? (
+                  <span className="flex min-w-0 flex-1 items-center justify-center">
+                    {isIlluminance && IlluminanceStateIcon ? (
                       <span
                         data-testid="hud-metric-illuminance-display-icon"
                         className={`flex items-center justify-center ${model.tint.icon}`}
                         aria-label={model.illuminancePresentation?.label}
                       >
-                        <IlluminanceStateIcon className="h-11 w-11 md:h-12 md:w-12" />
+                        <IlluminanceStateIcon className="h-10 w-10 md:h-11 md:w-11" />
+                      </span>
+                    ) : isAirQuality ? (
+                      <span className="flex flex-col items-center gap-1 text-center text-ui-foreground">
+                        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-ui-foreground-muted">
+                          Luft
+                        </span>
+                        <span className={`truncate font-semibold leading-none ${valueClassName}`}>
+                          {model.value}
+                        </span>
                       </span>
                     ) : (
-                      <span className={`font-semibold leading-none ${valueClassName}`}>
+                      <span
+                        className={`truncate font-semibold leading-none text-ui-foreground ${valueClassName}`}
+                      >
                         {model.value}
                       </span>
                     )}

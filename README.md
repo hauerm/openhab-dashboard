@@ -137,7 +137,6 @@ the OpenHAB generator environment configured in `openhab-automation`.
   - `shared.ts`: optional parsing/helpers
   - local tests next to the control
 - Current view controls:
-  - `view-metric`
   - `location-property-history`
   - `ventilation`
   - `light`
