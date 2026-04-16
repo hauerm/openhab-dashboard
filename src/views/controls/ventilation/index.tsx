@@ -10,6 +10,10 @@ import { useVentilationControlModel } from "./model";
 
 const TEXT_SHADOW_CLASS = "[text-shadow:0_2px_8px_var(--color-ui-shadow-text)]";
 const TITLE_TEXT_SHADOW_CLASS = "[text-shadow:0_2px_10px_var(--color-ui-shadow-text)]";
+const OVERLAY_ACTION_BUTTON_CLASS =
+  "pointer-events-auto flex h-full min-h-0 w-full items-center justify-center overflow-hidden rounded-2xl border border-ui-border-subtle bg-ui-surface-panel text-ui-foreground shadow-xl backdrop-blur-md transition hover:bg-ui-surface-muted disabled:cursor-not-allowed disabled:opacity-50";
+const ACTIVE_ACTION_BUTTON_CLASS =
+  "border-semantic-active-solid bg-status-good-surface shadow-[0_0_36px_var(--color-semantic-active-glow)]";
 
 interface VentilationHudControlProps {
   definition: VentilationControlDefinition;
@@ -92,82 +96,97 @@ export const VentilationOverlayControl = ({
 }: VentilationOverlayControlProps) => {
   const { manualLevel, actualLevel, sending, setManualLevel } =
     useVentilationControlModel();
-  const toggleButtons: HeliosManualLevel[] = [-1, 0, 1, 2, 3, 4];
+  const manualButtons: Exclude<HeliosManualLevel, -1>[] = [0, 1, 2, 3, 4];
+  const currentLevelLabel =
+    actualLevel === null ? "--" : HELIOS_MANUAL_LEVEL_LABELS[actualLevel];
+  const manualModeLabel =
+    manualLevel === -1
+      ? "Automatik"
+      : manualLevel === null
+      ? "--"
+      : HELIOS_MANUAL_LEVEL_LABELS[manualLevel];
 
   return (
     <ViewOverlayShell onClose={onClose} layout="fullscreen">
       <div
-        className="pointer-events-none flex h-full w-full items-center justify-center px-4 md:px-8"
         data-testid="ventilation-overlay"
+        className="pointer-events-none relative h-full w-full overflow-hidden"
       >
-        <div className="pointer-events-none w-full max-w-7xl">
-          <div className="mb-8 flex items-end justify-between gap-4 text-ui-foreground">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ui-foreground-muted">
-                {definition.label}
-              </p>
-              <p
-                data-testid="ventilation-overlay-status"
-                className={`text-4xl font-bold md:text-6xl ${TITLE_TEXT_SHADOW_CLASS}`}
-              >
-                {actualLevel === null ? "--" : HELIOS_MANUAL_LEVEL_LABELS[actualLevel]}
-              </p>
-            </div>
-          </div>
+        <div className="pointer-events-none grid h-full min-h-0 w-full grid-cols-4 gap-2 p-2 md:gap-3 md:p-3">
+          <section className="pointer-events-none flex flex-col items-start justify-start">
+            <p className="text-xs font-semibold tracking-wide text-ui-foreground-muted md:text-sm">
+              {definition.label}
+            </p>
+            <p
+              data-testid="ventilation-overlay-status"
+              className={`text-4xl font-bold text-ui-foreground md:text-6xl ${TITLE_TEXT_SHADOW_CLASS}`}
+            >
+              {currentLevelLabel}
+            </p>
+            <p
+              data-testid="ventilation-overlay-mode"
+              className="mt-2 text-sm font-semibold text-ui-foreground-muted md:text-lg"
+            >
+              {manualModeLabel}
+            </p>
+          </section>
 
-          <div className="grid w-full grid-cols-6 gap-2 md:gap-5">
-            {toggleButtons.map((level) => (
+          <section className="pointer-events-none grid h-full min-h-0 grid-rows-[minmax(0,1fr)] gap-2">
+            <button
+              type="button"
+              data-testid="ventilation-control-auto"
+              onClick={() => {
+                void setManualLevel(-1);
+              }}
+              disabled={sending}
+              className={`${OVERLAY_ACTION_BUTTON_CLASS} ${
+                manualLevel === -1 ? ACTIVE_ACTION_BUTTON_CLASS : ""
+              }`}
+              aria-label={`${definition.label} auf Automatik setzen`}
+            >
+              {sending ? (
+                <div className="h-10 w-10 animate-spin rounded-full border-2 border-ui-border-strong border-t-ui-foreground md:h-12 md:w-12" />
+              ) : (
+                <MdAutoMode className="h-[70%] w-[70%] max-h-[12rem] max-w-[12rem] md:max-h-[14rem] md:max-w-[14rem]" />
+              )}
+            </button>
+          </section>
+
+          <section className="pointer-events-none grid h-full min-h-0 grid-rows-[repeat(5,minmax(0,1fr))] gap-2 overflow-hidden">
+            {manualButtons.map((level) => (
               <button
                 key={level}
                 type="button"
+                data-testid={`ventilation-control-manual-${level}`}
                 onClick={() => {
                   void setManualLevel(level);
                 }}
                 disabled={sending}
-                className={`
-                  pointer-events-auto
-                  relative aspect-square w-full rounded-2xl p-2 font-bold text-ui-foreground transition-all duration-200
-                  border shadow-xl backdrop-blur-md backdrop-saturate-150 md:rounded-3xl md:p-3
-                  ${
-                    actualLevel === level
-                      ? "scale-105 border-ui-border-strong bg-ui-surface-muted shadow-2xl"
-                      : manualLevel === level
-                      ? manualLevel === -1
-                        ? "scale-105 border-semantic-active-solid bg-status-good-surface shadow-[0_0_36px_var(--color-semantic-active-glow)]"
-                        : "scale-105 border-ui-border-strong bg-ui-surface-muted shadow-2xl"
-                      : "border-ui-border-subtle bg-ui-surface-overlay shadow-lg hover:bg-ui-surface-panel"
-                  }
-                  disabled:cursor-not-allowed disabled:opacity-50
-                `}
+                className={`${OVERLAY_ACTION_BUTTON_CLASS} ${
+                  manualLevel === level
+                    ? "border-ui-border-strong bg-ui-surface-muted shadow-2xl"
+                    : ""
+                }`}
                 aria-label={`${definition.label} auf ${HELIOS_MANUAL_LEVEL_LABELS[level]} setzen`}
               >
-                <div className="flex items-center justify-center">
-                  {sending ? (
-                    <div className="h-10 w-10 animate-spin rounded-full border-2 border-ui-border-strong border-t-ui-foreground md:h-12 md:w-12" />
-                  ) : (
-                    <div
-                    className={`${
-                        actualLevel === level || manualLevel === level
-                          ? "text-ui-foreground"
-                          : "text-ui-foreground-muted"
-                      }`}
-                    >
-                      {getFanIcon(level)}
-                    </div>
-                  )}
-                </div>
-                {manualLevel === level || actualLevel === level ? (
-                  <div
-                    className={`pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-t ${
-                      manualLevel === level && manualLevel === -1
-                        ? "from-status-good-surface to-transparent"
-                        : "from-ui-surface-muted to-transparent"
-                    } shadow-inner`}
-                  />
-                ) : null}
+                {sending ? (
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-ui-border-strong border-t-ui-foreground md:h-10 md:w-10" />
+                ) : (
+                  <span
+                    className={
+                      manualLevel === level
+                        ? "text-ui-foreground"
+                        : "text-ui-foreground-muted"
+                    }
+                  >
+                    {getFanIcon(level)}
+                  </span>
+                )}
               </button>
             ))}
-          </div>
+          </section>
+
+          <section className="pointer-events-none" aria-hidden="true" />
         </div>
       </div>
     </ViewOverlayShell>

@@ -8,6 +8,9 @@ const ViewBackground = () => {
     (state) => state.missingAssetByView[currentView]
   );
   const setMissingAsset = useViewStore((state) => state.setMissingAsset);
+  const currentViewLabel = useViewStore(
+    (state) => state.viewLabels[currentView] ?? VIEWS[currentView].label
+  );
 
   const currentViewConfig = VIEWS[currentView];
   const resolvedViewImage = resolveViewImagePath(currentViewConfig, missingAsset);
@@ -17,7 +20,7 @@ const ViewBackground = () => {
       <img
         data-testid="view-background-image"
         src={resolvedViewImage.resolvedImage}
-        alt={`${currentViewConfig.label} Kontextfoto`}
+        alt={`${currentViewLabel} Kontextfoto`}
         className="h-full w-full object-cover object-center"
         onError={() => {
           setMissingAsset(currentView, true);

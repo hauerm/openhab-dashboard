@@ -19,15 +19,6 @@ interface ControlDefinitionBase<
   defaultPosition: ControlPosition;
 }
 
-export interface ViewMetricControlItemRefs {
-  primaryItemName?: string;
-}
-
-export interface ViewMetricControlDefinition
-  extends ControlDefinitionBase<"view-metric", ViewMetricControlItemRefs> {
-  metricKey: "house-temperature" | "house-night-status";
-}
-
 export interface LightControlItemRefs {
   itemName: string;
 }
@@ -79,7 +70,6 @@ export type VentilationControlDefinition = ControlDefinitionBase<
 >;
 
 export type ViewControlDefinition =
-  | ViewMetricControlDefinition
   | LightControlDefinition
   | RaffstoreControlDefinition
   | TvControlDefinition

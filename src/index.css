@@ -37,20 +37,20 @@
   --color-status-neutral-emphasis: #94a3b8;
   --color-status-neutral-foreground: #f8fafc;
 
-  --color-illuminance-night-surface: #172554d9;
-  --color-illuminance-night-emphasis: #1d4ed8a6;
+  --color-illuminance-night-surface: #1d4ed840;
+  --color-illuminance-night-emphasis: #1d4ed866;
   --color-illuminance-night-foreground: #dbeafe;
-  --color-illuminance-dim-surface: #334155d9;
-  --color-illuminance-dim-emphasis: #64748bb3;
+  --color-illuminance-dim-surface: #64748b40;
+  --color-illuminance-dim-emphasis: #64748b66;
   --color-illuminance-dim-foreground: #f8fafc;
-  --color-illuminance-soft-surface: #475569cc;
-  --color-illuminance-soft-emphasis: #94a3b8a6;
+  --color-illuminance-soft-surface: #94a3b840;
+  --color-illuminance-soft-emphasis: #94a3b866;
   --color-illuminance-soft-foreground: #f8fafc;
-  --color-illuminance-bright-surface: #0f766ebf;
-  --color-illuminance-bright-emphasis: #67e8f9b3;
+  --color-illuminance-bright-surface: #06b6d440;
+  --color-illuminance-bright-emphasis: #67e8f966;
   --color-illuminance-bright-foreground: #ecfeff;
-  --color-illuminance-sunny-surface: #ca8a04cc;
-  --color-illuminance-sunny-emphasis: #fde047bf;
+  --color-illuminance-sunny-surface: #f59e0b40;
+  --color-illuminance-sunny-emphasis: #fde04766;
   --color-illuminance-sunny-foreground: #fefce8;
 
   --color-chart-series-1: #38bdf8;

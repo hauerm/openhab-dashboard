@@ -17,6 +17,7 @@ const AUTO_HIDE_DELAY_MS = 7000;
 const BottomDock = ({ onViewChange }: BottomDockProps) => {
   const currentView = useViewStore((state) => state.currentView);
   const setCurrentView = useViewStore((state) => state.setCurrentView);
+  const viewLabels = useViewStore((state) => state.viewLabels);
   const [isDockVisible, setIsDockVisible] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const hideTimerRef = useRef<number | null>(null);
@@ -160,6 +161,7 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
           >
             {VIEW_IDS.map((viewId) => {
               const viewConfig = VIEWS[viewId];
+              const viewLabel = viewLabels[viewId] ?? viewConfig.label;
               const isActive = currentView === viewId;
 
               return (
@@ -173,12 +175,12 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
                     showDock();
                   }}
                   className="group relative h-32 aspect-[4/3] shrink-0 overflow-hidden bg-ui-surface-panel text-left transition md:h-40"
-                  aria-label={`Wechsel zu ${viewConfig.label}`}
+                  aria-label={`Wechsel zu ${viewLabel}`}
                   aria-current={isActive ? "page" : undefined}
                 >
                   <img
                     src={viewConfig.baseImage}
-                    alt={`Thumbnail ${viewConfig.label}`}
+                    alt={`Thumbnail ${viewLabel}`}
                     className="h-full w-full object-cover object-center transition duration-300 group-hover:scale-105"
                     draggable={false}
                     onError={(event) => {
@@ -197,7 +199,7 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
                     }`}
                   />
                   <div className="absolute inset-x-0 bottom-0 bg-ui-surface-image-strong px-3 py-1.5 text-sm font-semibold text-ui-foreground md:text-base">
-                    {viewConfig.label}
+                    {viewLabel}
                   </div>
                   <div
                     className={`absolute inset-x-0 bottom-0 h-1 transition ${

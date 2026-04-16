@@ -19,6 +19,7 @@ export interface ViewTrackedItemState {
 
 export interface ViewState {
   currentView: ViewId;
+  viewLabels: Record<ViewId, string>;
   itemStates: Record<string, ViewTrackedItemState>;
   missingAssetByView: Record<ViewId, boolean>;
   loading: boolean;
