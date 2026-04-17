@@ -14,6 +14,8 @@ import {
   Samsung_TV_Wohnzimmer_Kanalnummer,
   Samsung_TV_Wohnzimmer_Power,
   Samsung_TV_Wohnzimmer_Titel,
+  Shelly_Plug_Wohnzimmer_Betrieb,
+  Shelly_Plug_Wohnzimmer_Stromverbrauch,
 } from "./domain/hauer-items";
 import { resetViewStoreForTests } from "./stores/viewStore";
 import App from "./App";
@@ -133,6 +135,8 @@ const buildDefaultItems = (): Item[] => [
   createItem(Samsung_TV_Wohnzimmer_Kanal, "ORF 1", "String"),
   createItem(Samsung_TV_Wohnzimmer_Kanalnummer, "1", "String"),
   createItem(Samsung_TV_Wohnzimmer_Titel, "ZIB", "String"),
+  createItem(Shelly_Plug_Wohnzimmer_Betrieb, "ON"),
+  createItem(Shelly_Plug_Wohnzimmer_Stromverbrauch, "24.3 W", "Number:Power"),
 ];
 
 describe("App integration", () => {
@@ -193,6 +197,10 @@ describe("App integration", () => {
         "Adresse Hauer"
       );
     });
+    expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
+      "data-visible",
+      "true"
+    );
     expect(screen.getByTestId("dock-button-eg")).toBeInTheDocument();
     expect(screen.getByTestId("dock-button-living")).toBeInTheDocument();
     expect(screen.getByTestId("view-sidebar")).toBeInTheDocument();
@@ -231,6 +239,35 @@ describe("App integration", () => {
     expect(screen.getByTestId("hud-metric-illuminance")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-co2")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-health")).toBeInTheDocument();
+  });
+
+  it("hides the bottom dock when clicking outside it", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
+    });
+
+    expect(screen.getByTestId("dock-button-eg")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("view-background-image"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
+        "data-visible",
+        "false"
+      );
+    });
+
+    await user.click(screen.getByTestId("dock-expand-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
+        "data-visible",
+        "true"
+      );
+    });
   });
 
   it("keeps the sidebar visible across location-backed views", async () => {
@@ -379,11 +416,19 @@ describe("App integration", () => {
       )
     ).toBeInTheDocument();
     expect(
+      screen.getByTestId(
+        `living-control-placeholder-icon-${Shelly_Plug_Wohnzimmer_Betrieb}-power-on`
+      )
+    ).toBeInTheDocument();
+    expect(
       screen.getByTestId(`living-control-tv-small-${Samsung_TV_Wohnzimmer_Power}`)
     ).toHaveTextContent("1 ORF 1");
     expect(
       screen.getByTestId(`living-control-tv-large-${Samsung_TV_Wohnzimmer_Power}`)
     ).toHaveTextContent("ZIB");
+    expect(
+      screen.getByTestId(`living-control-power-large-${Shelly_Plug_Wohnzimmer_Betrieb}`)
+    ).toHaveTextContent("24,3 W");
 
     await user.click(
       screen.getByTestId(`living-control-placeholder-${KNX_JA1_Raffstore_Wohnzimmer}`)
@@ -445,6 +490,22 @@ describe("App integration", () => {
     );
     await user.click(screen.getByTestId("overlay-backdrop"));
 
+    await user.click(
+      screen.getByTestId(`living-control-placeholder-${Shelly_Plug_Wohnzimmer_Betrieb}`)
+    );
+    expect(
+      screen.getByTestId(`living-power-overlay-state-${Shelly_Plug_Wohnzimmer_Betrieb}`)
+    ).toHaveTextContent("Ein");
+    expect(
+      screen.getByTestId(
+        `living-power-overlay-consumption-${Shelly_Plug_Wohnzimmer_Betrieb}`
+      )
+    ).toHaveTextContent("24,3 W");
+    await user.click(
+      screen.getByTestId(`living-power-overlay-power-${Shelly_Plug_Wohnzimmer_Betrieb}`)
+    );
+    await user.click(screen.getByTestId("overlay-backdrop"));
+
     await waitFor(() => {
       expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
         KNX_JA1_Raffstore_Wohnzimmer,
@@ -473,6 +534,11 @@ describe("App integration", () => {
       );
       expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
         Samsung_TV_Wohnzimmer_Power,
+        "OFF",
+        "OnOff"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        Shelly_Plug_Wohnzimmer_Betrieb,
         "OFF",
         "OnOff"
       );

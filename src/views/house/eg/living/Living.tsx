@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { MdOutlineOpenWith } from "react-icons/md";
 import { LightHudControl, LightOverlayControl } from "../../../controls/light";
+import { PowerHudControl, PowerOverlayControl } from "../../../controls/power";
 import {
   RaffstoreHudControl,
   RaffstoreOverlayControl,
@@ -129,8 +130,14 @@ const Living = ({
                     interactive={!layoutEditMode}
                     onOpenControl={onOpenControl}
                   />
-                ) : (
+                ) : definition.controlType === "tv" ? (
                   <TvHudControl
+                    definition={definition}
+                    interactive={!layoutEditMode}
+                    onOpenControl={onOpenControl}
+                  />
+                ) : (
+                  <PowerHudControl
                     definition={definition}
                     interactive={!layoutEditMode}
                     onOpenControl={onOpenControl}
@@ -151,6 +158,11 @@ const Living = ({
         <LightOverlayControl definition={activeControl} onClose={onCloseControl} />
       ) : activeControl?.controlType === "tv" ? (
         <TvOverlayControl
+          definition={activeControl}
+          onClose={onCloseControl}
+        />
+      ) : activeControl?.controlType === "power" ? (
+        <PowerOverlayControl
           definition={activeControl}
           onClose={onCloseControl}
         />

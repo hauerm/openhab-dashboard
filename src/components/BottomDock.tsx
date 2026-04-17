@@ -19,6 +19,7 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
   const setCurrentView = useViewStore((state) => state.setCurrentView);
   const viewLabels = useViewStore((state) => state.viewLabels);
   const [isDockVisible, setIsDockVisible] = useState(true);
+  const dockRootRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const hideTimerRef = useRef<number | null>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -98,6 +99,30 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
 
   useEffect(() => clearHideTimer, [clearHideTimer]);
 
+  useEffect(() => {
+    if (!isDockVisible) {
+      return;
+    }
+
+    const handleDocumentPointerDown = (event: PointerEvent) => {
+      const dockRoot = dockRootRef.current;
+      if (!dockRoot || !(event.target instanceof Node)) {
+        return;
+      }
+      if (dockRoot.contains(event.target)) {
+        return;
+      }
+
+      clearHideTimer();
+      setIsDockVisible(false);
+    };
+
+    document.addEventListener("pointerdown", handleDocumentPointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handleDocumentPointerDown);
+    };
+  }, [clearHideTimer, isDockVisible]);
+
   const scrollByDirection = useCallback((direction: "left" | "right") => {
     const container = scrollContainerRef.current;
     if (!container) {
@@ -127,11 +152,6 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
     scheduleDockAutoHide();
   }, [isDockVisible, scheduleDockAutoHide]);
 
-  const hideDock = useCallback(() => {
-    clearHideTimer();
-    setIsDockVisible(false);
-  }, [clearHideTimer]);
-
   const dockPanelClassName = `transition-all duration-500 ease-out ${
     isDockVisible
       ? "translate-y-0 opacity-100"
@@ -145,8 +165,12 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
   }`;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40">
-      <div className={dockPanelClassName}>
+    <div ref={dockRootRef} className="fixed inset-x-0 bottom-0 z-40">
+      <div
+        data-testid="bottom-dock-panel"
+        data-visible={isDockVisible ? "true" : "false"}
+        className={dockPanelClassName}
+      >
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-ui-surface-shell via-ui-surface-overlay to-transparent" />
 
         <div className="relative">
@@ -240,15 +264,6 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
             </>
           )}
 
-          <button
-            type="button"
-            data-testid="dock-hide-button"
-            aria-label="Dock ausblenden"
-            onClick={hideDock}
-            className="pointer-events-auto absolute bottom-1 right-2 rounded-sm bg-ui-surface-overlay px-2 py-1 text-xs font-medium text-ui-foreground-muted transition hover:bg-ui-surface-panel hover:text-ui-foreground"
-          >
-            Ausblenden
-          </button>
         </div>
       </div>
 
