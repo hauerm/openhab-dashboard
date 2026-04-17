@@ -8,9 +8,12 @@ import {
   Samsung_TV_Wohnzimmer_Kanalnummer,
   Samsung_TV_Wohnzimmer_Power,
   Samsung_TV_Wohnzimmer_Titel,
+  Shelly_Plug_Wohnzimmer_Betrieb,
+  Shelly_Plug_Wohnzimmer_Stromverbrauch,
 } from "../../../../domain/hauer-items";
 import {
   type LightControlDefinition,
+  type PowerControlDefinition,
   type RaffstoreControlDefinition,
   type TvControlDefinition,
   collectTrackedItemNamesFromControlDefinitions,
@@ -20,6 +23,7 @@ export const LIVING_VIEW_CONTROL_DEFINITIONS: readonly (
   | RaffstoreControlDefinition
   | LightControlDefinition
   | TvControlDefinition
+  | PowerControlDefinition
 )[] = [
   {
     controlId: KNX_JA1_Raffstore_Wohnzimmer,
@@ -76,6 +80,17 @@ export const LIVING_VIEW_CONTROL_DEFINITIONS: readonly (
     },
     layoutMetadataItemNames: [Samsung_TV_Wohnzimmer_Power],
     defaultPosition: { x: 85, y: 44 },
+  },
+  {
+    controlId: Shelly_Plug_Wohnzimmer_Betrieb,
+    controlType: "power",
+    label: "Shelly Plug",
+    itemRefs: {
+      powerItemName: Shelly_Plug_Wohnzimmer_Betrieb,
+      consumptionItemName: Shelly_Plug_Wohnzimmer_Stromverbrauch,
+    },
+    layoutMetadataItemNames: [Shelly_Plug_Wohnzimmer_Betrieb],
+    defaultPosition: { x: 70, y: 44 },
   },
 ] as const;
 

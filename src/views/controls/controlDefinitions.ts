@@ -50,6 +50,16 @@ export type TvControlDefinition = ControlDefinitionBase<
   TvControlItemRefs
 >;
 
+export interface PowerControlItemRefs {
+  powerItemName: string;
+  consumptionItemName: string;
+}
+
+export type PowerControlDefinition = ControlDefinitionBase<
+  "power",
+  PowerControlItemRefs
+>;
+
 export interface LocationPropertyHistoryControlDefinition
   extends ControlDefinitionBase<"location-property-history", Record<string, never>> {
   metricKey: "temperature" | "humidity" | "illuminance" | "co2" | "air-quality";
@@ -73,6 +83,7 @@ export type ViewControlDefinition =
   | LightControlDefinition
   | RaffstoreControlDefinition
   | TvControlDefinition
+  | PowerControlDefinition
   | LocationPropertyHistoryControlDefinition
   | VentilationControlDefinition;
 
