@@ -64,26 +64,18 @@ npm run dev
 npm run build
 ```
 
-## Vendored Items Package
+## openHAB Item Model
 
-This dashboard consumes `openhab-hauer-items` as a vendored `file:` dependency:
+The dashboard reads item state, labels, semantic metadata, and automation metadata
+live from openHAB via REST and WebSocket.
 
-- Source of truth: `openhab-automation/packages/openhab-hauer-items`
-- Vendored target: `vendor/openhab-hauer-items`
-- Adapter module: `src/domain/hauer-items.ts` (exports `ITEMS`, `ITEM_META`)
+- Runtime model source: openHAB REST `/items?recursive=false&metadata=semantics,automation`
+- Live updates: openHAB WebSocket item events
+- Direct item references: documented as constants in `src/domain/openhab-item-names.ts`
 
-Update workflow:
-
-```bash
-cd ../openhab-automation
-npm run sync:hauer-items:dashboard
-
-cd ../openhab-dashboard
-npm install
-```
-
-`sync:hauer-items:dashboard` runs generation + build + export and therefore needs
-the OpenHAB generator environment configured in `openhab-automation`.
+Keep direct item references in `openhab-item-names.ts` when a control cannot yet be
+discovered semantically. The static view descriptors consume those constants; no
+generated or vendored item package is used.
 
 ## Architecture
 

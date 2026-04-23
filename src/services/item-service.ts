@@ -90,9 +90,12 @@ export class ItemService {
    * Fetch all items from OpenHAB
    */
   static async fetchItems(): Promise<Item[]> {
-    const response = await fetch(`${OPENHAB_BASE_URL}/items`, {
-      headers: getOpenHABAuthHeaders(),
-    });
+    const response = await fetch(
+      `${OPENHAB_BASE_URL}/items?recursive=false&metadata=semantics,automation`,
+      {
+        headers: getOpenHABAuthHeaders(),
+      }
+    );
     if (!response.ok) {
       throw new Error("Failed to fetch items");
     }

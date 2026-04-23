@@ -10,7 +10,7 @@ import {
   Samsung_TV_Wohnzimmer_Titel,
   Shelly_Plug_Wohnzimmer_Betrieb,
   Shelly_Plug_Wohnzimmer_Stromverbrauch,
-} from "../../../../domain/hauer-items";
+} from "../../../../domain/openhab-item-names";
 import {
   type LightControlDefinition,
   type PowerControlDefinition,
