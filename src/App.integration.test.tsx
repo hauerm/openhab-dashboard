@@ -38,9 +38,6 @@ const mocks = vi.hoisted(() => ({
   websocketSendCommand: vi.fn(),
   locationPropertyInitialize: vi.fn(),
   locationPropertyEnsureHistoryRange: vi.fn(),
-  ventilationInitialize: vi.fn(),
-  ventilationSetError: vi.fn(),
-  ventilationUpdateValue: vi.fn(),
   wsListener: null as ((update: { itemName: string; rawState: string }) => void) | null,
 }));
 
@@ -90,22 +87,6 @@ vi.mock("./stores/locationPropertyHistoryStore", () => ({
     return hook;
   },
 }));
-
-vi.mock("./stores/ventilationStore", () => {
-  const state = {
-    manualLevel: -1 as const,
-    actualLevel: 2 as const,
-    itemNames: new Set<string>(),
-    initialize: mocks.ventilationInitialize,
-    setError: mocks.ventilationSetError,
-    updateValue: mocks.ventilationUpdateValue,
-  };
-
-  const useVentilationStore: SelectorHook<typeof state> = (selector) =>
-    selector(state);
-
-  return { useVentilationStore };
-});
 const EQU_RAFFSTORE_TERRASSE = "Equ_Raffstore_Terrasse";
 const EQU_RAFFSTORE_STRASSE = "Equ_Raffstore_Strasse";
 
@@ -140,7 +121,7 @@ const buildDefaultItems = (): Item[] => [
     metadata: {
       "dashboard-location": {
         value: "v1",
-        config: { order: 0, baseImage: "/views/house/base.webp" },
+        config: { order: 0, baseImage: "/views/Hauer.webp" },
       },
     },
   }),
@@ -151,7 +132,7 @@ const buildDefaultItems = (): Item[] => [
     metadata: {
       "dashboard-location": {
         value: "v1",
-        config: { order: 100, baseImage: "/views/house/eg/base.webp" },
+        config: { order: 100, baseImage: "/views/EG.webp" },
       },
     },
   }),
@@ -162,7 +143,7 @@ const buildDefaultItems = (): Item[] => [
     metadata: {
       "dashboard-location": {
         value: "v1",
-        config: { order: 200, baseImage: "/views/house/eg/living/base.webp" },
+        config: { order: 200, baseImage: "/views/Wohnzimmer.webp" },
       },
     },
   }),
@@ -291,11 +272,6 @@ describe("App integration", () => {
     mocks.locationPropertyInitialize.mockResolvedValue(undefined);
     mocks.locationPropertyEnsureHistoryRange.mockReset();
     mocks.locationPropertyEnsureHistoryRange.mockResolvedValue(undefined);
-    mocks.ventilationInitialize.mockReset();
-    mocks.ventilationInitialize.mockResolvedValue(undefined);
-    mocks.ventilationSetError.mockReset();
-    mocks.ventilationUpdateValue.mockReset();
-
     mocks.subscribeWebSocketListener.mockReset();
     mocks.subscribeWebSocketListener.mockImplementation((listener) => {
       mocks.wsListener = listener;
@@ -315,7 +291,7 @@ describe("App integration", () => {
     const background = screen.getByTestId("view-background-image");
     expect(background).toHaveAttribute(
       "src",
-      expect.stringContaining("/views/house/base.webp")
+      expect.stringContaining("/views/Hauer.webp")
     );
     await waitFor(() => {
       expect(background).toHaveAttribute("alt", "Adresse Hauer Kontextfoto");
@@ -358,7 +334,7 @@ describe("App integration", () => {
     const background = screen.getByTestId("view-background-image");
     expect(background).toHaveAttribute(
       "src",
-      expect.stringContaining("/views/house/eg/base.webp")
+      expect.stringContaining("/views/EG.webp")
     );
     expect(screen.getByTestId("hud-metric-temp")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-humidity")).toBeInTheDocument();
@@ -509,7 +485,7 @@ describe("App integration", () => {
 
     expect(screen.getByTestId("view-background-image")).toHaveAttribute(
       "src",
-      expect.stringContaining("/views/house/eg/living/base.webp")
+      expect.stringContaining("/views/Wohnzimmer.webp")
     );
     expect(
       screen.queryByTestId(`raffstore-control-${EQU_RAFFSTORE_TERRASSE}`)

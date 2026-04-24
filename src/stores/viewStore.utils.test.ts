@@ -26,13 +26,13 @@ describe("viewStore utils", () => {
     const resolved = resolveViewImagePath(
       {
         label: "Haus",
-        baseImage: "/views/house/base.webp",
+        baseImage: "/views/Hauer.webp",
       },
       true
     );
 
     expect(resolved.resolvedImage).toBe(VIEW_MISSING_FALLBACK_IMAGE);
-    expect(resolved.requestedViewImage).toBe("/views/house/base.webp");
+    expect(resolved.requestedViewImage).toBe("/views/Hauer.webp");
     expect(resolved.usedFallback).toBe(true);
   });
 });
