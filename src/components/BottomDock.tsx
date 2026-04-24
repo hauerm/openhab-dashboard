@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MdChevronLeft, MdChevronRight, MdKeyboardArrowUp } from "react-icons/md";
+import {
+  MdChevronLeft,
+  MdChevronRight,
+  MdKeyboardArrowUp,
+  MdSubdirectoryArrowLeft,
+} from "react-icons/md";
 import { useViewStore } from "../stores/viewStore";
 import type { ViewId } from "../types/view";
 
@@ -12,13 +17,40 @@ const MIN_SCROLL_STEP = 240;
 const MAX_SCROLL_STEP = 420;
 const SCROLL_STEP_FACTOR = 0.82;
 const AUTO_HIDE_DELAY_MS = 7000;
+const EDGE_FADE_WIDTH_CLASS = "w-16 sm:w-20 md:w-24";
+const SCROLL_CONTENT_INSET_CLASS = "px-16 sm:px-20 md:px-24";
+const EDGE_FADE_BASE_CLASS =
+  "pointer-events-none absolute inset-y-0 z-10 transition-opacity duration-300";
+const EDGE_BUTTON_BASE_CLASS =
+  "pointer-events-auto absolute top-1/2 z-20 -translate-y-1/2 rounded-full border border-ui-border-subtle bg-ui-surface-overlay/95 p-1.5 text-ui-foreground shadow-lg backdrop-blur-sm transition";
+
+const clamp = (value: number, min: number, max: number): number =>
+  Math.min(Math.max(value, min), max);
+
+interface DockItem {
+  viewId: ViewId;
+  isParent: boolean;
+}
+
+const resetHorizontalScroll = (container: HTMLDivElement | null): void => {
+  if (!container) {
+    return;
+  }
+
+  if (typeof container.scrollTo === "function") {
+    container.scrollTo({ left: 0, behavior: "auto" });
+    return;
+  }
+
+  container.scrollLeft = 0;
+};
 
 const BottomDock = ({ onViewChange }: BottomDockProps) => {
   const currentView = useViewStore((state) => state.currentView);
   const setCurrentView = useViewStore((state) => state.setCurrentView);
-  const viewIds = useViewStore((state) => state.viewIds);
   const viewConfigs = useViewStore((state) => state.viewConfigs);
   const viewLabels = useViewStore((state) => state.viewLabels);
+  const model = useViewStore((state) => state.model);
   const [isDockVisible, setIsDockVisible] = useState(true);
   const dockRootRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -26,6 +58,42 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const dockItems = (() => {
+    if (!model) {
+      return [] as DockItem[];
+    }
+
+    const currentLocation = model.locationsByName.get(currentView);
+    if (!currentLocation) {
+      return [] as DockItem[];
+    }
+
+    const childLocationNames =
+      model.childLocationNamesByParentName[currentView] ?? [];
+
+    if (currentLocation.parentName === null) {
+      return childLocationNames.map((viewId) => ({ viewId, isParent: false }));
+    }
+
+    const parentName = currentLocation.parentName;
+
+    if (childLocationNames.length > 0) {
+      return [
+        { viewId: parentName, isParent: true },
+        ...childLocationNames.map((viewId) => ({ viewId, isParent: false })),
+      ];
+    }
+
+    const siblingLocationNames =
+      model.childLocationNamesByParentName[parentName] ?? [];
+
+    return [
+      { viewId: parentName, isParent: true },
+      ...siblingLocationNames.map((viewId) => ({ viewId, isParent: false })),
+    ];
+  })();
+  const dockItemsSignature = dockItems.map((item) => item.viewId).join("|");
 
   const updateScrollState = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -38,10 +106,11 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
 
     const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth);
     const overflowing = maxScrollLeft > SCROLL_EDGE_EPSILON;
+    const clampedScrollLeft = clamp(container.scrollLeft, 0, maxScrollLeft);
 
     setIsOverflowing(overflowing);
-    setCanScrollLeft(container.scrollLeft > SCROLL_EDGE_EPSILON);
-    setCanScrollRight(container.scrollLeft < maxScrollLeft - SCROLL_EDGE_EPSILON);
+    setCanScrollLeft(clampedScrollLeft > SCROLL_EDGE_EPSILON);
+    setCanScrollRight(clampedScrollLeft < maxScrollLeft - SCROLL_EDGE_EPSILON);
   }, []);
 
   const clearHideTimer = useCallback(() => {
@@ -88,6 +157,17 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
       resizeObserver?.disconnect();
     };
   }, [updateScrollState]);
+
+  useEffect(() => {
+    const animationFrameId = window.requestAnimationFrame(() => {
+      resetHorizontalScroll(scrollContainerRef.current);
+      updateScrollState();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+    };
+  }, [currentView, dockItemsSignature, isDockVisible, updateScrollState]);
 
   useEffect(() => {
     if (!isDockVisible) {
@@ -175,16 +255,33 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-ui-surface-shell via-ui-surface-overlay to-transparent" />
 
         <div className="relative">
+          {isOverflowing ? (
+            <>
+              <div
+                aria-hidden="true"
+                className={`${EDGE_FADE_BASE_CLASS} ${EDGE_FADE_WIDTH_CLASS} left-0 bg-gradient-to-r from-ui-surface-shell via-ui-surface-shell/90 to-transparent ${
+                  canScrollLeft ? "opacity-100" : "opacity-75"
+                }`}
+              />
+              <div
+                aria-hidden="true"
+                className={`${EDGE_FADE_BASE_CLASS} ${EDGE_FADE_WIDTH_CLASS} right-0 bg-gradient-to-l from-ui-surface-shell via-ui-surface-shell/90 to-transparent ${
+                  canScrollRight ? "opacity-100" : "opacity-75"
+                }`}
+              />
+            </>
+          ) : null}
+
           <div
             ref={scrollContainerRef}
             onPointerDown={handleDockInteraction}
             onTouchStart={handleDockInteraction}
             className={`flex gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
-              isOverflowing ? "" : "justify-center"
+              isOverflowing ? SCROLL_CONTENT_INSET_CLASS : "justify-center px-4"
             }`}
             style={{ touchAction: "pan-x" }}
           >
-            {viewIds.map((viewId) => {
+            {dockItems.map(({ viewId, isParent }) => {
               const viewConfig = viewConfigs[viewId];
               if (!viewConfig) {
                 return null;
@@ -203,7 +300,11 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
                     showDock();
                   }}
                   className="group relative h-32 aspect-[4/3] shrink-0 overflow-hidden bg-ui-surface-panel text-left transition md:h-40"
-                  aria-label={`Wechsel zu ${viewLabel}`}
+                  aria-label={
+                    isParent
+                      ? `Ebene hoch zu ${viewLabel}`
+                      : `Wechsel zu ${viewLabel}`
+                  }
                   aria-current={isActive ? "page" : undefined}
                 >
                   <img
@@ -219,6 +320,14 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
                       event.currentTarget.src = "/views/missing.jpg";
                     }}
                   />
+                  {isParent ? (
+                    <div className="absolute left-2 top-2 z-10 inline-flex items-center justify-center rounded-full bg-ui-surface-overlay/90 p-1.5 text-ui-foreground shadow-md backdrop-blur-sm">
+                      <MdSubdirectoryArrowLeft
+                        data-testid={`dock-parent-icon-${viewId}`}
+                        className="h-5 w-5 md:h-6 md:w-6"
+                      />
+                    </div>
+                  ) : null}
                   <div
                     className={`absolute inset-0 transition ${
                       isActive
@@ -248,8 +357,11 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
                 data-testid="dock-scroll-left"
                 aria-label="Thumbnails nach links scrollen"
                 onClick={() => scrollByDirection("left")}
-                className={`pointer-events-auto absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-ui-surface-image-strong p-1.5 text-ui-foreground shadow-lg transition ${
-                  canScrollLeft ? "opacity-100 hover:bg-ui-surface-panel" : "opacity-40"
+                disabled={!canScrollLeft}
+                className={`${EDGE_BUTTON_BASE_CLASS} left-2 ${
+                  canScrollLeft
+                    ? "opacity-100 hover:bg-ui-surface-panel"
+                    : "cursor-default opacity-55"
                 }`}
               >
                 <MdChevronLeft className="h-10 w-10" />
@@ -259,8 +371,11 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
                 data-testid="dock-scroll-right"
                 aria-label="Thumbnails nach rechts scrollen"
                 onClick={() => scrollByDirection("right")}
-                className={`pointer-events-auto absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-ui-surface-image-strong p-1.5 text-ui-foreground shadow-lg transition ${
-                  canScrollRight ? "opacity-100 hover:bg-ui-surface-panel" : "opacity-40"
+                disabled={!canScrollRight}
+                className={`${EDGE_BUTTON_BASE_CLASS} right-2 ${
+                  canScrollRight
+                    ? "opacity-100 hover:bg-ui-surface-panel"
+                    : "cursor-default opacity-55"
                 }`}
               >
                 <MdChevronRight className="h-10 w-10" />

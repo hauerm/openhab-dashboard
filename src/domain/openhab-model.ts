@@ -92,6 +92,8 @@ export interface OpenHABSemanticModel {
   itemsByName: ReadonlyMap<string, Item>;
   locations: readonly OpenHABLocationView[];
   locationsByName: ReadonlyMap<string, OpenHABLocationView>;
+  rootLocationNames: readonly string[];
+  childLocationNamesByParentName: Readonly<Record<string, readonly string[]>>;
   controls: readonly DiscoveredControlDefinition[];
   controlsByLocation: Readonly<Record<string, readonly DiscoveredControlDefinition[]>>;
   trackedItemNames: ReadonlySet<string>;
@@ -371,7 +373,6 @@ const createControlsForEquipment = (
         itemRefs: {
           itemName: lightItem.name,
         },
-        legacyLayoutMetadataItemNames: [lightItem.name],
       },
     ];
   }
@@ -398,7 +399,6 @@ const createControlsForEquipment = (
           itemName: primaryItem.name,
           itemNames: openingItems.map((item) => item.name),
         },
-        legacyLayoutMetadataItemNames: openingItems.map((item) => item.name),
       },
     ];
   }
@@ -421,7 +421,6 @@ const createControlsForEquipment = (
           powerItemName: powerItem.name,
           consumptionItemName: consumptionItem?.name ?? "",
         },
-        legacyLayoutMetadataItemNames: [powerItem.name],
       },
     ];
   }
@@ -454,7 +453,6 @@ const createControlsForEquipment = (
           channelNumberItemName: channelNumberItem?.name ?? "",
           titleItemName: titleItem?.name ?? "",
         },
-        legacyLayoutMetadataItemNames: [powerItem.name],
       },
     ];
   }
@@ -480,7 +478,6 @@ const createControlsForEquipment = (
           manualModeItemName: manualModeItem.name,
           actualLevelItemName: actualLevelItem.name,
         },
-        legacyLayoutMetadataItemNames: [manualModeItem.name, actualLevelItem.name],
       },
     ];
   }
@@ -549,6 +546,42 @@ const sortLocations = (
   });
 };
 
+const buildChildLocationNamesByParentName = (
+  locations: readonly OpenHABLocationView[]
+): Record<string, readonly string[]> => {
+  const byParentName = new Map<string, OpenHABLocationView[]>();
+
+  for (const location of locations) {
+    if (!location.parentName) {
+      continue;
+    }
+
+    const siblings = byParentName.get(location.parentName) ?? [];
+    siblings.push(location);
+    byParentName.set(location.parentName, siblings);
+  }
+
+  return Object.fromEntries(
+    Array.from(byParentName.entries()).map(([parentName, siblings]) => [
+      parentName,
+      siblings
+        .sort((left, right) => {
+          if (left.order !== null || right.order !== null) {
+            const orderDelta =
+              (left.order ?? Number.MAX_SAFE_INTEGER) -
+              (right.order ?? Number.MAX_SAFE_INTEGER);
+            if (orderDelta !== 0) {
+              return orderDelta;
+            }
+          }
+
+          return left.label.localeCompare(right.label, "de-AT");
+        })
+        .map((location) => location.name),
+    ])
+  );
+};
+
 export const buildOpenHABSemanticModel = (
   items: readonly Item[]
 ): OpenHABSemanticModel => {
@@ -568,6 +601,10 @@ export const buildOpenHABSemanticModel = (
     }))
   ).filter((location) => !location.hidden);
   const locationsByName = new Map(locations.map((location) => [location.name, location]));
+  const rootLocationNames = locations
+    .filter((location) => location.parentName === null)
+    .map((location) => location.name);
+  const childLocationNamesByParentName = buildChildLocationNamesByParentName(locations);
   const childrenByGroupName = new Map<string, Item[]>();
 
   for (const item of items) {
@@ -634,6 +671,8 @@ export const buildOpenHABSemanticModel = (
     itemsByName,
     locations,
     locationsByName,
+    rootLocationNames,
+    childLocationNamesByParentName,
     controls,
     controlsByLocation,
     trackedItemNames,

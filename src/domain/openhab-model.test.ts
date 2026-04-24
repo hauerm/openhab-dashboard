@@ -156,6 +156,9 @@ describe("buildOpenHABSemanticModel", () => {
       "EG",
       "Wohnzimmer",
     ]);
+    expect(model.rootLocationNames).toEqual(["Hauer"]);
+    expect(model.childLocationNamesByParentName.Hauer).toEqual(["EG"]);
+    expect(model.childLocationNamesByParentName.EG).toEqual(["Wohnzimmer", "Essen"]);
   });
 
   it("traverses point to equipment to location for sidebar filtering", () => {
@@ -201,5 +204,24 @@ describe("buildOpenHABSemanticModel", () => {
     expect(itemHasSemanticProperty(temperature, PROPERTY_TEMPERATURE)).toBe(true);
     expect(itemHasSemanticProperty(humidity, PROPERTY_HUMIDITY)).toBe(true);
     expect(itemHasSemanticProperty(co2, PROPERTY_CO2)).toBe(true);
+  });
+
+  it("excludes hidden locations from root and child navigation lists", () => {
+    const model = buildOpenHABSemanticModel([
+      ...fixtureItems(),
+      createItem("Versteckt", "Group", ["LivingRoom"], ["EG"], {
+        label: "Versteckt",
+        metadata: {
+          "dashboard-location": {
+            value: "v1",
+            config: { order: 5, hidden: true },
+          },
+        },
+      }),
+    ]);
+
+    expect(model.locationsByName.has("Versteckt")).toBe(false);
+    expect(model.childLocationNamesByParentName.EG).toEqual(["Wohnzimmer", "Essen"]);
+    expect(model.rootLocationNames).toEqual(["Hauer"]);
   });
 });

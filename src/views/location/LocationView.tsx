@@ -142,9 +142,6 @@ const LocationView = ({
       controls.map((definition) => ({
         controlId: definition.controlId,
         metadataItemNames: [...definition.layoutMetadataItemNames],
-        legacyMetadataItemNames: [
-          ...(definition.legacyLayoutMetadataItemNames ?? []),
-        ],
         defaultPosition: definition.defaultPosition,
       })),
     [controls]
@@ -168,7 +165,6 @@ const LocationView = ({
     handleControlPointerUp,
     handleControlPointerCancel,
   } = useViewControlLayout({
-    viewId,
     controls: layoutControls,
     dragEnabled: layoutEditMode,
     blockedLeftPx,

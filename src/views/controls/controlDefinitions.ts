@@ -16,7 +16,6 @@ interface ControlDefinitionBase<
   label: string;
   itemRefs: TItemRefs;
   layoutMetadataItemNames: readonly string[];
-  legacyLayoutMetadataItemNames?: readonly string[];
   defaultPosition: ControlPosition;
 }
 

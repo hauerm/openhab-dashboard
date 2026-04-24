@@ -295,16 +295,14 @@ describe("App integration", () => {
     );
     await waitFor(() => {
       expect(background).toHaveAttribute("alt", "Adresse Hauer Kontextfoto");
-      expect(screen.getByTestId("dock-button-Hauer")).toHaveTextContent(
-        "Adresse Hauer"
-      );
+      expect(screen.getByTestId("dock-button-EG")).toHaveTextContent("EG");
     });
     expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
       "data-visible",
       "true"
     );
     expect(screen.getByTestId("dock-button-EG")).toBeInTheDocument();
-    expect(screen.getByTestId("dock-button-Wohnzimmer")).toBeInTheDocument();
+    expect(screen.queryByTestId("dock-button-Wohnzimmer")).not.toBeInTheDocument();
     expect(screen.getByTestId("view-sidebar")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-temp")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-humidity")).toBeInTheDocument();
@@ -341,6 +339,9 @@ describe("App integration", () => {
     expect(screen.getByTestId("hud-metric-illuminance")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-co2")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-health")).toBeInTheDocument();
+    expect(screen.getByTestId("dock-button-Hauer")).toBeInTheDocument();
+    expect(screen.getByTestId("dock-parent-icon-Hauer")).toBeInTheDocument();
+    expect(screen.getByTestId("dock-button-Wohnzimmer")).toBeInTheDocument();
   });
 
   it("hides the bottom dock when clicking outside it", async () => {
@@ -382,6 +383,7 @@ describe("App integration", () => {
 
     expect(screen.getByTestId("view-sidebar")).toBeInTheDocument();
 
+    await user.click(screen.getByTestId("dock-button-EG"));
     await user.click(screen.getByTestId("dock-button-Wohnzimmer"));
 
     expect(screen.getByTestId("view-sidebar")).toBeInTheDocument();
@@ -481,6 +483,7 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
     });
 
+    await user.click(screen.getByTestId("dock-button-EG"));
     await user.click(screen.getByTestId("dock-button-Wohnzimmer"));
 
     expect(screen.getByTestId("view-background-image")).toHaveAttribute(
@@ -655,6 +658,7 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
     });
 
+    await user.click(screen.getByTestId("dock-button-EG"));
     await user.click(screen.getByTestId("dock-button-Wohnzimmer"));
 
     act(() => {
@@ -682,6 +686,7 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
     });
 
+    await user.click(screen.getByTestId("dock-button-EG"));
     await user.click(screen.getByTestId("dock-button-Wohnzimmer"));
 
     await user.click(
@@ -715,6 +720,7 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
     });
 
+    await user.click(screen.getByTestId("dock-button-EG"));
     await user.click(screen.getByTestId("dock-button-Wohnzimmer"));
     await user.click(
       screen.getByTestId(`living-control-placeholder-${KNX_JA1_Raffstore_Wohnzimmer}`)
@@ -846,5 +852,33 @@ describe("App integration", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("renders hierarchical dock navigation for root, branch, and leaf locations", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
+    });
+
+    expect(screen.getByTestId("dock-button-EG")).toBeInTheDocument();
+    expect(screen.queryByTestId("dock-button-Hauer")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("dock-button-Wohnzimmer")).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("dock-button-EG"));
+
+    expect(screen.getByTestId("dock-button-Hauer")).toBeInTheDocument();
+    expect(screen.getByTestId("dock-parent-icon-Hauer")).toBeInTheDocument();
+    expect(screen.getByTestId("dock-button-Wohnzimmer")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("dock-button-Wohnzimmer"));
+
+    expect(screen.getByTestId("dock-button-EG")).toBeInTheDocument();
+    expect(screen.getByTestId("dock-parent-icon-EG")).toBeInTheDocument();
+    expect(screen.getByTestId("dock-button-Wohnzimmer")).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
   });
 });

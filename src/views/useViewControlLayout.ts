@@ -10,7 +10,6 @@ import {
 import { toast } from "react-toastify";
 import { fetchItemMetadata, upsertItemMetadata } from "../services/openhab-service";
 import { log } from "../services/logger";
-import type { ViewId } from "../types/view";
 
 const logger = log.createLogger("ViewControlLayout");
 
@@ -22,12 +21,10 @@ export interface ViewControlPosition {
 export interface ViewControlDescriptor {
   controlId: string;
   metadataItemNames: readonly string[];
-  legacyMetadataItemNames?: readonly string[];
   defaultPosition: ViewControlPosition;
 }
 
 interface UseViewControlLayoutOptions {
-  viewId: ViewId;
   controls: ViewControlDescriptor[];
   dragEnabled: boolean;
   blockedLeftPx?: number;
@@ -65,21 +62,16 @@ const normalizeMetadataItemNames = (itemNames: readonly string[]): string[] =>
   );
 
 export const useViewControlLayout = ({
-  viewId,
   controls,
   dragEnabled,
   blockedLeftPx = 0,
 }: UseViewControlLayoutOptions) => {
   const metadataNamespace = "dashboard-layout";
-  const legacyMetadataNamespace = `dashboard-layout-${viewId}`;
   const controlsSnapshot = useMemo(
     () =>
       controls.map((control) => ({
         controlId: control.controlId,
         metadataItemNames: normalizeMetadataItemNames(control.metadataItemNames),
-        legacyMetadataItemNames: normalizeMetadataItemNames(
-          control.legacyMetadataItemNames ?? []
-        ),
         defaultPosition: {
           x: control.defaultPosition.x,
           y: control.defaultPosition.y,
@@ -150,29 +142,6 @@ export const useViewControlLayout = ({
           if (loadedPositions[control.controlId]) {
             return;
           }
-
-          for (const itemName of control.legacyMetadataItemNames ?? []) {
-            try {
-              const metadata = await fetchItemMetadata(itemName, legacyMetadataNamespace);
-              if (!metadata?.config) {
-                continue;
-              }
-
-              const x = parsePositionValue(metadata.config.x);
-              const y = parsePositionValue(metadata.config.y);
-              if (x === null || y === null) {
-                continue;
-              }
-
-              loadedPositions[control.controlId] = { x, y };
-              break;
-            } catch (error) {
-              logger.warn(
-                `Failed to load ${legacyMetadataNamespace} for ${itemName}:`,
-                error
-              );
-            }
-          }
         })
       );
 
@@ -186,7 +155,7 @@ export const useViewControlLayout = ({
     return () => {
       cancelled = true;
     };
-  }, [canonicalControls, legacyMetadataNamespace, metadataNamespace]);
+  }, [canonicalControls, metadataNamespace]);
 
   const setControlElementRef = useCallback(
     (controlId: string) => (node: HTMLDivElement | null) => {
