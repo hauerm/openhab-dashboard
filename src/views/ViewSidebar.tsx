@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { VIEWS } from "../config/views";
+import { useViewStore } from "../stores/viewStore";
 import type { ViewId } from "../types/view";
 import { LocationPropertyHistoryOverlayControl } from "./controls/location-property-history";
 import { useLocationPropertyHistoryControlModel } from "./controls/location-property-history/model";
@@ -43,9 +43,9 @@ const ViewSidebar = ({
   onOpenControl,
   onCloseControl,
 }: ViewSidebarProps) => {
-  const viewConfig = VIEWS[viewId];
-  const location = viewConfig.location!.trim();
-  const locationScope = viewConfig.locationScope ?? "descendants";
+  const viewConfig = useViewStore((state) => state.viewConfigs[viewId]);
+  const location = viewConfig?.location?.trim() ?? viewId;
+  const locationScope = viewConfig?.locationScope ?? "descendants";
 
   const definitions = useMemo(
     () => createLocationPropertySidebarDefinitions(viewId, location, locationScope),

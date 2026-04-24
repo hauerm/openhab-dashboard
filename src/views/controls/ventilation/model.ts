@@ -1,41 +1,47 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
-import { useVentilationStore } from "../../../stores/ventilationStore";
+import { useViewStore } from "../../../stores/viewStore";
 import { WebSocketService } from "../../../services/websocket-service";
 import { sendCommand } from "../../../services/openhab-service";
 import { log } from "../../../services/logger";
-import {
-  HELIOS_MANUAL_MODE_ITEM,
-  type HeliosManualLevel,
-} from "../../../types/ventilation";
+import { type HeliosManualLevel } from "../../../types/ventilation";
+import { parseOpenHABState } from "../../../services/state-parser";
+import type { VentilationControlDefinition } from "../controlDefinitions";
 import { formatVentilationBadge } from "./presentation";
 
 const logger = log.createLogger("VentilationControl");
 
-const toSortedArray = (itemNames: Set<string>): string[] =>
-  Array.from(itemNames).sort((left, right) => left.localeCompare(right));
-
-export const useVentilationLayoutMetadataItemNames = (): readonly string[] => {
-  const itemNames = useVentilationStore((state) => state.itemNames);
-
-  return useMemo(() => toSortedArray(itemNames), [itemNames]);
+const parseHeliosLevel = (rawState: string | undefined): HeliosManualLevel | null => {
+  if (!rawState) {
+    return null;
+  }
+  const parsed = parseOpenHABState(rawState).numericValue;
+  if (parsed === null) {
+    return null;
+  }
+  return parsed as HeliosManualLevel;
 };
 
-export const useVentilationControlModel = () => {
-  const initialize = useVentilationStore((state) => state.initialize);
-  const manualLevel = useVentilationStore((state) => state.manualLevel);
-  const actualLevel = useVentilationStore((state) => state.actualLevel);
-  const setError = useVentilationStore((state) => state.setError);
-  const updateValue = useVentilationStore((state) => state.updateValue);
-  const [sending, setSending] = useState(false);
+export const useVentilationLayoutMetadataItemNames = (): readonly string[] => [];
 
-  useEffect(() => {
-    void initialize();
-  }, [initialize]);
+export const useVentilationControlModel = (
+  definition: VentilationControlDefinition
+) => {
+  const manualRawState = useViewStore(
+    (state) => state.itemStates[definition.itemRefs.manualModeItemName]?.rawState
+  );
+  const actualRawState = useViewStore(
+    (state) => state.itemStates[definition.itemRefs.actualLevelItemName]?.rawState
+  );
+  const manualLevel = useMemo(
+    () => parseHeliosLevel(manualRawState),
+    [manualRawState]
+  );
+  const actualLevel = useMemo(() => parseHeliosLevel(actualRawState), [actualRawState]);
+  const [sending, setSending] = useState(false);
 
   const setManualLevel = async (level: HeliosManualLevel) => {
     setSending(true);
-    setError(null);
 
     try {
       const command = level.toString();
@@ -44,7 +50,7 @@ export const useVentilationControlModel = () => {
       if (WebSocketService.isConnected()) {
         try {
           await WebSocketService.sendCommand(
-            HELIOS_MANUAL_MODE_ITEM,
+            definition.itemRefs.manualModeItemName,
             command,
             "Decimal"
           );
@@ -56,14 +62,11 @@ export const useVentilationControlModel = () => {
       }
 
       if (!sent) {
-        await sendCommand(HELIOS_MANUAL_MODE_ITEM, command);
+        await sendCommand(definition.itemRefs.manualModeItemName, command);
         logger.debug(`Command sent via REST: ${command}`);
       }
-
-      updateValue(HELIOS_MANUAL_MODE_ITEM, level);
     } catch (error) {
       logger.error("Failed to send ventilation command:", error);
-      setError("Failed to send ventilation command");
       toast.error("Lüftungsbefehl konnte nicht gesendet werden.");
     } finally {
       setSending(false);

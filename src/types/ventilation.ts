@@ -1,7 +1,7 @@
 import {
   KNX_Helios_KWRL_Ist_Stufe,
   KNX_Helios_ManualMode,
-} from "../domain/hauer-items";
+} from "../domain/openhab-item-names";
 
 export type HeliosManualLevel = -1 | 0 | 1 | 2 | 3 | 4;
 

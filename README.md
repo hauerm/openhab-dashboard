@@ -64,69 +64,44 @@ npm run dev
 npm run build
 ```
 
-## Vendored Items Package
+## openHAB Item Model
 
-This dashboard consumes `openhab-hauer-items` as a vendored `file:` dependency:
+The dashboard reads item state, labels, semantic metadata, and automation metadata
+live from openHAB via REST and WebSocket.
 
-- Source of truth: `openhab-automation/packages/openhab-hauer-items`
-- Vendored target: `vendor/openhab-hauer-items`
-- Adapter module: `src/domain/hauer-items.ts` (exports `ITEMS`, `ITEM_META`)
+- Runtime model source: openHAB REST `/items?recursive=false&metadata=semantics,automation,dashboard-location,dashboard-layout`
+- Live updates: openHAB WebSocket item events
+- Direct item references: documented as constants in `src/domain/openhab-item-names.ts`
 
-Update workflow:
-
-```bash
-cd ../openhab-automation
-npm run sync:hauer-items:dashboard
-
-cd ../openhab-dashboard
-npm install
-```
-
-`sync:hauer-items:dashboard` runs generation + build + export and therefore needs
-the OpenHAB generator environment configured in `openhab-automation`.
+Keep direct item references in `openhab-item-names.ts` when a control cannot yet be
+discovered semantically. No generated or vendored item package is used.
 
 ## Architecture
 
 ### View Shell
 
 - `src/App.tsx` initializes WebSocket + `viewStore` once and keeps the active view control as `{ viewId, controlId }`.
-- `src/views/ViewLayer.tsx` renders exactly one active view.
-- Each view has exactly one orchestration file:
-  - `src/views/house/House.tsx`
-  - `src/views/house/eg/Eg.tsx`
-  - `src/views/house/eg/living/Living.tsx`
-- The current in-scope view hierarchy is:
-  - `house`: Start-/Index-Ansicht
-  - `eg`: Erdgeschoss-Übersicht
-  - `living`: Wohnzimmer
-  - `kg`: aktuell noch nicht im View-Refactor ausgebaut
+- `src/views/ViewLayer.tsx` renders exactly one active semantic location view.
+- `src/views/location/LocationView.tsx` renders all discovered controls for the current location.
+- Bottom dock locations are discovered from openHAB location items and ordered by `dashboard-location` metadata.
 
 ### View Rules
 
-- Views orchestrate only:
-  - load their control registry
-  - wire `useViewControlLayout`
-  - render HUD controls
-  - render the optional left sidebar for location-backed semantic properties
-  - render the active overlay control
+- The view layer:
+  - wires `useViewControlLayout`
+  - renders discovered HUD controls
+  - renders the optional left sidebar for location-backed semantic properties
+  - renders the active overlay control
 - Views do not parse raw openHAB state.
 - Views do not send domain commands directly.
 - Views do not initialize specialized domain stores.
 
-### Control Registries
+### Semantic Model
 
-- Every view has a descriptor file with static control definitions:
-  - `src/views/house/houseView.descriptor.ts`
-  - `src/views/house/eg/egView.descriptor.ts`
-  - `src/views/house/eg/living/livingView.descriptor.ts`
-- A control definition contains:
-  - `controlId`
-  - `controlType`
-  - `label`
-  - `itemRefs`
-  - `layoutMetadataItemNames`
-  - `defaultPosition`
-- `viewStore` tracked item names are derived from control definitions where controls use view-backed item refs.
+- `src/domain/openhab-model.ts` builds a semantic model from `tags`, `groupNames`, and item metadata.
+- Locations are discovered from location-tagged group items.
+- Supported controls are derived from semantic equipments and points.
+- `viewStore` tracked item names are derived from discovered control item refs.
 
 ### Controls
 
@@ -153,10 +128,6 @@ the OpenHAB generator environment configured in `openhab-automation`.
 - `src/stores/locationPropertyHistoryStore.ts`
   - scoped/cached history stores
   - initialized lazily inside `location-property-history/model.ts`
-- `src/stores/ventilationStore.ts`
-  - Helios manual/actual level store
-  - initialized lazily inside `ventilation/model.ts`
-
 ### Supporting Modules
 
 - `src/services/config.ts`: openHAB host/protocol/port/auth helpers
@@ -165,7 +136,7 @@ the OpenHAB generator environment configured in `openhab-automation`.
 - `src/services/websocket-service.ts`: connection lifecycle, typed updates, reconnect/backoff, listener subscription
 - `src/views/useViewControlLayout.ts`: draggable HUD positioning persisted via item metadata
 
-## View Images (Haus + EG, Base + HUD)
+## View Images
 
 All view images are loaded from `public/views`.
 
@@ -175,32 +146,23 @@ Required file layout:
 public/
   views/
     missing.jpg
-    house/
-      base.webp
-      eg/
-        base.webp
-        living/
-          base.webp
-      kg/
-        buero/
-          buero_cellar.webp
+    Hauer.webp
+    EG.webp
+    Wohnzimmer.webp
+    Buero.webp
+    ...
 ```
 
-How `base.webp` is used:
+How image lookup works:
 
-- `base.webp` is the only background image per view.
+- Each location reads `dashboard-location.config.baseImage` from openHAB.
+- The current convention is a flat path: `/views/<LocationItemName>.webp`
 - Dynamic information is rendered through HUD overlays above the base image.
 
 Global missing-image fallback:
 
 - If any requested view image cannot be loaded, the app uses `public/views/missing.jpg`.
 - A debug badge (`Missing view asset`) is shown in the top-right corner while fallback is active.
-
-View mapping in V1:
-
-- `house` -> `public/views/house/*`
-- `eg` -> `public/views/house/eg/*`
-- `living` -> `public/views/house/eg/living/*`
 
 ## WebSocket Usage
 
@@ -230,5 +192,4 @@ const unsubscribe = subscribeWebSocketListener((update) => {
 npm test
 npm run lint
 npm run build
-npm run test:contracts
 ```

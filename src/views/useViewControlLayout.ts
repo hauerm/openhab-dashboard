@@ -10,7 +10,6 @@ import {
 import { toast } from "react-toastify";
 import { fetchItemMetadata, upsertItemMetadata } from "../services/openhab-service";
 import { log } from "../services/logger";
-import type { ViewId } from "../types/view";
 
 const logger = log.createLogger("ViewControlLayout");
 
@@ -26,7 +25,6 @@ export interface ViewControlDescriptor {
 }
 
 interface UseViewControlLayoutOptions {
-  viewId: ViewId;
   controls: ViewControlDescriptor[];
   dragEnabled: boolean;
   blockedLeftPx?: number;
@@ -64,12 +62,11 @@ const normalizeMetadataItemNames = (itemNames: readonly string[]): string[] =>
   );
 
 export const useViewControlLayout = ({
-  viewId,
   controls,
   dragEnabled,
   blockedLeftPx = 0,
 }: UseViewControlLayoutOptions) => {
-  const metadataNamespace = `dashboard-layout-${viewId}`;
+  const metadataNamespace = "dashboard-layout";
   const controlsSnapshot = useMemo(
     () =>
       controls.map((control) => ({
@@ -140,6 +137,10 @@ export const useViewControlLayout = ({
                 error
               );
             }
+          }
+
+          if (loadedPositions[control.controlId]) {
+            return;
           }
         })
       );

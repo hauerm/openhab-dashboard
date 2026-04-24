@@ -41,12 +41,29 @@ const resolveRaffstoreHudState = (
 };
 
 export const useRaffstoreControlModel = (definition: RaffstoreControlDefinition) => {
-  const rawState = useViewStore(
-    (state) => state.itemStates[definition.itemRefs.itemName]?.rawState
+  const itemNames = useMemo(
+    () =>
+      definition.itemRefs.itemNames.length > 0
+        ? definition.itemRefs.itemNames
+        : [definition.itemRefs.itemName],
+    [definition.itemRefs.itemName, definition.itemRefs.itemNames]
+  );
+  const itemStates = useViewStore((state) => state.itemStates);
+  const rawStates = useMemo(
+    () => itemNames.map((itemName) => itemStates[itemName]?.rawState),
+    [itemNames, itemStates]
   );
 
   return useMemo(() => {
-    const openingPercent = parseOpeningPercent(rawState);
+    const parsedValues = rawStates
+      .map(parseOpeningPercent)
+      .filter((value): value is number => value !== null);
+    const openingPercent =
+      parsedValues.length === 0
+        ? null
+        : Math.round(
+            parsedValues.reduce((sum, value) => sum + value, 0) / parsedValues.length
+          );
     const openingDisplayValue =
       openingPercent === null
         ? "--"
@@ -57,10 +74,10 @@ export const useRaffstoreControlModel = (definition: RaffstoreControlDefinition)
         : `${openingPercent}%`;
 
     return {
-      rawState,
+      rawState: rawStates[0],
       openingPercent,
       openingDisplayValue,
       hudState: resolveRaffstoreHudState(openingPercent),
     };
-  }, [rawState]);
+  }, [rawStates]);
 };

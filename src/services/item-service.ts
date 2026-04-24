@@ -1,6 +1,11 @@
 import type { Item, ItemHistoryResponse, ItemMetadataNamespace } from "../types/item";
 import type { LocationScope } from "../types/view";
 import {
+  isLocationDescendant,
+  itemBelongsToLocation,
+  itemHasSemanticProperty,
+} from "../domain/openhab-model";
+import {
   OPENHAB_BASE_URL,
   getOpenHABAuthHeaders,
 } from "./config";
@@ -90,9 +95,12 @@ export class ItemService {
    * Fetch all items from OpenHAB
    */
   static async fetchItems(): Promise<Item[]> {
-    const response = await fetch(`${OPENHAB_BASE_URL}/items`, {
-      headers: getOpenHABAuthHeaders(),
-    });
+    const response = await fetch(
+      `${OPENHAB_BASE_URL}/items?recursive=false&metadata=semantics,automation,dashboard-location,dashboard-layout`,
+      {
+        headers: getOpenHABAuthHeaders(),
+      }
+    );
     if (!response.ok) {
       throw new Error("Failed to fetch items");
     }
@@ -315,6 +323,10 @@ export class ItemService {
     } = {}
   ): boolean {
     const { locationScope = "descendants" } = options;
+    if (allItems) {
+      return itemBelongsToLocation(item, targetLocation, allItems, locationScope);
+    }
+
     const directLocation = this.getDirectLocation(item);
 
     if (directLocation === null) {
@@ -353,34 +365,11 @@ export class ItemService {
     allItems: Item[],
     visited: Set<string> = new Set()
   ): boolean {
-    if (visited.has(locationName)) {
-      return false;
-    }
-    visited.add(locationName);
-
-    // Find the location item
-    const locationItem = allItems.find((item) => item.name === locationName);
-    if (!locationItem) {
-      return false;
-    }
-
-    const parentLocation = this.getDirectLocation(locationItem);
-
-    if (parentLocation === null) {
-      return false;
-    }
-
-    // If parent matches target, return true
-    if (parentLocation === targetLocation) {
-      return true;
-    }
-
-    // Recursively check parent hierarchy
-    return this.isLocationAncestor(
-      parentLocation,
+    void visited;
+    return isLocationDescendant(
+      locationName,
       targetLocation,
-      allItems,
-      visited
+      new Map(allItems.map((entry) => [entry.name, entry]))
     );
   }
 
@@ -448,12 +437,7 @@ export class ItemService {
    * Check if an item has a specific semantic property
    */
   static hasSemanticProperty(item: Item, relatesTo: string): boolean {
-    return (
-      typeof item.metadata?.semantics?.config === "object" &&
-      item.metadata?.semantics?.config !== null &&
-      "relatesTo" in item.metadata.semantics.config &&
-      item.metadata.semantics.config.relatesTo === relatesTo
-    );
+    return itemHasSemanticProperty(item, relatesTo);
   }
 
   /**

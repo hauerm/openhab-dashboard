@@ -2,50 +2,34 @@ import { create } from "zustand";
 import { fetchItemsMetadata } from "../services/openhab-service";
 import { subscribeWebSocketListener } from "../services/websocket-service";
 import { log } from "../services/logger";
-import { VIEW_IDS, VIEWS } from "../config/views";
-import type { Item } from "../types/item";
+import { buildOpenHABSemanticModel } from "../domain/openhab-model";
 import type { ViewId, ViewState, ViewTrackedItemState } from "../types/view";
-import { VIEW_TRACKED_ITEM_NAMES_BY_VIEW } from "../views/viewDescriptors";
 import { applyViewItemStateUpdate } from "./viewStore.utils";
 
 const logger = log.createLogger("ViewStore");
 
+const DEFAULT_VIEW_ID = "Hauer";
+
+const buildDefaultViewConfigs = (): Record<ViewId, { label: string; baseImage: string; location: string; locationScope: "descendants" }> => ({
+  [DEFAULT_VIEW_ID]: {
+    label: DEFAULT_VIEW_ID,
+    baseImage: "/views/missing.jpg",
+    location: DEFAULT_VIEW_ID,
+    locationScope: "descendants",
+  },
+});
+
 const buildDefaultMissingAssets = (): Record<ViewId, boolean> => ({
-  house: false,
-  eg: false,
-  living: false,
+  [DEFAULT_VIEW_ID]: false,
 });
 
 const buildDefaultViewLabels = (): Record<ViewId, string> => ({
-  house: VIEWS.house.label,
-  eg: VIEWS.eg.label,
-  living: VIEWS.living.label,
+  [DEFAULT_VIEW_ID]: DEFAULT_VIEW_ID,
 });
 
-const resolveViewLabelsFromItems = (items: Item[]): Record<ViewId, string> => {
-  const itemsByName = new Map(items.map((item) => [item.name, item]));
+let trackedItemNames = new Set<string>();
 
-  return VIEW_IDS.reduce<Record<ViewId, string>>((labels, viewId) => {
-    const viewConfig = VIEWS[viewId];
-    const locationLabel =
-      viewConfig.location ? itemsByName.get(viewConfig.location)?.label?.trim() : null;
-
-    labels[viewId] = locationLabel || viewConfig.label;
-    return labels;
-  }, buildDefaultViewLabels());
-};
-
-const collectTrackedItemNames = (): Set<string> => {
-  const tracked = new Set<string>();
-  for (const viewId of VIEW_IDS) {
-    for (const trackedItemName of VIEW_TRACKED_ITEM_NAMES_BY_VIEW[viewId]) {
-      tracked.add(trackedItemName);
-    }
-  }
-  return tracked;
-};
-
-const VIEW_TRACKED_ITEM_NAMES = collectTrackedItemNames();
+type ViewConfigRecord = ViewState["viewConfigs"];
 
 interface ViewActions {
   initialize: () => Promise<void>;
@@ -61,10 +45,13 @@ let hasInitialized = false;
 let unsubscribeWebSocket: (() => void) | null = null;
 
 const initialState: ViewState = {
-  currentView: "house",
+  currentView: DEFAULT_VIEW_ID,
+  viewIds: [DEFAULT_VIEW_ID],
+  viewConfigs: buildDefaultViewConfigs(),
   viewLabels: buildDefaultViewLabels(),
   itemStates: {},
   missingAssetByView: buildDefaultMissingAssets(),
+  model: null,
   loading: false,
   error: null,
 };
@@ -84,13 +71,31 @@ export const useViewStore = create<ViewStoreState>((set, get) => ({
       set({ loading: true, error: null });
       try {
         const items = await fetchItemsMetadata();
+        const model = buildOpenHABSemanticModel(items);
+        const viewIds = model.locations.map((location) => location.name);
+        const nextViewConfigs: ViewConfigRecord = {};
+        const nextViewLabels: Record<ViewId, string> = {};
+        const nextMissingAssets: Record<ViewId, boolean> = {};
+
+        for (const location of model.locations) {
+          nextViewConfigs[location.name] = {
+            label: location.label,
+            baseImage: location.baseImage,
+            location: location.name,
+            locationScope: "descendants",
+          };
+          nextViewLabels[location.name] = location.label;
+          nextMissingAssets[location.name] = false;
+        }
+
+        trackedItemNames = new Set(model.trackedItemNames);
         const rawStatesByName = new Map(items.map((item) => [item.name, item.state]));
 
         const nextItemStates: Record<string, ViewTrackedItemState> = {
           ...get().itemStates,
         };
 
-        for (const itemName of VIEW_TRACKED_ITEM_NAMES) {
+        for (const itemName of trackedItemNames) {
           const rawState = rawStatesByName.get(itemName) ?? "UNDEF";
           nextItemStates[itemName] = applyViewItemStateUpdate(
             nextItemStates[itemName],
@@ -99,14 +104,28 @@ export const useViewStore = create<ViewStoreState>((set, get) => ({
         }
 
         set({
+          currentView: viewIds.includes(get().currentView)
+            ? get().currentView
+            : viewIds[0] ?? DEFAULT_VIEW_ID,
+          viewIds: viewIds.length > 0 ? viewIds : [DEFAULT_VIEW_ID],
+          viewConfigs:
+            viewIds.length > 0 ? nextViewConfigs : buildDefaultViewConfigs(),
+          viewLabels:
+            viewIds.length > 0 ? nextViewLabels : buildDefaultViewLabels(),
+          missingAssetByView:
+            viewIds.length > 0 ? nextMissingAssets : buildDefaultMissingAssets(),
+          model,
           itemStates: nextItemStates,
-          viewLabels: resolveViewLabelsFromItems(items),
         });
+
+        if (model.unsupportedEquipment.length > 0) {
+          logger.debug("Unsupported openHAB equipments skipped:", model.unsupportedEquipment);
+        }
 
         if (!unsubscribeWebSocket) {
           unsubscribeWebSocket = subscribeWebSocketListener(
             (update) => get().handleItemStateUpdate(update.itemName, update.rawState),
-            { itemNames: VIEW_TRACKED_ITEM_NAMES }
+            { itemNames: trackedItemNames }
           );
         }
 
@@ -130,7 +149,7 @@ export const useViewStore = create<ViewStoreState>((set, get) => ({
   setCurrentView: (viewId) => set({ currentView: viewId }),
 
   handleItemStateUpdate: (itemName, rawState) => {
-    if (!VIEW_TRACKED_ITEM_NAMES.has(itemName)) {
+    if (!trackedItemNames.has(itemName)) {
       return;
     }
 
@@ -167,9 +186,12 @@ export const resetViewStoreForTests = (): void => {
   }
   initializePromise = null;
   hasInitialized = false;
+  trackedItemNames = new Set<string>();
   useViewStore.setState({
     ...initialState,
     viewLabels: buildDefaultViewLabels(),
+    viewConfigs: buildDefaultViewConfigs(),
+    viewIds: [DEFAULT_VIEW_ID],
     missingAssetByView: buildDefaultMissingAssets(),
   });
 };

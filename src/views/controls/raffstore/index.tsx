@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import {
   MdBlinds,
   MdBlindsClosed,
+  MdGarage,
   MdKeyboardArrowDown,
   MdKeyboardArrowUp,
   MdStop,
@@ -37,6 +38,12 @@ const HUD_ICON_BY_STATE = {
   "raffstore-closed": MdBlindsClosed,
 } as const;
 
+const GARAGE_DOOR_ICON_BY_STATE = {
+  "raffstore-open": MdGarage,
+  "raffstore-half": MdGarage,
+  "raffstore-closed": MdGarage,
+} as const;
+
 const PRESET_BUTTON_CLASS =
   "flex h-full min-h-0 w-full items-center justify-center overflow-hidden rounded-2xl border border-ui-border-subtle bg-ui-surface-panel text-ui-foreground transition hover:bg-ui-surface-muted disabled:cursor-not-allowed disabled:opacity-55";
 const MANUAL_BUTTON_CLASS = PRESET_BUTTON_CLASS;
@@ -56,6 +63,24 @@ const TILT_ANGLE_BY_PRESET: Record<RaffstoreTiltPreset, number> = {
   25: 22.5,
   50: 45,
   75: 67.5,
+};
+
+const resolveOpeningKind = (
+  subtype: RaffstoreControlDefinition["subtype"]
+): "Raffstore" | "Rollladen" | "Garagentor" | "Markise" | "Öffnung" => {
+  if (subtype === "raffstore") {
+    return "Raffstore";
+  }
+  if (subtype === "rollershutter") {
+    return "Rollladen";
+  }
+  if (subtype === "garagedoor") {
+    return "Garagentor";
+  }
+  if (subtype === "awning") {
+    return "Markise";
+  }
+  return "Öffnung";
 };
 
 const TiltSectionIcon = ({ angleDeg }: { angleDeg: number }) => {
@@ -95,14 +120,18 @@ const TiltSectionIcon = ({ angleDeg }: { angleDeg: number }) => {
 };
 
 const sendRaffstoreCommand = async (
-  itemName: string,
+  itemNames: readonly string[],
   command: RaffstoreMotionCommand
 ): Promise<void> => {
   if (command === "STOP") {
-    await sendViewItemCommand(itemName, command, "StopMove");
+    await Promise.all(
+      itemNames.map((itemName) => sendViewItemCommand(itemName, command, "StopMove"))
+    );
     return;
   }
-  await sendViewItemCommand(itemName, command, "UpDown");
+  await Promise.all(
+    itemNames.map((itemName) => sendViewItemCommand(itemName, command, "UpDown"))
+  );
 };
 
 export const RaffstoreHudControl = ({
@@ -112,7 +141,11 @@ export const RaffstoreHudControl = ({
   onOpenControl,
 }: RaffstoreHudControlProps) => {
   const { hudState } = useRaffstoreControlModel(definition);
-  const Icon = HUD_ICON_BY_STATE[hudState];
+  const openingKind = resolveOpeningKind(definition.subtype);
+  const Icon =
+    definition.subtype === "garagedoor"
+      ? GARAGE_DOOR_ICON_BY_STATE[hudState]
+      : HUD_ICON_BY_STATE[hudState];
 
   return (
     <button
@@ -126,7 +159,7 @@ export const RaffstoreHudControl = ({
         onOpenControl(definition.controlId);
       }}
       className="flex items-center justify-center"
-      aria-label={`${definition.label} (Raffstore öffnen)`}
+      aria-label={`${definition.label} (${openingKind} öffnen)`}
     >
       <span className="pointer-events-auto flex h-20 w-20 items-center justify-center rounded-full bg-ui-surface-overlay backdrop-blur-sm shadow-xl transition hover:bg-ui-surface-panel md:h-24 md:w-24">
         <Icon
@@ -143,6 +176,8 @@ export const RaffstoreOverlayControl = ({
   onClose,
 }: RaffstoreOverlayControlProps) => {
   const { openingPercent, openingDisplayValue } = useRaffstoreControlModel(definition);
+  const openingKind = resolveOpeningKind(definition.subtype);
+  const supportsTiltPresets = definition.subtype === "raffstore";
   const sequenceControllerRef = useRef<RaffstoreSequenceController | null>(null);
   const openingPercentRef = useRef<number | null>(openingPercent);
 
@@ -151,9 +186,14 @@ export const RaffstoreOverlayControl = ({
   }, [openingPercent]);
 
   useEffect(() => {
+    if (!supportsTiltPresets) {
+      sequenceControllerRef.current = null;
+      return;
+    }
+
     sequenceControllerRef.current = createRaffstoreSequenceController({
       sendCommand: async (command) =>
-        sendRaffstoreCommand(definition.itemRefs.itemName, command),
+        sendRaffstoreCommand(definition.itemRefs.itemNames, command),
       getOpeningPercent: () => openingPercentRef.current,
     });
 
@@ -161,7 +201,7 @@ export const RaffstoreOverlayControl = ({
       void sequenceControllerRef.current?.cancel();
       sequenceControllerRef.current = null;
     };
-  }, [definition.itemRefs.itemName]);
+  }, [definition.itemRefs.itemNames, supportsTiltPresets]);
 
   const withController = async (
     executor: (controller: RaffstoreSequenceController) => Promise<void>
@@ -187,8 +227,14 @@ export const RaffstoreOverlayControl = ({
 
   const runManualCommand = async (command: RaffstoreMotionCommand): Promise<void> => {
     await executeAction(
-      async () => withController((controller) => controller.runManualCommand(command)),
-      `Raffstore-Befehl für ${definition.label} konnte nicht gesendet werden.`
+      async () => {
+        if (!supportsTiltPresets) {
+          await sendRaffstoreCommand(definition.itemRefs.itemNames, command);
+          return;
+        }
+        await withController((controller) => controller.runManualCommand(command));
+      },
+      `${openingKind}-Befehl für ${definition.label} konnte nicht gesendet werden.`
     );
   };
 
@@ -219,7 +265,11 @@ export const RaffstoreOverlayControl = ({
         data-testid={`raffstore-control-${definition.controlId}`}
         className="pointer-events-none relative h-full w-full overflow-hidden"
       >
-        <div className="pointer-events-none grid h-full min-h-0 w-full grid-cols-4 gap-2 p-2 md:gap-3 md:p-3">
+        <div
+          className={`pointer-events-none grid h-full min-h-0 w-full gap-2 p-2 md:gap-3 md:p-3 ${
+            supportsTiltPresets ? "grid-cols-4" : "grid-cols-2"
+          }`}
+        >
           <section className="pointer-events-none flex flex-col justify-start">
             <p className="text-xs font-semibold tracking-wide text-ui-foreground-muted md:text-sm">
               {definition.label}
@@ -240,7 +290,7 @@ export const RaffstoreOverlayControl = ({
                 void runManualCommand("UP");
               }}
               className={`pointer-events-auto ${MANUAL_BUTTON_CLASS}`}
-              aria-label={`${definition.label} Raffstore hochfahren`}
+              aria-label={`${definition.label} ${openingKind} hochfahren`}
             >
               <MdKeyboardArrowUp className={MANUAL_BUTTON_ICON_CLASS} />
             </button>
@@ -251,7 +301,7 @@ export const RaffstoreOverlayControl = ({
                 void runManualCommand("STOP");
               }}
               className={`pointer-events-auto ${MANUAL_BUTTON_CLASS}`}
-              aria-label={`${definition.label} Raffstore stoppen`}
+              aria-label={`${definition.label} ${openingKind} stoppen`}
             >
               <MdStop className={STOP_BUTTON_ICON_CLASS} />
             </button>
@@ -262,71 +312,75 @@ export const RaffstoreOverlayControl = ({
                 void runManualCommand("DOWN");
               }}
               className={`pointer-events-auto ${MANUAL_BUTTON_CLASS}`}
-              aria-label={`${definition.label} Raffstore runterfahren`}
+              aria-label={`${definition.label} ${openingKind} runterfahren`}
             >
               <MdKeyboardArrowDown className={MANUAL_BUTTON_ICON_CLASS} />
             </button>
           </section>
 
-          <section className="pointer-events-none grid h-full min-h-0 grid-rows-[repeat(5,minmax(0,1fr))] gap-2 overflow-hidden">
-            <button
-              type="button"
-              data-testid={`raffstore-control-${definition.controlId}-preset-arbeitsstellung`}
-              onClick={() => {
-                void runArbeitsstellung();
-              }}
-              className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
-              aria-label={`${definition.label} Arbeitsstellung`}
-            >
-              <TiltSectionIcon angleDeg={0} />
-            </button>
-            <button
-              type="button"
-              data-testid={`raffstore-control-${definition.controlId}-preset-tilt-25`}
-              onClick={() => {
-                void runTiltPreset(25);
-              }}
-              className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
-              aria-label={`${definition.label} Lamelle 25 Prozent`}
-            >
-              <TiltSectionIcon angleDeg={TILT_ANGLE_BY_PRESET[25]} />
-            </button>
-            <button
-              type="button"
-              data-testid={`raffstore-control-${definition.controlId}-preset-tilt-50`}
-              onClick={() => {
-                void runTiltPreset(50);
-              }}
-              className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
-              aria-label={`${definition.label} Lamelle 50 Prozent`}
-            >
-              <TiltSectionIcon angleDeg={TILT_ANGLE_BY_PRESET[50]} />
-            </button>
-            <button
-              type="button"
-              data-testid={`raffstore-control-${definition.controlId}-preset-tilt-75`}
-              onClick={() => {
-                void runTiltPreset(75);
-              }}
-              className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
-              aria-label={`${definition.label} Lamelle 75 Prozent`}
-            >
-              <TiltSectionIcon angleDeg={TILT_ANGLE_BY_PRESET[75]} />
-            </button>
-            <button
-              type="button"
-              data-testid={`raffstore-control-${definition.controlId}-preset-schliessen`}
-              onClick={() => {
-                void runSchliessen();
-              }}
-              className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
-              aria-label={`${definition.label} Schließen`}
-            >
-              <TiltSectionIcon angleDeg={85} />
-            </button>
-          </section>
+          {supportsTiltPresets ? (
+            <>
+              <section className="pointer-events-none grid h-full min-h-0 grid-rows-[repeat(5,minmax(0,1fr))] gap-2 overflow-hidden">
+                <button
+                  type="button"
+                  data-testid={`raffstore-control-${definition.controlId}-preset-arbeitsstellung`}
+                  onClick={() => {
+                    void runArbeitsstellung();
+                  }}
+                  className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
+                  aria-label={`${definition.label} Arbeitsstellung`}
+                >
+                  <TiltSectionIcon angleDeg={0} />
+                </button>
+                <button
+                  type="button"
+                  data-testid={`raffstore-control-${definition.controlId}-preset-tilt-25`}
+                  onClick={() => {
+                    void runTiltPreset(25);
+                  }}
+                  className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
+                  aria-label={`${definition.label} Lamelle 25 Prozent`}
+                >
+                  <TiltSectionIcon angleDeg={TILT_ANGLE_BY_PRESET[25]} />
+                </button>
+                <button
+                  type="button"
+                  data-testid={`raffstore-control-${definition.controlId}-preset-tilt-50`}
+                  onClick={() => {
+                    void runTiltPreset(50);
+                  }}
+                  className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
+                  aria-label={`${definition.label} Lamelle 50 Prozent`}
+                >
+                  <TiltSectionIcon angleDeg={TILT_ANGLE_BY_PRESET[50]} />
+                </button>
+                <button
+                  type="button"
+                  data-testid={`raffstore-control-${definition.controlId}-preset-tilt-75`}
+                  onClick={() => {
+                    void runTiltPreset(75);
+                  }}
+                  className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
+                  aria-label={`${definition.label} Lamelle 75 Prozent`}
+                >
+                  <TiltSectionIcon angleDeg={TILT_ANGLE_BY_PRESET[75]} />
+                </button>
+                <button
+                  type="button"
+                  data-testid={`raffstore-control-${definition.controlId}-preset-schliessen`}
+                  onClick={() => {
+                    void runSchliessen();
+                  }}
+                  className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
+                  aria-label={`${definition.label} Schließen`}
+                >
+                  <TiltSectionIcon angleDeg={85} />
+                </button>
+              </section>
 
-          <section className="pointer-events-none" />
+              <section className="pointer-events-none" />
+            </>
+          ) : null}
         </div>
       </div>
     </ViewOverlayShell>

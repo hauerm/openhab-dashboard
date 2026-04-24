@@ -1,19 +1,27 @@
-import { VIEWS } from "../config/views";
 import { useViewStore } from "../stores/viewStore";
 import { resolveViewImagePath } from "../stores/viewStore.utils";
 
 const ViewBackground = () => {
   const currentView = useViewStore((state) => state.currentView);
+  const currentViewConfig = useViewStore(
+    (state) => state.viewConfigs[currentView]
+  );
   const missingAsset = useViewStore(
     (state) => state.missingAssetByView[currentView]
   );
   const setMissingAsset = useViewStore((state) => state.setMissingAsset);
   const currentViewLabel = useViewStore(
-    (state) => state.viewLabels[currentView] ?? VIEWS[currentView].label
+    (state) => state.viewLabels[currentView] ?? currentViewConfig?.label ?? currentView
   );
 
-  const currentViewConfig = VIEWS[currentView];
-  const resolvedViewImage = resolveViewImagePath(currentViewConfig, missingAsset);
+  if (!currentViewConfig) {
+    return null;
+  }
+
+  const resolvedViewImage = resolveViewImagePath(
+    currentViewConfig,
+    missingAsset ?? false
+  );
 
   return (
     <div className="absolute inset-0">
