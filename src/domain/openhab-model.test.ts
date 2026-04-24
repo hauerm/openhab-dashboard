@@ -212,6 +212,26 @@ describe("buildOpenHABSemanticModel", () => {
     expect(garageControls.map((control) => control.controlType)).toEqual(["opening"]);
   });
 
+  it("maps color light equipment to rgbw light controls", () => {
+    const model = buildOpenHABSemanticModel([
+      ...fixtureItems(),
+      createItem("Equ_LED_Strip", "Group", ["LightStrip"], ["Wohnzimmer"], {
+        label: "LED Strip",
+      }),
+      createItem("LED_Strip_Color", "Color", ["Light", "Control"], ["Equ_LED_Strip"]),
+    ]);
+
+    const rgbwControl = model.controls.find(
+      (control) => control.controlId === "Equ_LED_Strip"
+    );
+
+    expect(rgbwControl?.controlType).toBe("rgbw-light");
+    if (!rgbwControl || rgbwControl.controlType !== "rgbw-light") {
+      throw new Error("Expected RGBW light control");
+    }
+    expect(rgbwControl.itemRefs.colorItemName).toBe("LED_Strip_Color");
+  });
+
   it("aggregates multi-point opening equipment into one control", () => {
     const model = buildOpenHABSemanticModel(fixtureItems());
     const opening = model.controls.find((control) => control.controlType === "opening");

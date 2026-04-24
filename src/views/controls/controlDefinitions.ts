@@ -31,6 +31,15 @@ export interface LightControlDefinition
   interaction: "overlay" | "direct-toggle";
 }
 
+export interface RgbwLightControlItemRefs {
+  colorItemName: string;
+}
+
+export type RgbwLightControlDefinition = ControlDefinitionBase<
+  "rgbw-light",
+  RgbwLightControlItemRefs
+>;
+
 export type OpeningControlSubtype =
   | "raffstore"
   | "rollershutter"
@@ -102,6 +111,7 @@ export type VentilationControlDefinition = ControlDefinitionBase<
 
 export type ViewControlDefinition =
   | LightControlDefinition
+  | RgbwLightControlDefinition
   | OpeningControlDefinition
   | TvControlDefinition
   | PowerControlDefinition

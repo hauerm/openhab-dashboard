@@ -89,6 +89,8 @@ vi.mock("./stores/locationPropertyHistoryStore", () => ({
 }));
 const EQU_RAFFSTORE_TERRASSE = "Equ_Raffstore_Terrasse";
 const EQU_RAFFSTORE_STRASSE = "Equ_Raffstore_Strasse";
+const EQU_RGBW_LED_STRIP_BUERO_KELLER = "Equ_RGBW_LED_Strip_BueroKeller";
+const RGBW_LED_STRIP_BUERO_KELLER_COLOR = "RGBW_LED_Strip_BueroKeller_Color";
 const GARAGE_DOOR_EQUIPMENT = "KNX_Hormann_Garagentor";
 const GARAGE_DOOR_ITEM = "KNX_Hormann_Garagentor_Garagentor";
 
@@ -218,6 +220,15 @@ const buildDefaultItems = (): Item[] => [
   createItem(SAH3_Licht_TV, "35", "Dimmer", {
     tags: ["Light", "Control"],
     groupNames: ["Equ_Spots_TV"],
+  }),
+  createItem(EQU_RGBW_LED_STRIP_BUERO_KELLER, "NULL", "Group", {
+    label: "RGBW LED Strip Buero Keller",
+    tags: ["LightStrip"],
+    groupNames: ["Wohnzimmer"],
+  }),
+  createItem(RGBW_LED_STRIP_BUERO_KELLER_COLOR, "210,80,40", "Color", {
+    tags: ["Light", "Control"],
+    groupNames: [EQU_RGBW_LED_STRIP_BUERO_KELLER],
   }),
   createItem("Samsung_TV_Wohnzimmer", "NULL", "Group", {
     label: "Samsung TV",
@@ -556,6 +567,11 @@ describe("App integration", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByTestId(
+        `living-control-placeholder-icon-${RGBW_LED_STRIP_BUERO_KELLER_COLOR}-rgbw-light-on`
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
         `living-control-placeholder-icon-${Samsung_TV_Wohnzimmer_Power}-tv-on`
       )
     ).toBeInTheDocument();
@@ -689,6 +705,140 @@ describe("App integration", () => {
     });
   });
 
+  it("renders rgbw led strips with color glow and sends HSB commands", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
+    });
+
+    await user.click(screen.getByTestId("dock-button-EG"));
+    await user.click(screen.getByTestId("dock-button-Wohnzimmer"));
+
+    const glow = screen.getByTestId(
+      `living-control-rgbw-glow-${RGBW_LED_STRIP_BUERO_KELLER_COLOR}`
+    );
+    expect(glow.getAttribute("style")).toContain("box-shadow");
+    expect(
+      screen.getByTestId(
+        `living-control-placeholder-icon-${RGBW_LED_STRIP_BUERO_KELLER_COLOR}-rgbw-light-on`
+      )
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByTestId(
+        `living-control-placeholder-${RGBW_LED_STRIP_BUERO_KELLER_COLOR}`
+      )
+    );
+
+    expect(
+      screen.queryByTestId(`light-control-${EQU_RGBW_LED_STRIP_BUERO_KELLER}`)
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId(`rgbw-light-control-${EQU_RGBW_LED_STRIP_BUERO_KELLER}`)
+    ).toHaveClass("grid-cols-5");
+
+    const hueControl = screen.getByTestId(
+      `rgbw-light-control-${EQU_RGBW_LED_STRIP_BUERO_KELLER}-hue`
+    );
+    expect(hueControl).toHaveTextContent("");
+    expect(
+      screen.getByTestId(
+        `rgbw-light-control-${EQU_RGBW_LED_STRIP_BUERO_KELLER}-hue-handle`
+      )
+    ).toHaveStyle({ height: "28px" });
+    vi.spyOn(hueControl, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 360,
+      top: 0,
+      right: 100,
+      bottom: 360,
+      left: 0,
+      toJSON: () => ({}),
+    });
+    fireEvent.pointerDown(hueControl, {
+      pointerId: 1,
+      clientY: 240,
+    });
+    await waitFor(() => {
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        RGBW_LED_STRIP_BUERO_KELLER_COLOR,
+        "120,80,40",
+        "HSB"
+      );
+    });
+
+    const saturationControl = screen.getByTestId(
+      `rgbw-light-control-${EQU_RGBW_LED_STRIP_BUERO_KELLER}-saturation`
+    );
+    expect(saturationControl).toHaveTextContent("");
+    vi.spyOn(saturationControl, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      top: 0,
+      right: 100,
+      bottom: 100,
+      left: 0,
+      toJSON: () => ({}),
+    });
+    fireEvent.pointerDown(saturationControl, {
+      pointerId: 1,
+      clientY: 50,
+    });
+    await waitFor(() => {
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        RGBW_LED_STRIP_BUERO_KELLER_COLOR,
+        "120,50,40",
+        "HSB"
+      );
+    });
+
+    const brightnessControl = screen.getByTestId(
+      `rgbw-light-control-${EQU_RGBW_LED_STRIP_BUERO_KELLER}-brightness`
+    );
+    expect(brightnessControl).toHaveTextContent("");
+    vi.spyOn(brightnessControl, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      top: 0,
+      right: 100,
+      bottom: 100,
+      left: 0,
+      toJSON: () => ({}),
+    });
+    fireEvent.pointerDown(brightnessControl, {
+      pointerId: 1,
+      clientY: 35,
+    });
+    await waitFor(() => {
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        RGBW_LED_STRIP_BUERO_KELLER_COLOR,
+        "120,50,65",
+        "HSB"
+      );
+    });
+
+    await user.click(
+      screen.getByTestId(
+        `rgbw-light-control-${EQU_RGBW_LED_STRIP_BUERO_KELLER}-toggle`
+      )
+    );
+    await waitFor(() => {
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        RGBW_LED_STRIP_BUERO_KELLER_COLOR,
+        "120,50,0",
+        "HSB"
+      );
+    });
+  });
+
   it("updates the living tv hud from program mode to streaming app logo", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -731,6 +881,9 @@ describe("App integration", () => {
     expect(
       screen.getByTestId(`raffstore-control-${GARAGE_DOOR_EQUIPMENT}-value`)
     ).toHaveTextContent("Unten");
+    expect(
+      screen.getByTestId(`raffstore-control-${GARAGE_DOOR_EQUIPMENT}-layout`)
+    ).toHaveClass("grid-cols-4");
     expect(
       screen.getByTestId(`raffstore-control-${GARAGE_DOOR_EQUIPMENT}-up`)
     ).toBeInTheDocument();

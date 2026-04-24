@@ -3,6 +3,7 @@ import type {
   ControlPosition,
   LightControlDefinition,
   PowerControlDefinition,
+  RgbwLightControlDefinition,
   TvControlDefinition,
   VentilationControlDefinition,
 } from "../views/controls/controlDefinitions";
@@ -85,6 +86,7 @@ const DEFAULT_LOCATION_IMAGE = "/views/missing.jpg";
 
 export type DiscoveredControlDefinition =
   | LightControlDefinition
+  | RgbwLightControlDefinition
   | OpeningControlDefinition
   | PowerControlDefinition
   | TvControlDefinition
@@ -465,8 +467,23 @@ const createControlsForEquipment = (
   locationName: string
 ): DiscoveredControlDefinition[] => {
   if (hasAnyTag(equipment, LIGHT_EQUIPMENT_TAGS)) {
+    const colorItem = children
+      .filter((item) => item.type === "Color")
+      .find((item) => hasTag(item, "Light") || hasTag(item, "Control"));
+    if (colorItem) {
+      return [
+        {
+          ...createControlBase("rgbw-light", equipment, locationName),
+          controlType: "rgbw-light",
+          itemRefs: {
+            colorItemName: colorItem.name,
+          },
+        },
+      ];
+    }
+
     const lightItem = children
-      .filter((item) => ["Switch", "Dimmer", "Color"].includes(item.type))
+      .filter((item) => ["Switch", "Dimmer"].includes(item.type))
       .find((item) => hasTag(item, "Light") || hasTag(item, "Control"));
     if (!lightItem) {
       return [];

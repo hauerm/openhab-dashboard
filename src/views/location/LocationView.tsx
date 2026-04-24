@@ -7,6 +7,10 @@ import {
   RaffstoreHudControl,
   RaffstoreOverlayControl,
 } from "../controls/raffstore";
+import {
+  RgbwLightHudControl,
+  RgbwLightOverlayControl,
+} from "../controls/rgbw-light";
 import { TvHudControl, TvOverlayControl } from "../controls/tv";
 import {
   VentilationHudControl,
@@ -65,6 +69,15 @@ const renderHudControl = (
       />
     );
   }
+  if (definition.controlType === "rgbw-light") {
+    return (
+      <RgbwLightHudControl
+        definition={definition}
+        interactive={!layoutEditMode}
+        onOpenControl={onOpenControl}
+      />
+    );
+  }
   if (definition.controlType === "tv") {
     return (
       <TvHudControl
@@ -107,6 +120,9 @@ const renderOverlayControl = (
   }
   if (definition.controlType === "light") {
     return <LightOverlayControl definition={definition} onClose={onCloseControl} />;
+  }
+  if (definition.controlType === "rgbw-light") {
+    return <RgbwLightOverlayControl definition={definition} onClose={onCloseControl} />;
   }
   if (definition.controlType === "tv") {
     return <TvOverlayControl definition={definition} onClose={onCloseControl} />;

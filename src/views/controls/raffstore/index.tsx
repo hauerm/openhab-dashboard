@@ -266,9 +266,8 @@ export const RaffstoreOverlayControl = ({
         className="pointer-events-none relative h-full w-full overflow-hidden"
       >
         <div
-          className={`pointer-events-none grid h-full min-h-0 w-full gap-2 p-2 md:gap-3 md:p-3 ${
-            supportsTiltPresets ? "grid-cols-4" : "grid-cols-2"
-          }`}
+          data-testid={`raffstore-control-${definition.controlId}-layout`}
+          className="pointer-events-none grid h-full min-h-0 w-full grid-cols-4 gap-2 p-2 md:gap-3 md:p-3"
         >
           <section className="pointer-events-none flex flex-col justify-start">
             <p className="text-xs font-semibold tracking-wide text-ui-foreground-muted md:text-sm">
