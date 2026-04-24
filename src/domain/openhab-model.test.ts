@@ -61,6 +61,15 @@ const fixtureItems = (): Item[] => [
       },
     },
   }),
+  createItem("Garage", "Group", ["Garage"], ["Hauer"], {
+    label: "Garage",
+    metadata: {
+      "dashboard-location": {
+        value: "v1",
+        config: { order: 30 },
+      },
+    },
+  }),
   createItem("Essen", "Group", ["DiningRoom"], ["EG"], {
     label: "Essen",
   }),
@@ -128,6 +137,22 @@ const fixtureItems = (): Item[] => [
       },
     }
   ),
+  createItem("KNX_Hormann_Garagentor", "Group", ["GarageDoor"], ["Garage"], {
+    label: "KNX Hörmann Garagentor",
+  }),
+  createItem(
+    "KNX_Hormann_Garagentor_Garagentor",
+    "Rollershutter",
+    ["Control", "Opening"],
+    ["KNX_Hormann_Garagentor"],
+    {
+      metadata: {
+        automation: {
+          value: "garagedoor",
+        },
+      },
+    }
+  ),
   createItem("Samsung_TV", "Group", ["Television"], ["Wohnzimmer"]),
   createItem("Samsung_TV_Power", "Switch", ["Enabled", "Switch"], ["Samsung_TV"]),
   createItem("Samsung_TV_Application", "String", ["App", "Control"], ["Samsung_TV"]),
@@ -157,7 +182,7 @@ describe("buildOpenHABSemanticModel", () => {
       "Wohnzimmer",
     ]);
     expect(model.rootLocationNames).toEqual(["Hauer"]);
-    expect(model.childLocationNamesByParentName.Hauer).toEqual(["EG"]);
+    expect(model.childLocationNamesByParentName.Hauer).toEqual(["EG", "Garage"]);
     expect(model.childLocationNamesByParentName.EG).toEqual(["Wohnzimmer", "Essen"]);
   });
 
@@ -175,6 +200,7 @@ describe("buildOpenHABSemanticModel", () => {
     const model = buildOpenHABSemanticModel(fixtureItems());
     const livingControls = model.controlsByLocation.Wohnzimmer ?? [];
     const egControls = model.controlsByLocation.EG ?? [];
+    const garageControls = model.controlsByLocation.Garage ?? [];
 
     expect(livingControls.map((control) => control.controlType)).toEqual([
       "light",
@@ -183,6 +209,7 @@ describe("buildOpenHABSemanticModel", () => {
       "power",
     ]);
     expect(egControls.map((control) => control.controlType)).toEqual(["ventilation"]);
+    expect(garageControls.map((control) => control.controlType)).toEqual(["opening"]);
   });
 
   it("aggregates multi-point opening equipment into one control", () => {
@@ -192,6 +219,20 @@ describe("buildOpenHABSemanticModel", () => {
     expect(opening?.controlId).toBe("Equ_Raffstore");
     expect(opening?.itemRefs.itemNames).toEqual(["Raffstore_Left", "Raffstore_Right"]);
     expect(opening?.subtype).toBe("raffstore");
+  });
+
+  it("maps garage doors to opening controls with garagedoor subtype", () => {
+    const model = buildOpenHABSemanticModel(fixtureItems());
+    const garageDoor = model.controls.find(
+      (control) => control.controlId === "KNX_Hormann_Garagentor"
+    );
+
+    expect(garageDoor?.controlType).toBe("opening");
+    if (!garageDoor || garageDoor.controlType !== "opening") {
+      throw new Error("Expected garage door opening control");
+    }
+    expect(garageDoor.itemRefs.itemNames).toEqual(["KNX_Hormann_Garagentor_Garagentor"]);
+    expect(garageDoor.subtype).toBe("garagedoor");
   });
 
   it("supports raw openHAB property tags for sidebar metrics", () => {

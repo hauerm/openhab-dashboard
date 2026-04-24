@@ -89,6 +89,8 @@ vi.mock("./stores/locationPropertyHistoryStore", () => ({
 }));
 const EQU_RAFFSTORE_TERRASSE = "Equ_Raffstore_Terrasse";
 const EQU_RAFFSTORE_STRASSE = "Equ_Raffstore_Strasse";
+const GARAGE_DOOR_EQUIPMENT = "KNX_Hormann_Garagentor";
+const GARAGE_DOOR_ITEM = "KNX_Hormann_Garagentor_Garagentor";
 
 interface CreateItemOptions {
   label?: string;
@@ -144,6 +146,17 @@ const buildDefaultItems = (): Item[] => [
       "dashboard-location": {
         value: "v1",
         config: { order: 200, baseImage: "/views/Wohnzimmer.webp" },
+      },
+    },
+  }),
+  createItem("Garage", "NULL", "Group", {
+    label: "Garage",
+    tags: ["Garage"],
+    groupNames: ["Hauer"],
+    metadata: {
+      "dashboard-location": {
+        value: "v1",
+        config: { order: 300, baseImage: "/views/Garage.webp" },
       },
     },
   }),
@@ -243,6 +256,25 @@ const buildDefaultItems = (): Item[] => [
   createItem(Shelly_Plug_Wohnzimmer_Stromverbrauch, "24.3 W", "Number:Power", {
     tags: ["Power", "Measurement"],
     groupNames: ["Shelly_Plug_Wohnzimmer"],
+  }),
+  createItem(GARAGE_DOOR_EQUIPMENT, "NULL", "Group", {
+    label: "KNX Hörmann Garagentor",
+    tags: ["GarageDoor"],
+    groupNames: ["Garage"],
+  }),
+  createItem(GARAGE_DOOR_ITEM, "100", "Rollershutter", {
+    label: "Garagentor",
+    tags: ["Control", "Opening"],
+    groupNames: [GARAGE_DOOR_EQUIPMENT],
+    metadata: { automation: { value: "garagedoor" } },
+  }),
+  createItem("KNX_Hormann_Garagentor_Status_Tor_geschlossen", "ON", "Switch", {
+    tags: ["Point"],
+    groupNames: [GARAGE_DOOR_EQUIPMENT],
+  }),
+  createItem("KNX_Hormann_Garagentor_Status_Tor_offen", "OFF", "Switch", {
+    tags: ["Point"],
+    groupNames: [GARAGE_DOOR_EQUIPMENT],
   }),
 ];
 
@@ -676,6 +708,59 @@ describe("App integration", () => {
     expect(
       screen.queryByTestId(`living-control-tv-small-${Samsung_TV_Wohnzimmer_Power}`)
     ).not.toBeInTheDocument();
+  });
+
+  it("renders garage door as simple opening control without raffstore presets", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
+    });
+
+    await user.click(screen.getByTestId("dock-button-Garage"));
+    await user.click(screen.getByTestId(`living-control-placeholder-${GARAGE_DOOR_ITEM}`));
+
+    expect(
+      screen.getByTestId(`raffstore-control-${GARAGE_DOOR_EQUIPMENT}-value`)
+    ).toHaveTextContent("Unten");
+    expect(
+      screen.getByTestId(`raffstore-control-${GARAGE_DOOR_EQUIPMENT}-up`)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`raffstore-control-${GARAGE_DOOR_EQUIPMENT}-stop`)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`raffstore-control-${GARAGE_DOOR_EQUIPMENT}-down`)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`raffstore-control-${GARAGE_DOOR_EQUIPMENT}-preset-arbeitsstellung`)
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`raffstore-control-${GARAGE_DOOR_EQUIPMENT}-preset-schliessen`)
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId(`raffstore-control-${GARAGE_DOOR_EQUIPMENT}-up`));
+    await user.click(screen.getByTestId(`raffstore-control-${GARAGE_DOOR_EQUIPMENT}-stop`));
+    await user.click(screen.getByTestId(`raffstore-control-${GARAGE_DOOR_EQUIPMENT}-down`));
+
+    await waitFor(() => {
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        GARAGE_DOOR_ITEM,
+        "UP",
+        "UpDown"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        GARAGE_DOOR_ITEM,
+        "STOP",
+        "StopMove"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        GARAGE_DOOR_ITEM,
+        "DOWN",
+        "UpDown"
+      );
+    });
   });
 
   it("closes fullscreen living overlays when clicking a free background area", async () => {

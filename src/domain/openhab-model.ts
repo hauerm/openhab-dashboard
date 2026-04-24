@@ -48,6 +48,7 @@ const LIGHT_EQUIPMENT_TAGS = new Set([
 const SUPPORTED_EQUIPMENT_TAGS = new Set([
   ...LIGHT_EQUIPMENT_TAGS,
   "Blinds",
+  "GarageDoor",
   "PowerOutlet",
   "Television",
   "HVAC",
@@ -343,6 +344,7 @@ const getAutomationSubtype = (item: Item): OpeningControlSubtype => {
   if (
     automationValue === "raffstore" ||
     automationValue === "rollershutter" ||
+    automationValue === "garagedoor" ||
     automationValue === "awning"
   ) {
     return automationValue;
@@ -377,7 +379,7 @@ const createControlsForEquipment = (
     ];
   }
 
-  if (hasTag(equipment, "Blinds")) {
+  if (hasTag(equipment, "Blinds") || hasTag(equipment, "GarageDoor")) {
     const openingItems = children
       .filter(
         (item) =>

@@ -31,6 +31,7 @@ export interface LightControlDefinition
 export type OpeningControlSubtype =
   | "raffstore"
   | "rollershutter"
+  | "garagedoor"
   | "awning"
   | "opening";
 
