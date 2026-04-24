@@ -1,15 +1,24 @@
 import { useMemo, useState } from "react";
 import { MdOutlineOpenWith } from "react-icons/md";
-import { LightHudControl, LightOverlayControl } from "../../../controls/light";
-import { PowerHudControl, PowerOverlayControl } from "../../../controls/power";
+import { useViewStore } from "../../stores/viewStore";
+import { LightHudControl, LightOverlayControl } from "../controls/light";
+import { PowerHudControl, PowerOverlayControl } from "../controls/power";
 import {
   RaffstoreHudControl,
   RaffstoreOverlayControl,
-} from "../../../controls/raffstore";
-import { TvHudControl, TvOverlayControl } from "../../../controls/tv";
-import type { ViewProps } from "../../../types";
-import { useViewControlLayout } from "../../../useViewControlLayout";
-import { useLivingViewModel } from "./useLivingViewModel";
+} from "../controls/raffstore";
+import { TvHudControl, TvOverlayControl } from "../controls/tv";
+import {
+  VentilationHudControl,
+  VentilationOverlayControl,
+} from "../controls/ventilation";
+import type { ViewControlDefinition } from "../controls/controlDefinitions";
+import type { ViewProps } from "../types";
+import { useViewControlLayout } from "../useViewControlLayout";
+
+type LocationViewProps = ViewProps & {
+  viewId: string;
+};
 
 const HUD_ROOT_CLASS = "pointer-events-none absolute inset-0 z-20";
 const HUD_CONTAINER_CLASS = "relative h-full w-full";
@@ -23,6 +32,8 @@ const HUD_LAYOUT_TOGGLE_EDIT_CLASS =
 const HUD_LAYOUT_TOGGLE_DEFAULT_CLASS =
   "border-ui-border-strong bg-ui-surface-overlay text-ui-foreground hover:bg-ui-surface-panel";
 
+const EMPTY_CONTROLS: readonly ViewControlDefinition[] = [];
+
 const getLayoutWrapperClassName = (layoutEditMode: boolean): string =>
   `${HUD_WRAPPER_CLASS} ${layoutEditMode ? HUD_WRAPPER_DRAG_CLASS : ""}`;
 
@@ -31,13 +42,99 @@ const getLayoutToggleClassName = (layoutEditMode: boolean): string =>
     layoutEditMode ? HUD_LAYOUT_TOGGLE_EDIT_CLASS : HUD_LAYOUT_TOGGLE_DEFAULT_CLASS
   }`;
 
-const Living = ({
+const renderHudControl = (
+  definition: ViewControlDefinition,
+  layoutEditMode: boolean,
+  onOpenControl: (controlId: string) => void
+) => {
+  if (definition.controlType === "opening") {
+    return (
+      <RaffstoreHudControl
+        definition={definition}
+        interactive={!layoutEditMode}
+        onOpenControl={onOpenControl}
+      />
+    );
+  }
+  if (definition.controlType === "light") {
+    return (
+      <LightHudControl
+        definition={definition}
+        interactive={!layoutEditMode}
+        onOpenControl={onOpenControl}
+      />
+    );
+  }
+  if (definition.controlType === "tv") {
+    return (
+      <TvHudControl
+        definition={definition}
+        interactive={!layoutEditMode}
+        onOpenControl={onOpenControl}
+      />
+    );
+  }
+  if (definition.controlType === "power") {
+    return (
+      <PowerHudControl
+        definition={definition}
+        interactive={!layoutEditMode}
+        onOpenControl={onOpenControl}
+      />
+    );
+  }
+  if (definition.controlType === "ventilation") {
+    return (
+      <VentilationHudControl
+        definition={definition}
+        interactive={!layoutEditMode}
+        onOpenControl={onOpenControl}
+      />
+    );
+  }
+  return null;
+};
+
+const renderOverlayControl = (
+  definition: ViewControlDefinition | null,
+  onCloseControl: () => void
+) => {
+  if (!definition) {
+    return null;
+  }
+  if (definition.controlType === "opening") {
+    return <RaffstoreOverlayControl definition={definition} onClose={onCloseControl} />;
+  }
+  if (definition.controlType === "light") {
+    return <LightOverlayControl definition={definition} onClose={onCloseControl} />;
+  }
+  if (definition.controlType === "tv") {
+    return <TvOverlayControl definition={definition} onClose={onCloseControl} />;
+  }
+  if (definition.controlType === "power") {
+    return <PowerOverlayControl definition={definition} onClose={onCloseControl} />;
+  }
+  if (definition.controlType === "ventilation") {
+    return (
+      <VentilationOverlayControl
+        definition={definition}
+        onClose={onCloseControl}
+      />
+    );
+  }
+  return null;
+};
+
+const LocationView = ({
+  viewId,
   activeControlId,
   onOpenControl,
   onCloseControl,
   blockedLeftPx = 0,
-}: ViewProps) => {
-  const controls = useLivingViewModel();
+}: LocationViewProps) => {
+  const controls = useViewStore(
+    (state) => state.model?.controlsByLocation[viewId] ?? EMPTY_CONTROLS
+  );
   const [layoutEditMode, setLayoutEditMode] = useState(false);
 
   const layoutControls = useMemo(
@@ -45,6 +142,9 @@ const Living = ({
       controls.map((definition) => ({
         controlId: definition.controlId,
         metadataItemNames: [...definition.layoutMetadataItemNames],
+        legacyMetadataItemNames: [
+          ...(definition.legacyLayoutMetadataItemNames ?? []),
+        ],
         defaultPosition: definition.defaultPosition,
       })),
     [controls]
@@ -53,7 +153,8 @@ const Living = ({
   const activeControl = useMemo(
     () =>
       activeControlId
-        ? controls.find((definition) => definition.controlId === activeControlId) ?? null
+        ? controls.find((definition) => definition.controlId === activeControlId) ??
+          null
         : null,
     [activeControlId, controls]
   );
@@ -67,7 +168,7 @@ const Living = ({
     handleControlPointerUp,
     handleControlPointerCancel,
   } = useViewControlLayout({
-    viewId: "living",
+    viewId,
     controls: layoutControls,
     dragEnabled: layoutEditMode,
     blockedLeftPx,
@@ -79,7 +180,7 @@ const Living = ({
         <div ref={containerRef} className={HUD_CONTAINER_CLASS}>
           <button
             type="button"
-            data-testid="living-layout-edit-toggle"
+            data-testid={`${viewId}-layout-edit-toggle`}
             className={getLayoutToggleClassName(layoutEditMode)}
             onClick={() => {
               setLayoutEditMode((current) => !current);
@@ -94,7 +195,7 @@ const Living = ({
             {layoutEditMode ? "Layout aktiv" : "Layout"}
           </button>
 
-          <section data-testid="living-controls" className={HUD_LAYOUT_SECTION_CLASS}>
+          <section data-testid={`${viewId}-controls`} className={HUD_LAYOUT_SECTION_CLASS}>
             {controls.map((definition) => (
               <div
                 key={definition.controlId}
@@ -118,57 +219,16 @@ const Living = ({
                 }}
                 className={getLayoutWrapperClassName(layoutEditMode)}
               >
-                {definition.controlType === "opening" ? (
-                  <RaffstoreHudControl
-                    definition={definition}
-                    interactive={!layoutEditMode}
-                    onOpenControl={onOpenControl}
-                  />
-                ) : definition.controlType === "light" ? (
-                  <LightHudControl
-                    definition={definition}
-                    interactive={!layoutEditMode}
-                    onOpenControl={onOpenControl}
-                  />
-                ) : definition.controlType === "tv" ? (
-                  <TvHudControl
-                    definition={definition}
-                    interactive={!layoutEditMode}
-                    onOpenControl={onOpenControl}
-                  />
-                ) : (
-                  <PowerHudControl
-                    definition={definition}
-                    interactive={!layoutEditMode}
-                    onOpenControl={onOpenControl}
-                  />
-                )}
+                {renderHudControl(definition, layoutEditMode, onOpenControl)}
               </div>
             ))}
           </section>
         </div>
       </div>
 
-      {activeControl?.controlType === "opening" ? (
-        <RaffstoreOverlayControl
-          definition={activeControl}
-          onClose={onCloseControl}
-        />
-      ) : activeControl?.controlType === "light" ? (
-        <LightOverlayControl definition={activeControl} onClose={onCloseControl} />
-      ) : activeControl?.controlType === "tv" ? (
-        <TvOverlayControl
-          definition={activeControl}
-          onClose={onCloseControl}
-        />
-      ) : activeControl?.controlType === "power" ? (
-        <PowerOverlayControl
-          definition={activeControl}
-          onClose={onCloseControl}
-        />
-      ) : null}
+      {renderOverlayControl(activeControl, onCloseControl)}
     </>
   );
 };
 
-export default Living;
+export default LocationView;

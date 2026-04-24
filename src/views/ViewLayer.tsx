@@ -1,5 +1,5 @@
 import { useViewStore } from "../stores/viewStore";
-import { VIEW_MODULES } from "./registry";
+import LocationView from "./location/LocationView";
 
 interface ViewLayerProps {
   activeControlId: string | null;
@@ -15,10 +15,10 @@ const ViewLayer = ({
   blockedLeftPx = 0,
 }: ViewLayerProps) => {
   const currentView = useViewStore((state) => state.currentView);
-  const ViewComponent = VIEW_MODULES[currentView].Component;
 
   return (
-    <ViewComponent
+    <LocationView
+      viewId={currentView}
       activeControlId={activeControlId}
       onOpenControl={onOpenControl}
       onCloseControl={onCloseControl}

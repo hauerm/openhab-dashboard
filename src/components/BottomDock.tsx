@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MdChevronLeft, MdChevronRight, MdKeyboardArrowUp } from "react-icons/md";
-import { VIEW_IDS, VIEWS } from "../config/views";
 import { useViewStore } from "../stores/viewStore";
 import type { ViewId } from "../types/view";
 
@@ -17,6 +16,8 @@ const AUTO_HIDE_DELAY_MS = 7000;
 const BottomDock = ({ onViewChange }: BottomDockProps) => {
   const currentView = useViewStore((state) => state.currentView);
   const setCurrentView = useViewStore((state) => state.setCurrentView);
+  const viewIds = useViewStore((state) => state.viewIds);
+  const viewConfigs = useViewStore((state) => state.viewConfigs);
   const viewLabels = useViewStore((state) => state.viewLabels);
   const [isDockVisible, setIsDockVisible] = useState(true);
   const dockRootRef = useRef<HTMLDivElement | null>(null);
@@ -183,8 +184,11 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
             }`}
             style={{ touchAction: "pan-x" }}
           >
-            {VIEW_IDS.map((viewId) => {
-              const viewConfig = VIEWS[viewId];
+            {viewIds.map((viewId) => {
+              const viewConfig = viewConfigs[viewId];
+              if (!viewConfig) {
+                return null;
+              }
               const viewLabel = viewLabels[viewId] ?? viewConfig.label;
               const isActive = currentView === viewId;
 

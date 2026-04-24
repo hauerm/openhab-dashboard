@@ -95,14 +95,18 @@ const TiltSectionIcon = ({ angleDeg }: { angleDeg: number }) => {
 };
 
 const sendRaffstoreCommand = async (
-  itemName: string,
+  itemNames: readonly string[],
   command: RaffstoreMotionCommand
 ): Promise<void> => {
   if (command === "STOP") {
-    await sendViewItemCommand(itemName, command, "StopMove");
+    await Promise.all(
+      itemNames.map((itemName) => sendViewItemCommand(itemName, command, "StopMove"))
+    );
     return;
   }
-  await sendViewItemCommand(itemName, command, "UpDown");
+  await Promise.all(
+    itemNames.map((itemName) => sendViewItemCommand(itemName, command, "UpDown"))
+  );
 };
 
 export const RaffstoreHudControl = ({
@@ -113,6 +117,12 @@ export const RaffstoreHudControl = ({
 }: RaffstoreHudControlProps) => {
   const { hudState } = useRaffstoreControlModel(definition);
   const Icon = HUD_ICON_BY_STATE[hudState];
+  const ariaKind =
+    definition.subtype === "awning"
+      ? "Markise"
+      : definition.subtype === "rollershutter"
+      ? "Rollladen"
+      : "Raffstore";
 
   return (
     <button
@@ -126,7 +136,7 @@ export const RaffstoreHudControl = ({
         onOpenControl(definition.controlId);
       }}
       className="flex items-center justify-center"
-      aria-label={`${definition.label} (Raffstore öffnen)`}
+      aria-label={`${definition.label} (${ariaKind} öffnen)`}
     >
       <span className="pointer-events-auto flex h-20 w-20 items-center justify-center rounded-full bg-ui-surface-overlay backdrop-blur-sm shadow-xl transition hover:bg-ui-surface-panel md:h-24 md:w-24">
         <Icon
@@ -153,7 +163,7 @@ export const RaffstoreOverlayControl = ({
   useEffect(() => {
     sequenceControllerRef.current = createRaffstoreSequenceController({
       sendCommand: async (command) =>
-        sendRaffstoreCommand(definition.itemRefs.itemName, command),
+        sendRaffstoreCommand(definition.itemRefs.itemNames, command),
       getOpeningPercent: () => openingPercentRef.current,
     });
 
@@ -161,7 +171,7 @@ export const RaffstoreOverlayControl = ({
       void sequenceControllerRef.current?.cancel();
       sequenceControllerRef.current = null;
     };
-  }, [definition.itemRefs.itemName]);
+  }, [definition.itemRefs.itemNames]);
 
   const withController = async (
     executor: (controller: RaffstoreSequenceController) => Promise<void>

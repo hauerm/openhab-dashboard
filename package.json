@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "migrate:layout-metadata": "node scripts/migrate-dashboard-layout-metadata.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

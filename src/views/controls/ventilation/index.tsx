@@ -31,7 +31,7 @@ export const VentilationHudControl = ({
   interactive = true,
   onOpenControl,
 }: VentilationHudControlProps) => {
-  const { badge } = useVentilationControlModel();
+  const { badge } = useVentilationControlModel(definition);
 
   return (
     <button
@@ -95,7 +95,7 @@ export const VentilationOverlayControl = ({
   onClose,
 }: VentilationOverlayControlProps) => {
   const { manualLevel, actualLevel, sending, setManualLevel } =
-    useVentilationControlModel();
+    useVentilationControlModel(definition);
   const manualButtons: Exclude<HeliosManualLevel, -1>[] = [0, 1, 2, 3, 4];
   const currentLevelLabel =
     actualLevel === null ? "--" : HELIOS_MANUAL_LEVEL_LABELS[actualLevel];

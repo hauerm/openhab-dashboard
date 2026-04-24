@@ -16,6 +16,7 @@ interface ControlDefinitionBase<
   label: string;
   itemRefs: TItemRefs;
   layoutMetadataItemNames: readonly string[];
+  legacyLayoutMetadataItemNames?: readonly string[];
   defaultPosition: ControlPosition;
 }
 
@@ -28,14 +29,25 @@ export interface LightControlDefinition
   interaction: "overlay" | "direct-toggle";
 }
 
-export interface RaffstoreControlItemRefs {
+export type OpeningControlSubtype =
+  | "raffstore"
+  | "rollershutter"
+  | "awning"
+  | "opening";
+
+export interface OpeningControlItemRefs {
   itemName: string;
+  itemNames: readonly string[];
 }
 
-export type RaffstoreControlDefinition = ControlDefinitionBase<
-  "raffstore",
-  RaffstoreControlItemRefs
->;
+export type OpeningControlDefinition = ControlDefinitionBase<
+  "opening",
+  OpeningControlItemRefs
+> & {
+  subtype: OpeningControlSubtype;
+};
+
+export type RaffstoreControlDefinition = OpeningControlDefinition;
 
 export interface TvControlItemRefs {
   powerItemName: string;
@@ -74,14 +86,19 @@ export interface LocationPropertyHistoryControlDefinition
   };
 }
 
+export interface VentilationControlItemRefs {
+  manualModeItemName: string;
+  actualLevelItemName: string;
+}
+
 export type VentilationControlDefinition = ControlDefinitionBase<
   "ventilation",
-  Record<string, never>
+  VentilationControlItemRefs
 >;
 
 export type ViewControlDefinition =
   | LightControlDefinition
-  | RaffstoreControlDefinition
+  | OpeningControlDefinition
   | TvControlDefinition
   | PowerControlDefinition
   | LocationPropertyHistoryControlDefinition

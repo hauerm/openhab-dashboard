@@ -27,20 +27,24 @@ export const LIVING_VIEW_CONTROL_DEFINITIONS: readonly (
 )[] = [
   {
     controlId: KNX_JA1_Raffstore_Wohnzimmer,
-    controlType: "raffstore",
+    controlType: "opening",
+    subtype: "raffstore",
     label: "Raffstore Innen",
     itemRefs: {
       itemName: KNX_JA1_Raffstore_Wohnzimmer,
+      itemNames: [KNX_JA1_Raffstore_Wohnzimmer],
     },
     layoutMetadataItemNames: [KNX_JA1_Raffstore_Wohnzimmer],
     defaultPosition: { x: 22, y: 22 },
   },
   {
     controlId: KNX_JA1_Raffstore_Wohnzimmer_Strasse,
-    controlType: "raffstore",
+    controlType: "opening",
+    subtype: "raffstore",
     label: "Raffstore Straße",
     itemRefs: {
       itemName: KNX_JA1_Raffstore_Wohnzimmer_Strasse,
+      itemNames: [KNX_JA1_Raffstore_Wohnzimmer_Strasse],
     },
     layoutMetadataItemNames: [KNX_JA1_Raffstore_Wohnzimmer_Strasse],
     defaultPosition: { x: 40, y: 22 },

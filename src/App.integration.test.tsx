@@ -16,6 +16,8 @@ import {
   Samsung_TV_Wohnzimmer_Titel,
   Shelly_Plug_Wohnzimmer_Betrieb,
   Shelly_Plug_Wohnzimmer_Stromverbrauch,
+  KNX_Helios_ManualMode,
+  KNX_Helios_KWRL_Ist_Stufe,
 } from "./domain/openhab-item-names";
 import { resetViewStoreForTests } from "./stores/viewStore";
 import App from "./App";
@@ -104,39 +106,163 @@ vi.mock("./stores/ventilationStore", () => {
 
   return { useVentilationStore };
 });
+const EQU_RAFFSTORE_TERRASSE = "Equ_Raffstore_Terrasse";
+const EQU_RAFFSTORE_STRASSE = "Equ_Raffstore_Strasse";
+
+interface CreateItemOptions {
+  label?: string;
+  tags?: string[];
+  groupNames?: string[];
+  metadata?: Item["metadata"];
+}
+
 const createItem = (
   name: string,
   state: string,
   type: Item["type"] = "Switch",
-  label?: string
+  options: CreateItemOptions = {}
 ): Item => ({
   link: `/items/${name}`,
   state,
   editable: false,
   type,
   name,
-  ...(label ? { label } : {}),
-  tags: [],
-  groupNames: [],
+  ...(options.label ? { label: options.label } : {}),
+  ...(options.metadata ? { metadata: options.metadata } : {}),
+  tags: options.tags ?? [],
+  groupNames: options.groupNames ?? [],
 });
 
 const buildDefaultItems = (): Item[] => [
-  createItem("Hauer", "NULL", "Group", "Adresse Hauer"),
-  createItem("EG", "NULL", "Group", "EG"),
-  createItem("Wohnzimmer", "NULL", "Group", "Wohnzimmer"),
-  createItem(KNX_Wetterstation_Regen, "OFF"),
-  createItem(KNX_Wetterstation_Helligkeit, "1800 lx"),
-  createItem(KNX_JA1_Raffstore_Wohnzimmer, "67", "Rollershutter"),
-  createItem(KNX_JA1_Raffstore_Wohnzimmer_Strasse, "45", "Rollershutter"),
-  createItem(SAH3_Licht_Couch, "ON"),
-  createItem(SAH3_Licht_TV, "35", "Dimmer"),
-  createItem(Samsung_TV_Wohnzimmer_Power, "ON"),
-  createItem(Samsung_TV_Wohnzimmer_Application, "NULL", "String"),
-  createItem(Samsung_TV_Wohnzimmer_Kanal, "ORF 1", "String"),
-  createItem(Samsung_TV_Wohnzimmer_Kanalnummer, "1", "String"),
-  createItem(Samsung_TV_Wohnzimmer_Titel, "ZIB", "String"),
-  createItem(Shelly_Plug_Wohnzimmer_Betrieb, "ON"),
-  createItem(Shelly_Plug_Wohnzimmer_Stromverbrauch, "24.3 W", "Number:Power"),
+  createItem("Hauer", "NULL", "Group", {
+    label: "Adresse Hauer",
+    tags: ["Location"],
+    metadata: {
+      "dashboard-location": {
+        value: "v1",
+        config: { order: 0, baseImage: "/views/house/base.webp" },
+      },
+    },
+  }),
+  createItem("EG", "NULL", "Group", {
+    label: "EG",
+    tags: ["GroundFloor"],
+    groupNames: ["Hauer"],
+    metadata: {
+      "dashboard-location": {
+        value: "v1",
+        config: { order: 100, baseImage: "/views/house/eg/base.webp" },
+      },
+    },
+  }),
+  createItem("Wohnzimmer", "NULL", "Group", {
+    label: "Wohnzimmer",
+    tags: ["LivingRoom"],
+    groupNames: ["EG"],
+    metadata: {
+      "dashboard-location": {
+        value: "v1",
+        config: { order: 200, baseImage: "/views/house/eg/living/base.webp" },
+      },
+    },
+  }),
+  createItem(KNX_Wetterstation_Regen, "OFF", "Switch", {
+    tags: ["Status", "Rain"],
+    groupNames: ["Hauer"],
+  }),
+  createItem(KNX_Wetterstation_Helligkeit, "1800 lx", "Number:Illuminance", {
+    tags: ["Measurement", "Illuminance"],
+    groupNames: ["Hauer"],
+  }),
+  createItem("KNX_Helios_KWRL", "NULL", "Group", {
+    label: "Lueftung",
+    tags: ["HVAC"],
+    groupNames: ["EG"],
+  }),
+  createItem(KNX_Helios_ManualMode, "-1", "Number", {
+    tags: ["Manual", "Level"],
+    groupNames: ["KNX_Helios_KWRL"],
+  }),
+  createItem(KNX_Helios_KWRL_Ist_Stufe, "2", "Number", {
+    tags: ["Status", "Level"],
+    groupNames: ["KNX_Helios_KWRL"],
+  }),
+  createItem(EQU_RAFFSTORE_TERRASSE, "NULL", "Group", {
+    label: "Raffstore Terrasse",
+    tags: ["Blinds"],
+    groupNames: ["Wohnzimmer"],
+  }),
+  createItem(KNX_JA1_Raffstore_Wohnzimmer, "67", "Rollershutter", {
+    tags: ["Control", "Opening"],
+    groupNames: [EQU_RAFFSTORE_TERRASSE],
+    metadata: { automation: { value: "raffstore" } },
+  }),
+  createItem(EQU_RAFFSTORE_STRASSE, "NULL", "Group", {
+    label: "Raffstore Strasse",
+    tags: ["Blinds"],
+    groupNames: ["Wohnzimmer"],
+  }),
+  createItem(KNX_JA1_Raffstore_Wohnzimmer_Strasse, "45", "Rollershutter", {
+    tags: ["Control", "Opening"],
+    groupNames: [EQU_RAFFSTORE_STRASSE],
+    metadata: { automation: { value: "raffstore" } },
+  }),
+  createItem("Equ_Spots_Couch", "NULL", "Group", {
+    label: "Spots Couch",
+    tags: ["Chandelier"],
+    groupNames: ["Wohnzimmer"],
+  }),
+  createItem(SAH3_Licht_Couch, "ON", "Switch", {
+    tags: ["Light", "Control"],
+    groupNames: ["Equ_Spots_Couch"],
+  }),
+  createItem("Equ_Spots_TV", "NULL", "Group", {
+    label: "Spots TV",
+    tags: ["Chandelier"],
+    groupNames: ["Wohnzimmer"],
+  }),
+  createItem(SAH3_Licht_TV, "35", "Dimmer", {
+    tags: ["Light", "Control"],
+    groupNames: ["Equ_Spots_TV"],
+  }),
+  createItem("Samsung_TV_Wohnzimmer", "NULL", "Group", {
+    label: "Samsung TV",
+    tags: ["Television"],
+    groupNames: ["Wohnzimmer"],
+  }),
+  createItem(Samsung_TV_Wohnzimmer_Power, "ON", "Switch", {
+    tags: ["Enabled", "Control"],
+    groupNames: ["Samsung_TV_Wohnzimmer"],
+  }),
+  createItem(Samsung_TV_Wohnzimmer_Application, "NULL", "String", {
+    tags: ["App", "Status"],
+    groupNames: ["Samsung_TV_Wohnzimmer"],
+  }),
+  createItem(Samsung_TV_Wohnzimmer_Kanal, "ORF 1", "String", {
+    tags: ["Channel", "Status"],
+    groupNames: ["Samsung_TV_Wohnzimmer"],
+  }),
+  createItem(Samsung_TV_Wohnzimmer_Kanalnummer, "1", "String", {
+    tags: ["Channel", "Control"],
+    groupNames: ["Samsung_TV_Wohnzimmer"],
+  }),
+  createItem(Samsung_TV_Wohnzimmer_Titel, "ZIB", "String", {
+    tags: ["Status"],
+    groupNames: ["Samsung_TV_Wohnzimmer"],
+  }),
+  createItem("Shelly_Plug_Wohnzimmer", "NULL", "Group", {
+    label: "Shelly Plug Wohnzimmer",
+    tags: ["PowerOutlet"],
+    groupNames: ["Wohnzimmer"],
+  }),
+  createItem(Shelly_Plug_Wohnzimmer_Betrieb, "ON", "Switch", {
+    tags: ["Power", "Control"],
+    groupNames: ["Shelly_Plug_Wohnzimmer"],
+  }),
+  createItem(Shelly_Plug_Wohnzimmer_Stromverbrauch, "24.3 W", "Number:Power", {
+    tags: ["Power", "Measurement"],
+    groupNames: ["Shelly_Plug_Wohnzimmer"],
+  }),
 ];
 
 describe("App integration", () => {
@@ -193,7 +319,7 @@ describe("App integration", () => {
     );
     await waitFor(() => {
       expect(background).toHaveAttribute("alt", "Adresse Hauer Kontextfoto");
-      expect(screen.getByTestId("dock-button-house")).toHaveTextContent(
+      expect(screen.getByTestId("dock-button-Hauer")).toHaveTextContent(
         "Adresse Hauer"
       );
     });
@@ -201,8 +327,8 @@ describe("App integration", () => {
       "data-visible",
       "true"
     );
-    expect(screen.getByTestId("dock-button-eg")).toBeInTheDocument();
-    expect(screen.getByTestId("dock-button-living")).toBeInTheDocument();
+    expect(screen.getByTestId("dock-button-EG")).toBeInTheDocument();
+    expect(screen.getByTestId("dock-button-Wohnzimmer")).toBeInTheDocument();
     expect(screen.getByTestId("view-sidebar")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-temp")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-humidity")).toBeInTheDocument();
@@ -227,7 +353,7 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
     });
 
-    await user.click(screen.getByTestId("dock-button-eg"));
+    await user.click(screen.getByTestId("dock-button-EG"));
 
     const background = screen.getByTestId("view-background-image");
     expect(background).toHaveAttribute(
@@ -249,7 +375,7 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
     });
 
-    expect(screen.getByTestId("dock-button-eg")).toBeInTheDocument();
+    expect(screen.getByTestId("dock-button-EG")).toBeInTheDocument();
 
     await user.click(screen.getByTestId("view-background-image"));
 
@@ -280,7 +406,7 @@ describe("App integration", () => {
 
     expect(screen.getByTestId("view-sidebar")).toBeInTheDocument();
 
-    await user.click(screen.getByTestId("dock-button-living"));
+    await user.click(screen.getByTestId("dock-button-Wohnzimmer"));
 
     expect(screen.getByTestId("view-sidebar")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-temp")).toBeInTheDocument();
@@ -296,7 +422,7 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
     });
 
-    await user.click(screen.getByTestId("dock-button-eg"));
+    await user.click(screen.getByTestId("dock-button-EG"));
     await user.click(screen.getByTestId("hud-metric-temp"));
 
     expect(
@@ -317,7 +443,7 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
     });
 
-    await user.click(screen.getByTestId("dock-button-eg"));
+    await user.click(screen.getByTestId("dock-button-EG"));
     await user.click(screen.getByTestId("hud-metric-ventilation"));
 
     expect(screen.getByTestId("ventilation-overlay")).toBeInTheDocument();
@@ -346,7 +472,7 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
     });
 
-    await user.click(screen.getByTestId("dock-button-eg"));
+    await user.click(screen.getByTestId("dock-button-EG"));
     await user.click(screen.getByTestId("hud-metric-ventilation"));
 
     expect(screen.getByTestId("ventilation-overlay")).toBeInTheDocument();
@@ -363,7 +489,7 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
     });
 
-    await user.click(screen.getByTestId("dock-button-eg"));
+    await user.click(screen.getByTestId("dock-button-EG"));
     await user.click(screen.getByTestId("hud-metric-humidity"));
 
     expect(
@@ -379,14 +505,14 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
     });
 
-    await user.click(screen.getByTestId("dock-button-living"));
+    await user.click(screen.getByTestId("dock-button-Wohnzimmer"));
 
     expect(screen.getByTestId("view-background-image")).toHaveAttribute(
       "src",
       expect.stringContaining("/views/house/eg/living/base.webp")
     );
     expect(
-      screen.queryByTestId(`raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}`)
+      screen.queryByTestId(`raffstore-control-${EQU_RAFFSTORE_TERRASSE}`)
     ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId(`light-control-${SAH3_Licht_Couch}`)
@@ -434,13 +560,13 @@ describe("App integration", () => {
       screen.getByTestId(`living-control-placeholder-${KNX_JA1_Raffstore_Wohnzimmer}`)
     );
     expect(
-      screen.getByTestId(`raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-value`)
+      screen.getByTestId(`raffstore-control-${EQU_RAFFSTORE_TERRASSE}-value`)
     ).toHaveTextContent("67%");
     await user.click(
-      screen.getByTestId(`raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-down`)
+      screen.getByTestId(`raffstore-control-${EQU_RAFFSTORE_TERRASSE}-down`)
     );
     await user.click(
-      screen.getByTestId(`raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-stop`)
+      screen.getByTestId(`raffstore-control-${EQU_RAFFSTORE_TERRASSE}-stop`)
     );
     await user.click(screen.getByTestId("overlay-backdrop"));
 
@@ -451,13 +577,13 @@ describe("App integration", () => {
     );
     expect(
       screen.getByTestId(
-        `raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer_Strasse}-value`
+        `raffstore-control-${EQU_RAFFSTORE_STRASSE}-value`
       )
     ).toHaveTextContent(
       "45%"
     );
     await user.click(
-      screen.getByTestId(`raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer_Strasse}-up`)
+      screen.getByTestId(`raffstore-control-${EQU_RAFFSTORE_STRASSE}-up`)
     );
     await user.click(screen.getByTestId("overlay-backdrop"));
 
@@ -553,7 +679,7 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
     });
 
-    await user.click(screen.getByTestId("dock-button-living"));
+    await user.click(screen.getByTestId("dock-button-Wohnzimmer"));
 
     act(() => {
       mocks.wsListener?.({
@@ -580,17 +706,17 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
     });
 
-    await user.click(screen.getByTestId("dock-button-living"));
+    await user.click(screen.getByTestId("dock-button-Wohnzimmer"));
 
     await user.click(
       screen.getByTestId(`living-control-placeholder-${KNX_JA1_Raffstore_Wohnzimmer}`)
     );
     expect(
-      screen.getByTestId(`raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-value`)
+      screen.getByTestId(`raffstore-control-${EQU_RAFFSTORE_TERRASSE}-value`)
     ).toBeInTheDocument();
     await user.click(screen.getByTestId("overlay-close-area"));
     expect(
-      screen.queryByTestId(`raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-value`)
+      screen.queryByTestId(`raffstore-control-${EQU_RAFFSTORE_TERRASSE}-value`)
     ).not.toBeInTheDocument();
 
     await user.click(
@@ -613,7 +739,7 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
     });
 
-    await user.click(screen.getByTestId("dock-button-living"));
+    await user.click(screen.getByTestId("dock-button-Wohnzimmer"));
     await user.click(
       screen.getByTestId(`living-control-placeholder-${KNX_JA1_Raffstore_Wohnzimmer}`)
     );
@@ -625,27 +751,27 @@ describe("App integration", () => {
 
     expect(
       screen.getByTestId(
-        `raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-preset-arbeitsstellung`
+        `raffstore-control-${EQU_RAFFSTORE_TERRASSE}-preset-arbeitsstellung`
       )
     ).toBeInTheDocument();
     expect(
       screen.getByTestId(
-        `raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-preset-schliessen`
+        `raffstore-control-${EQU_RAFFSTORE_TERRASSE}-preset-schliessen`
       )
     ).toBeInTheDocument();
     expect(
       screen.getByTestId(
-        `raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-preset-tilt-25`
+        `raffstore-control-${EQU_RAFFSTORE_TERRASSE}-preset-tilt-25`
       )
     ).toBeInTheDocument();
     expect(
       screen.getByTestId(
-        `raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-preset-tilt-50`
+        `raffstore-control-${EQU_RAFFSTORE_TERRASSE}-preset-tilt-50`
       )
     ).toBeInTheDocument();
     expect(
       screen.getByTestId(
-        `raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-preset-tilt-75`
+        `raffstore-control-${EQU_RAFFSTORE_TERRASSE}-preset-tilt-75`
       )
     ).toBeInTheDocument();
 
@@ -653,7 +779,7 @@ describe("App integration", () => {
     try {
       fireEvent.click(
         screen.getByTestId(
-          `raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-preset-schliessen`
+          `raffstore-control-${EQU_RAFFSTORE_TERRASSE}-preset-schliessen`
         )
       );
       await flush();
@@ -691,7 +817,7 @@ describe("App integration", () => {
 
       fireEvent.click(
         screen.getByTestId(
-          `raffstore-control-${KNX_JA1_Raffstore_Wohnzimmer}-preset-tilt-50`
+          `raffstore-control-${EQU_RAFFSTORE_TERRASSE}-preset-tilt-50`
         )
       );
       await flush();
