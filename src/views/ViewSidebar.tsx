@@ -48,7 +48,13 @@ const ViewSidebar = ({
   const locationScope = viewConfig?.locationScope ?? "descendants";
 
   const definitions = useMemo(
-    () => createLocationPropertySidebarDefinitions(viewId, location, locationScope),
+    () =>
+      createLocationPropertySidebarDefinitions(viewId, location, locationScope, {
+        temperature: "direct",
+        humidity: "direct",
+        co2: "direct",
+        "air-quality": "direct",
+      }),
     [location, locationScope, viewId]
   );
 

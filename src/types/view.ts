@@ -4,6 +4,7 @@ export type ViewId = string;
 export type ViewBinaryState = "on" | "off";
 export type ViewRawStateKind = "on" | "off" | "undef" | "null" | "unknown";
 export type LocationScope = "direct" | "descendants";
+export type LocationPropertyMeasurementRole = "ambient";
 
 export interface ViewConfig {
   label: string;

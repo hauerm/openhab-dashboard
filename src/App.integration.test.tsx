@@ -349,6 +349,13 @@ describe("App integration", () => {
     expect(screen.queryByText("1.800 lx")).not.toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-co2")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-health")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mocks.locationPropertyInitialize).toHaveBeenCalledWith(
+        "Hauer",
+        "direct",
+        "ambient"
+      );
+    });
   });
 
   it("switches views and updates the view background + hud", async () => {
@@ -959,8 +966,9 @@ describe("App integration", () => {
 
     await user.click(screen.getByTestId("dock-button-Wohnzimmer"));
 
-    expect(screen.getByTestId("dock-button-EG")).toBeInTheDocument();
-    expect(screen.getByTestId("dock-parent-icon-EG")).toBeInTheDocument();
+    expect(screen.getByTestId("dock-button-Hauer")).toBeInTheDocument();
+    expect(screen.getByTestId("dock-parent-icon-Hauer")).toBeInTheDocument();
+    expect(screen.queryByTestId("dock-button-EG")).not.toBeInTheDocument();
     expect(screen.getByTestId("dock-button-Wohnzimmer")).toHaveAttribute(
       "aria-current",
       "page"

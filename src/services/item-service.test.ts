@@ -67,4 +67,136 @@ describe("ItemService.filterItems location scoping", () => {
 
     expect(filtered.map((item) => item.name)).toEqual(["Aussentemperatur"]);
   });
+
+  it("does not include nested group hierarchy items when filtering direct properties", () => {
+    const groupedItems: Item[] = [
+      createItem("Hauer", "Group", {}),
+      {
+        ...createItem("EG", "Group", {}),
+        groupNames: ["Hauer"],
+      },
+      {
+        ...createItem("Wohnzimmer", "Group", {}),
+        groupNames: ["EG"],
+      },
+      {
+        ...createItem("Healthy_Home_Coach", "Group", {}),
+        groupNames: ["Wohnzimmer"],
+      },
+      {
+        ...createItem(
+          "Healthy_Home_Coach_Temperatur",
+          "Number:Temperature",
+          {},
+          PROPERTY_TEMPERATURE
+        ),
+        groupNames: ["Healthy_Home_Coach"],
+      },
+    ];
+
+    const filtered = ItemService.filterItems(groupedItems, {
+      property: PROPERTY_TEMPERATURE,
+      location: "Hauer",
+      locationScope: "direct",
+    });
+
+    expect(filtered.map((item) => item.name)).toEqual([]);
+  });
+
+  it("filters ambient location measurements separately from technical equipment measurements", () => {
+    const technicalTemperature = {
+      ...createItem(
+        "Shelly_Plug_Temperature",
+        "Number:Temperature",
+        { hasLocation: "Wohnzimmer" },
+        PROPERTY_TEMPERATURE
+      ),
+      groupNames: ["Shelly_Plug"],
+    };
+    const roomSensorTemperature = {
+      ...createItem(
+        "Room_Sensor_Temperature",
+        "Number:Temperature",
+        { hasLocation: "Wohnzimmer" },
+        PROPERTY_TEMPERATURE
+      ),
+      groupNames: ["Room_Sensor"],
+    };
+    const directRoomTemperature = createItem(
+      "Wall_Temperature",
+      "Number:Temperature",
+      { hasLocation: "Wohnzimmer" },
+      PROPERTY_TEMPERATURE
+    );
+    const ambientItems: Item[] = [
+      createItem("Wohnzimmer", "Group", {}),
+      {
+        ...createItem("Shelly_Plug", "Group", {}),
+        tags: ["PowerOutlet"],
+        groupNames: ["Wohnzimmer"],
+      },
+      {
+        ...createItem("Room_Sensor", "Group", {}),
+        tags: ["Sensor"],
+        groupNames: ["Wohnzimmer"],
+      },
+      technicalTemperature,
+      roomSensorTemperature,
+      directRoomTemperature,
+    ];
+
+    const filtered = ItemService.filterItems(ambientItems, {
+      property: PROPERTY_TEMPERATURE,
+      location: "Wohnzimmer",
+      locationScope: "direct",
+      measurementRole: "ambient",
+    });
+
+    expect(filtered.map((item) => item.name)).toEqual([
+      "Room_Sensor_Temperature",
+      "Wall_Temperature",
+    ]);
+  });
+
+  it("allows dashboard-location-property metadata to override ambient measurement detection", () => {
+    const ambientItems: Item[] = [
+      createItem("Wohnzimmer", "Group", {}),
+      {
+        ...createItem("Shelly_Plug", "Group", {}),
+        tags: ["PowerOutlet"],
+        groupNames: ["Wohnzimmer"],
+      },
+      {
+        ...createItem(
+          "Shelly_Plug_Temperature",
+          "Number:Temperature",
+          { hasLocation: "Wohnzimmer" },
+          PROPERTY_TEMPERATURE
+        ),
+        groupNames: ["Shelly_Plug"],
+        metadata: {
+          ...createItem(
+            "Shelly_Plug_Temperature",
+            "Number:Temperature",
+            { hasLocation: "Wohnzimmer" },
+            PROPERTY_TEMPERATURE
+          ).metadata,
+          "dashboard-location-property": {
+            value: "ambient",
+          },
+        },
+      },
+    ];
+
+    const filtered = ItemService.filterItems(ambientItems, {
+      property: PROPERTY_TEMPERATURE,
+      location: "Wohnzimmer",
+      locationScope: "direct",
+      measurementRole: "ambient",
+    });
+
+    expect(filtered.map((item) => item.name)).toEqual([
+      "Shelly_Plug_Temperature",
+    ]);
+  });
 });

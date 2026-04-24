@@ -54,6 +54,25 @@ const SUPPORTED_EQUIPMENT_TAGS = new Set([
   "HVAC",
 ]);
 
+const AMBIENT_MEASUREMENT_EQUIPMENT_TAGS = new Set([
+  "Sensor",
+  "AirQualitySensor",
+  "WeatherStation",
+]);
+
+const TECHNICAL_MEASUREMENT_EQUIPMENT_TAGS = new Set([
+  ...SUPPORTED_EQUIPMENT_TAGS,
+  "Equipment",
+  "Battery",
+  "Boiler",
+  "Computer",
+  "HeatPump",
+  "Inverter",
+  "NetworkAppliance",
+  "Pump",
+  "Receiver",
+]);
+
 const PROPERTY_TAGS_BY_SEMANTIC_PROPERTY: Record<string, readonly string[]> = {
   [PROPERTY_TEMPERATURE]: ["Temperature"],
   [PROPERTY_HUMIDITY]: ["Humidity"],
@@ -177,6 +196,91 @@ export const itemHasSemanticProperty = (
 
   const propertyTags = PROPERTY_TAGS_BY_SEMANTIC_PROPERTY[property] ?? [property];
   return propertyTags.some((tag) => hasTag(item, tag));
+};
+
+const getLocationPropertyAmbientOverride = (item: Item): boolean | null => {
+  const metadata = item.metadata?.["dashboard-location-property"];
+  if (!metadata) {
+    return null;
+  }
+
+  const ambient = metadata.config?.ambient;
+  if (typeof ambient === "boolean") {
+    return ambient;
+  }
+
+  const role =
+    typeof metadata.config?.role === "string"
+      ? metadata.config.role.toLowerCase()
+      : metadata.value.toLowerCase();
+  if (role === "ambient" || role === "room") {
+    return true;
+  }
+  if (role === "technical" || role === "device") {
+    return false;
+  }
+
+  return null;
+};
+
+const getAncestorGroupItems = (
+  item: Item,
+  itemsByName: ReadonlyMap<string, Item>
+): Item[] => {
+  const groups: Item[] = [];
+  const visited = new Set<string>();
+
+  const visit = (groupName: string) => {
+    if (visited.has(groupName)) {
+      return;
+    }
+    visited.add(groupName);
+
+    const group = itemsByName.get(groupName);
+    if (!group || isLocationItem(group)) {
+      return;
+    }
+
+    groups.push(group);
+    for (const parentGroupName of group.groupNames) {
+      visit(parentGroupName);
+    }
+  };
+
+  for (const groupName of item.groupNames) {
+    visit(groupName);
+  }
+
+  return groups;
+};
+
+export const itemIsAmbientLocationMeasurement = (
+  item: Item,
+  items: readonly Item[]
+): boolean => {
+  const itemsByName = new Map(items.map((entry) => [entry.name, entry]));
+  const ancestorGroups = getAncestorGroupItems(item, itemsByName);
+
+  for (const candidate of [item, ...ancestorGroups]) {
+    const override = getLocationPropertyAmbientOverride(candidate);
+    if (override !== null) {
+      return override;
+    }
+  }
+
+  if (ancestorGroups.length === 0) {
+    return true;
+  }
+
+  if (ancestorGroups.some((group) => hasAnyTag(group, AMBIENT_MEASUREMENT_EQUIPMENT_TAGS))) {
+    return true;
+  }
+
+  if (ancestorGroups.some((group) => hasAnyTag(group, TECHNICAL_MEASUREMENT_EQUIPMENT_TAGS))) {
+    return false;
+  }
+
+  return true;
 };
 
 const normalizeMetadataNamespace = (

@@ -15,6 +15,10 @@ type SidebarMetricDefinition = Pick<
   title: string;
 };
 
+type SidebarMetricLocationScopes = Partial<
+  Record<SidebarMetricDefinition["metricKey"], LocationScope>
+>;
+
 const SIDEBAR_LOCATION_METRICS: readonly SidebarMetricDefinition[] = [
   {
     metricKey: "temperature",
@@ -55,7 +59,8 @@ const toSidebarControlId = (viewId: ViewId, metricKey: SidebarMetricDefinition["
 export const createLocationPropertySidebarDefinitions = (
   viewId: ViewId,
   location: string,
-  locationScope: LocationScope = "descendants"
+  locationScope: LocationScope = "descendants",
+  metricLocationScopes: SidebarMetricLocationScopes = {}
 ): readonly LocationPropertyHistoryControlDefinition[] =>
   SIDEBAR_LOCATION_METRICS.map((metricDefinition) => ({
     controlId: toSidebarControlId(viewId, metricDefinition.metricKey),
@@ -64,7 +69,9 @@ export const createLocationPropertySidebarDefinitions = (
     metricKey: metricDefinition.metricKey,
     property: metricDefinition.property,
     location,
-    locationScope,
+    locationScope: metricLocationScopes[metricDefinition.metricKey] ?? locationScope,
+    measurementRole:
+      metricDefinition.metricKey === "illuminance" ? undefined : "ambient",
     title: `${metricDefinition.title} ${location}`,
     comfortBand: metricDefinition.comfortBand,
     itemRefs: {},

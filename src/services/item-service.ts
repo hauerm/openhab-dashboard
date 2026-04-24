@@ -1,9 +1,13 @@
 import type { Item, ItemHistoryResponse, ItemMetadataNamespace } from "../types/item";
-import type { LocationScope } from "../types/view";
+import type {
+  LocationPropertyMeasurementRole,
+  LocationScope,
+} from "../types/view";
 import {
   isLocationDescendant,
   itemBelongsToLocation,
   itemHasSemanticProperty,
+  itemIsAmbientLocationMeasurement,
 } from "../domain/openhab-model";
 import {
   OPENHAB_BASE_URL,
@@ -96,7 +100,7 @@ export class ItemService {
    */
   static async fetchItems(): Promise<Item[]> {
     const response = await fetch(
-      `${OPENHAB_BASE_URL}/items?recursive=false&metadata=semantics,automation,dashboard-location,dashboard-layout`,
+      `${OPENHAB_BASE_URL}/items?recursive=false&metadata=semantics,automation,dashboard-location,dashboard-layout,dashboard-location-property`,
       {
         headers: getOpenHABAuthHeaders(),
       }
@@ -400,13 +404,26 @@ export class ItemService {
       property?: string;
       location?: string;
       locationScope?: LocationScope;
+      measurementRole?: LocationPropertyMeasurementRole;
     } = {}
   ): Item[] {
-    const { property, location, locationScope = "descendants" } = options;
+    const {
+      property,
+      location,
+      locationScope = "descendants",
+      measurementRole,
+    } = options;
 
     const filtered = items.filter((item) => {
       // Check semantic property if specified
       if (property && !this.hasSemanticProperty(item, property)) {
+        return false;
+      }
+
+      if (
+        measurementRole === "ambient" &&
+        !itemIsAmbientLocationMeasurement(item, items)
+      ) {
         return false;
       }
 

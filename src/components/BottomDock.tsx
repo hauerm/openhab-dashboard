@@ -87,9 +87,14 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
 
     const siblingLocationNames =
       model.childLocationNamesByParentName[parentName] ?? [];
+    const parentLocation = model.locationsByName.get(parentName);
+
+    if (!parentLocation || parentLocation.parentName === null) {
+      return siblingLocationNames.map((viewId) => ({ viewId, isParent: false }));
+    }
 
     return [
-      { viewId: parentName, isParent: true },
+      { viewId: parentLocation.parentName, isParent: true },
       ...siblingLocationNames.map((viewId) => ({ viewId, isParent: false })),
     ];
   })();

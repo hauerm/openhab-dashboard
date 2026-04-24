@@ -17,7 +17,10 @@ import { parseOpenHABState } from "../services/state-parser";
 import type { ParsedStateKind } from "../services/state-parser";
 import type { WebSocketItemUpdate } from "../services/websocket-service";
 import { subscribeWebSocketListener } from "../services/websocket-service";
-import type { LocationScope } from "../types/view";
+import type {
+  LocationPropertyMeasurementRole,
+  LocationScope,
+} from "../types/view";
 
 interface HistoryPoint {
   timestamp: number;
@@ -40,7 +43,11 @@ interface LocationPropertyState {
 }
 
 interface LocationPropertyActions {
-  initialize: (location?: string, locationScope?: LocationScope) => Promise<void>;
+  initialize: (
+    location?: string,
+    locationScope?: LocationScope,
+    measurementRole?: LocationPropertyMeasurementRole
+  ) => Promise<void>;
   ensureHistoryRange: (rangeKey: HistoryRangeKey) => Promise<void>;
   updateValue: (
     itemName: string,
@@ -186,10 +193,12 @@ const createStoreForConfig = (config: LocationPropertyControlConfig) => {
 
     initialize: async (
       location?: string,
-      locationScope: LocationScope = "descendants"
+      locationScope: LocationScope = "descendants",
+      measurementRole?: LocationPropertyMeasurementRole
     ) => {
       const locationKey = location?.trim() || "__all__";
-      const locationScopeKey = `${locationKey}::${locationScope}`;
+      const measurementRoleKey = measurementRole ?? "__all__";
+      const locationScopeKey = `${locationKey}::${locationScope}::${measurementRoleKey}`;
 
       if (initializedLocationKey === locationScopeKey) {
         return;
@@ -223,6 +232,7 @@ const createStoreForConfig = (config: LocationPropertyControlConfig) => {
             property: config.property,
             location,
             locationScope,
+            measurementRole,
           });
 
           const itemNames = new Set(filteredItems.map((item) => item.name));

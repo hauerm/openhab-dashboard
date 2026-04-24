@@ -19,7 +19,8 @@ const useLocationPropertyHistoryStoreHook = (
   const resolvedConfig = LOCATION_PROPERTY_CONTROL_CONFIGS[definition.property];
   const locationKey = definition.location?.trim() || "__all__";
   const locationScope = definition.locationScope ?? "descendants";
-  const scopeKey = `${locationKey}::${locationScope}`;
+  const measurementRole = definition.measurementRole ?? "__all__";
+  const scopeKey = `${locationKey}::${locationScope}::${measurementRole}`;
 
   return useMemo(
     () => createLocationPropertyHistoryStore(resolvedConfig, scopeKey),
@@ -50,8 +51,17 @@ export const useLocationPropertyHistoryControlModel = (
   const itemCount = useStore((state) => state.itemNames.size);
 
   useEffect(() => {
-    void initialize(definition.location, definition.locationScope);
-  }, [definition.location, definition.locationScope, initialize]);
+    void initialize(
+      definition.location,
+      definition.locationScope,
+      definition.measurementRole
+    );
+  }, [
+    definition.location,
+    definition.locationScope,
+    definition.measurementRole,
+    initialize,
+  ]);
 
   return useMemo(() => {
     const resolvedConfig = LOCATION_PROPERTY_CONTROL_CONFIGS[definition.property];
@@ -80,8 +90,17 @@ export const useLocationPropertyHistoryControlStore = (
   const initialize = useStore((state) => state.initialize);
 
   useEffect(() => {
-    void initialize(definition.location, definition.locationScope);
-  }, [definition.location, definition.locationScope, initialize]);
+    void initialize(
+      definition.location,
+      definition.locationScope,
+      definition.measurementRole
+    );
+  }, [
+    definition.location,
+    definition.locationScope,
+    definition.measurementRole,
+    initialize,
+  ]);
 
   return useStore;
 };

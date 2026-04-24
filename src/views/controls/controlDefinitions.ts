@@ -1,4 +1,7 @@
-import type { LocationScope } from "../../types/view";
+import type {
+  LocationPropertyMeasurementRole,
+  LocationScope,
+} from "../../types/view";
 
 export interface ControlPosition {
   x: number;
@@ -78,6 +81,7 @@ export interface LocationPropertyHistoryControlDefinition
   property: string;
   location?: string;
   locationScope?: LocationScope;
+  measurementRole?: LocationPropertyMeasurementRole;
   title: string;
   comfortBand?: {
     min: number;
