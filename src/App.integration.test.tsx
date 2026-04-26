@@ -394,18 +394,17 @@ describe("App integration", () => {
     expect(screen.getByTestId("dock-button-Wohnzimmer")).toBeInTheDocument();
   });
 
-  it("hides the bottom dock when clicking outside it", async () => {
-    const user = userEvent.setup();
+  it("toggles the bottom dock from a free viewport click", async () => {
     render(<App />);
 
     await waitFor(() => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
     });
 
+    expect(screen.queryByTestId("dock-expand-button")).not.toBeInTheDocument();
     expect(screen.getByTestId("dock-button-EG")).toBeInTheDocument();
 
-    await user.click(screen.getByTestId("view-background-image"));
-
+    fireEvent.pointerDown(screen.getByTestId("view-background-image"));
     await waitFor(() => {
       expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
         "data-visible",
@@ -413,8 +412,13 @@ describe("App integration", () => {
       );
     });
 
-    await user.click(screen.getByTestId("dock-expand-button"));
+    fireEvent.pointerDown(screen.getByTestId("Hauer-layout-edit-toggle"));
+    expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
+      "data-visible",
+      "false"
+    );
 
+    fireEvent.pointerDown(screen.getByTestId("view-background-image"));
     await waitFor(() => {
       expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
         "data-visible",
@@ -563,8 +567,11 @@ describe("App integration", () => {
       )
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId(`living-control-placeholder-icon-${SAH3_Licht_TV}-light-on`)
+      screen.getByTestId(`living-control-placeholder-icon-${SAH3_Licht_TV}-dimmer-on`)
     ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`living-control-dimmer-glow-${SAH3_Licht_TV}`)
+    ).toHaveStyle({ backgroundColor: "rgba(253, 224, 71, 0.571)" });
     expect(
       screen.getByTestId(
         `living-control-placeholder-icon-${RGBW_LED_STRIP_BUERO_KELLER_COLOR}-rgbw-light-on`
@@ -649,6 +656,54 @@ describe("App integration", () => {
     expect(
       screen.queryByTestId(`light-control-${SAH3_Licht_TV}`)
     ).not.toBeInTheDocument();
+    expect(screen.getByTestId("dimmer-control-Equ_Spots_TV")).toHaveClass(
+      "grid-cols-4"
+    );
+    expect(screen.getByTestId("dimmer-control-Equ_Spots_TV-state")).toHaveTextContent(
+      "Ein"
+    );
+    expect(
+      screen.getByTestId("dimmer-control-Equ_Spots_TV-brightness-value")
+    ).toHaveTextContent("B 35");
+    await user.click(screen.getByTestId("dimmer-control-Equ_Spots_TV-toggle"));
+    await waitFor(() => {
+      expect(screen.getByTestId("dimmer-control-Equ_Spots_TV-state")).toHaveTextContent(
+        "Aus"
+      );
+    });
+
+    const dimmerBrightnessControl = screen.getByTestId(
+      "dimmer-control-Equ_Spots_TV-brightness"
+    );
+    expect(dimmerBrightnessControl).toHaveTextContent("");
+    expect(screen.getByTestId("dimmer-control-Equ_Spots_TV-brightness-handle"))
+      .toHaveStyle({ height: "28px" });
+    vi.spyOn(dimmerBrightnessControl, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      top: 0,
+      right: 100,
+      bottom: 100,
+      left: 0,
+      toJSON: () => ({}),
+    });
+    fireEvent.pointerDown(dimmerBrightnessControl, {
+      pointerId: 1,
+      clientY: 35,
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("dimmer-control-Equ_Spots_TV-brightness-value")
+      ).toHaveTextContent("B 65");
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        SAH3_Licht_TV,
+        "65",
+        "Percent"
+      );
+    });
+    await user.click(screen.getByTestId("overlay-backdrop"));
 
     await user.click(
       screen.getByTestId(`living-control-placeholder-${Samsung_TV_Wohnzimmer_Power}`)
@@ -725,6 +780,11 @@ describe("App integration", () => {
         SAH3_Licht_TV,
         "OFF",
         "OnOff"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        SAH3_Licht_TV,
+        "65",
+        "Percent"
       );
       expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
         Samsung_TV_Wohnzimmer_Power,

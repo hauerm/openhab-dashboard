@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   MdChevronLeft,
   MdChevronRight,
-  MdKeyboardArrowUp,
   MdSubdirectoryArrowLeft,
 } from "react-icons/md";
 import { useViewStore } from "../stores/viewStore";
@@ -23,6 +22,18 @@ const EDGE_FADE_BASE_CLASS =
   "pointer-events-none absolute inset-y-0 z-10 transition-opacity duration-300";
 const EDGE_BUTTON_BASE_CLASS =
   "pointer-events-auto absolute top-1/2 z-20 -translate-y-1/2 rounded-full border border-ui-border-subtle bg-ui-surface-overlay/95 p-1.5 text-ui-foreground shadow-lg backdrop-blur-sm transition";
+const DOCK_OPEN_EXCLUSION_SELECTOR = [
+  "button",
+  "a[href]",
+  "input",
+  "select",
+  "textarea",
+  "summary",
+  "[role='button']",
+  "[role='link']",
+  "[role='slider']",
+  "[data-prevent-dock-open='true']",
+].join(",");
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(Math.max(value, min), max);
@@ -43,6 +54,16 @@ const resetHorizontalScroll = (container: HTMLDivElement | null): void => {
   }
 
   container.scrollLeft = 0;
+};
+
+const getPointerTargetElement = (target: EventTarget | null): Element | null => {
+  if (target instanceof Element) {
+    return target;
+  }
+  if (target instanceof Node) {
+    return target.parentElement;
+  }
+  return null;
 };
 
 const BottomDock = ({ onViewChange }: BottomDockProps) => {
@@ -185,29 +206,51 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
 
   useEffect(() => clearHideTimer, [clearHideTimer]);
 
-  useEffect(() => {
-    if (!isDockVisible) {
+  const showDock = useCallback(() => {
+    setIsDockVisible(true);
+    scheduleDockAutoHide();
+  }, [scheduleDockAutoHide]);
+
+  const toggleDockFromViewport = useCallback(() => {
+    if (isDockVisible) {
+      clearHideTimer();
+      setIsDockVisible(false);
       return;
     }
 
+    showDock();
+  }, [clearHideTimer, isDockVisible, showDock]);
+
+  useEffect(() => {
     const handleDocumentPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) {
+        return;
+      }
+
       const dockRoot = dockRootRef.current;
-      if (!dockRoot || !(event.target instanceof Node)) {
+      const targetElement = getPointerTargetElement(event.target);
+      if (!targetElement) {
         return;
       }
-      if (dockRoot.contains(event.target)) {
+      if (dockRoot?.contains(targetElement)) {
+        return;
+      }
+      if (targetElement.closest(DOCK_OPEN_EXCLUSION_SELECTOR)) {
         return;
       }
 
-      clearHideTimer();
-      setIsDockVisible(false);
+      toggleDockFromViewport();
     };
 
-    document.addEventListener("pointerdown", handleDocumentPointerDown);
+    document.addEventListener("pointerdown", handleDocumentPointerDown, {
+      capture: true,
+    });
     return () => {
-      document.removeEventListener("pointerdown", handleDocumentPointerDown);
+      document.removeEventListener("pointerdown", handleDocumentPointerDown, {
+        capture: true,
+      });
     };
-  }, [clearHideTimer, isDockVisible]);
+  }, [toggleDockFromViewport]);
 
   const scrollByDirection = useCallback((direction: "left" | "right") => {
     const container = scrollContainerRef.current;
@@ -226,11 +269,6 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
     scheduleDockAutoHide();
   }, [scheduleDockAutoHide]);
 
-  const showDock = useCallback(() => {
-    setIsDockVisible(true);
-    scheduleDockAutoHide();
-  }, [scheduleDockAutoHide]);
-
   const handleDockInteraction = useCallback(() => {
     if (!isDockVisible) {
       return;
@@ -242,12 +280,6 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
     isDockVisible
       ? "translate-y-0 opacity-100"
       : "pointer-events-none translate-y-full opacity-0"
-  }`;
-
-  const dockToggleClassName = `pointer-events-auto absolute bottom-2 left-1/2 -translate-x-1/2 transition-all duration-300 ease-out ${
-    isDockVisible
-      ? "pointer-events-none translate-y-2 opacity-0"
-      : "translate-y-0 opacity-100"
   }`;
 
   return (
@@ -391,17 +423,6 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
         </div>
       </div>
 
-      <button
-        type="button"
-        data-testid="dock-expand-button"
-        aria-label="Dock einblenden"
-        onClick={showDock}
-        className={dockToggleClassName}
-      >
-        <span className="inline-flex items-center justify-center rounded-sm bg-ui-surface-overlay px-1 text-ui-foreground transition hover:bg-ui-surface-panel">
-          <MdKeyboardArrowUp className="h-9 w-9" />
-        </span>
-      </button>
     </div>
   );
 };

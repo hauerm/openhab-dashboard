@@ -1,6 +1,7 @@
 import type { Item, ItemMetadataNamespace } from "../types/item";
 import type {
   ControlPosition,
+  DimmerControlDefinition,
   LightControlDefinition,
   PowerControlDefinition,
   RgbwLightControlDefinition,
@@ -86,6 +87,7 @@ const DEFAULT_LOCATION_IMAGE = "/views/missing.jpg";
 
 export type DiscoveredControlDefinition =
   | LightControlDefinition
+  | DimmerControlDefinition
   | RgbwLightControlDefinition
   | OpeningControlDefinition
   | PowerControlDefinition
@@ -482,8 +484,23 @@ const createControlsForEquipment = (
       ];
     }
 
+    const dimmerItem = children
+      .filter((item) => item.type === "Dimmer")
+      .find((item) => hasTag(item, "Light") || hasTag(item, "Control"));
+    if (dimmerItem) {
+      return [
+        {
+          ...createControlBase("dimmer", equipment, locationName),
+          controlType: "dimmer",
+          itemRefs: {
+            itemName: dimmerItem.name,
+          },
+        },
+      ];
+    }
+
     const lightItem = children
-      .filter((item) => ["Switch", "Dimmer"].includes(item.type))
+      .filter((item) => item.type === "Switch")
       .find((item) => hasTag(item, "Light") || hasTag(item, "Control"));
     if (!lightItem) {
       return [];

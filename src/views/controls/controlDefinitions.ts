@@ -31,6 +31,11 @@ export interface LightControlDefinition
   interaction: "overlay" | "direct-toggle";
 }
 
+export type DimmerControlDefinition = ControlDefinitionBase<
+  "dimmer",
+  LightControlItemRefs
+>;
+
 export interface RgbwLightControlItemRefs {
   colorItemName: string;
 }
@@ -111,6 +116,7 @@ export type VentilationControlDefinition = ControlDefinitionBase<
 
 export type ViewControlDefinition =
   | LightControlDefinition
+  | DimmerControlDefinition
   | RgbwLightControlDefinition
   | OpeningControlDefinition
   | TvControlDefinition
