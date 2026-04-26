@@ -4,6 +4,8 @@ export const OPENHAB_PROTOCOL =
   (import.meta.env.VITE_OPENHAB_PROTOCOL || "http").toLowerCase();
 export const OPENHAB_INSECURE = import.meta.env.VITE_OPENHAB_INSECURE === "true";
 export const OPENHAB_API_TOKEN = import.meta.env.VITE_OPENHAB_API_TOKEN;
+export const OPENHAB_USE_PROXY =
+  import.meta.env.DEV || import.meta.env.VITE_OPENHAB_USE_PROXY !== "false";
 
 const getDefaultPort = (protocol: string): string =>
   protocol === "https" ? "9443" : "8080";
@@ -41,16 +43,14 @@ export const getWebSocketSubprotocols = (): string[] => {
   }
 };
 
-// Use local proxy endpoints in development to bypass SSL certificate validation
-const isDevelopment = import.meta.env.DEV;
-export const OPENHAB_BASE_URL = isDevelopment
+// Use same-origin proxy endpoints by default to avoid browser CORS/TLS issues on tablets.
+export const OPENHAB_BASE_URL = OPENHAB_USE_PROXY
   ? "/api"
   : `${OPENHAB_PROTOCOL}://${OPENHAB_HOST}:${OPENHAB_PORT}/rest`;
 
 // Function to get WebSocket URL dynamically
 export const getWebSocketUrl = (): string => {
-  if (isDevelopment && typeof window !== "undefined") {
-    // Use local proxy in development
+  if (OPENHAB_USE_PROXY && typeof window !== "undefined") {
     return `${window.location.protocol.replace("http", "ws")}//${
       window.location.host
     }/ws`;

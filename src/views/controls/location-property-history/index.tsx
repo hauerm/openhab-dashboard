@@ -15,6 +15,11 @@ import {
   getHistoryRangeDurationMs,
   type HistoryRangeKey,
 } from "./config";
+import {
+  buildLocationPropertyHistoryChartData,
+  shouldShowAverageSeries,
+  type HistoryPoint,
+} from "./chartData";
 import { LOCATION_PROPERTY_CONTROL_CONFIGS } from "./config";
 import ViewOverlayShell from "../../ViewOverlayShell";
 import type { LocationPropertyHistoryControlDefinition } from "../controlDefinitions";
@@ -33,17 +38,6 @@ interface LocationPropertyHistoryOverlayControlProps {
   definition: LocationPropertyHistoryControlDefinition;
   onClose: () => void;
 }
-
-type HistoryPoint = {
-  timestamp: number;
-  value: number;
-};
-
-type ChartRow = {
-  timestamp: number;
-  average: number | null;
-  [series: string]: number | null;
-};
 
 const TEST_ID_SUFFIX_BY_METRIC_KEY = {
   temperature: "temp",
@@ -189,41 +183,9 @@ export const LocationPropertyHistoryOverlayControl = ({
   );
 
   const chartData = useMemo(() => {
-    const rowsByTimestamp = new Map<number, Record<string, number>>();
-
-    for (const [itemName, points] of Object.entries(filteredHistory)) {
-      for (const point of points) {
-        const row = rowsByTimestamp.get(point.timestamp) ?? {};
-        row[itemName] = point.value;
-        rowsByTimestamp.set(point.timestamp, row);
-      }
-    }
-
-    return Array.from(rowsByTimestamp.entries())
-      .sort(([left], [right]) => left - right)
-      .map(([timestamp, valuesBySeries]) => {
-        let sum = 0;
-        let count = 0;
-        const row: ChartRow = {
-          timestamp,
-          average: null,
-        };
-
-        for (const key of seriesKeys) {
-          const value = valuesBySeries[key];
-          if (typeof value === "number" && Number.isFinite(value)) {
-            row[key] = value;
-            sum += value;
-            count += 1;
-          } else {
-            row[key] = null;
-          }
-        }
-
-        row.average = count > 0 ? sum / count : null;
-        return row;
-      });
+    return buildLocationPropertyHistoryChartData(filteredHistory, seriesKeys);
   }, [filteredHistory, seriesKeys]);
+  const showAverageSeries = shouldShowAverageSeries(seriesKeys);
 
   const yDomain = useMemo(() => {
     const values: number[] = [];
@@ -406,16 +368,18 @@ export const LocationPropertyHistoryOverlayControl = ({
                       connectNulls
                     />
                   ))}
-                  <Line
-                    type="monotone"
-                    dataKey="average"
-                    name="Durchschnitt"
-                    stroke="var(--color-chart-average)"
-                    strokeWidth={2}
-                    strokeDasharray="6 6"
-                    dot={false}
-                    connectNulls
-                  />
+                  {showAverageSeries ? (
+                    <Line
+                      type="monotone"
+                      dataKey="average"
+                      name="Durchschnitt"
+                      stroke="var(--color-chart-average)"
+                      strokeWidth={2}
+                      strokeDasharray="6 6"
+                      dot={false}
+                      connectNulls
+                    />
+                  ) : null}
                 </LineChart>
               </ResponsiveContainer>
             </div>

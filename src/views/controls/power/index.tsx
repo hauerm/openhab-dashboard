@@ -110,7 +110,9 @@ export const PowerOverlayControl = ({
     const command = isOn ? "OFF" : "ON";
     try {
       setSending(true);
-      await sendViewItemCommand(itemName, command, "OnOff");
+      await sendViewItemCommand(itemName, command, "OnOff", {
+        optimisticRawState: command,
+      });
     } catch (error) {
       void error;
       toast.error(`Befehl fuer ${definition.label} konnte nicht gesendet werden.`);

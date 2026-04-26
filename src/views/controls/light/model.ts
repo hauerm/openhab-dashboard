@@ -57,7 +57,9 @@ export const useLightControlModel = (definition: LightControlDefinition) => {
     const command = lightState.isOn ? "OFF" : "ON";
     try {
       setSending(true);
-      await sendViewItemCommand(definition.itemRefs.itemName, command, "OnOff");
+      await sendViewItemCommand(definition.itemRefs.itemName, command, "OnOff", {
+        optimisticRawState: command,
+      });
     } catch (error) {
       void error;
       toast.error(`Lichtbefehl für ${definition.label} konnte nicht gesendet werden.`);

@@ -43,7 +43,8 @@ export const normalizeViewRawState = (
 
 export const applyViewItemStateUpdate = (
   previous: ViewTrackedItemState | undefined,
-  rawState: string
+  rawState: string,
+  options: { optimisticUpdateId?: number } = {}
 ): ViewTrackedItemState => {
   const normalized = normalizeViewRawState(rawState);
   if (normalized.value !== null) {
@@ -52,6 +53,9 @@ export const applyViewItemStateUpdate = (
       kind: normalized.kind,
       effectiveState: normalized.value,
       hasLastValidState: true,
+      ...(options.optimisticUpdateId !== undefined
+        ? { optimisticUpdateId: options.optimisticUpdateId }
+        : {}),
     };
   }
 
@@ -61,6 +65,9 @@ export const applyViewItemStateUpdate = (
       kind: normalized.kind,
       effectiveState: previous.effectiveState,
       hasLastValidState: true,
+      ...(options.optimisticUpdateId !== undefined
+        ? { optimisticUpdateId: options.optimisticUpdateId }
+        : {}),
     };
   }
 
@@ -69,6 +76,9 @@ export const applyViewItemStateUpdate = (
     kind: normalized.kind,
     effectiveState: "off",
     hasLastValidState: false,
+    ...(options.optimisticUpdateId !== undefined
+      ? { optimisticUpdateId: options.optimisticUpdateId }
+      : {}),
   };
 };
 

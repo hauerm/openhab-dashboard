@@ -31,6 +31,7 @@ VITE_OPENHAB_INSECURE=true
 - `VITE_OPENHAB_PORT`: Port number (9443 for HTTPS, 8080 for HTTP)
 - `VITE_OPENHAB_PROTOCOL`: Protocol to use (`https` or `http`)
 - `VITE_OPENHAB_INSECURE`: Development proxy TLS setting. Set to `true` to disable TLS certificate verification in the Vite proxy for self-signed certificates. Protocol/port remain as configured.
+- `VITE_OPENHAB_USE_PROXY`: Same-origin proxy toggle for `/api` and `/ws`. Defaults to enabled. Set to `false` only when the browser should call openHAB directly and openHAB CORS is configured for the app origin.
 - `VITE_LOGLEVEL` / `VITE_LOG_LEVEL`: Optional global log level (`trace`, `debug`, `info`, `warn`, `error`, `silent`).
 
 ### Notes
@@ -58,11 +59,28 @@ npm install
 npm run dev
 ```
 
+For testing from an iPad or other tablet, prefer a production build over the Vite
+development server. The dev server adds HMR/client overhead and serves assets in
+a way that is useful for local development but not representative of kiosk/tablet
+runtime performance.
+
 ## Build
 
 ```bash
 npm run build
 ```
+
+For tablet testing, build and serve the production output from the Mac:
+
+```bash
+npm run build
+npm run preview -- --host 0.0.0.0 --port 4173
+```
+
+The production preview server proxies `/api` and `/ws` to openHAB by default.
+When testing from a tablet, open the preview URL via the Mac IP address, for
+example `http://192.168.1.67:4173/`. Keep `VITE_OPENHAB_HOST` pointed at the
+openHAB server address that the Mac can reach.
 
 ## openHAB Item Model
 
