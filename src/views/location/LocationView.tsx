@@ -1,7 +1,12 @@
 import { useMemo, useState } from "react";
 import { MdOutlineOpenWith } from "react-icons/md";
 import { useViewStore } from "../../stores/viewStore";
-import { LightHudControl, LightOverlayControl } from "../controls/light";
+import {
+  DimmerHudControl,
+  DimmerOverlayControl,
+  LightHudControl,
+  LightOverlayControl,
+} from "../controls/light";
 import { PowerHudControl, PowerOverlayControl } from "../controls/power";
 import {
   RaffstoreHudControl,
@@ -69,6 +74,15 @@ const renderHudControl = (
       />
     );
   }
+  if (definition.controlType === "dimmer") {
+    return (
+      <DimmerHudControl
+        definition={definition}
+        interactive={!layoutEditMode}
+        onOpenControl={onOpenControl}
+      />
+    );
+  }
   if (definition.controlType === "rgbw-light") {
     return (
       <RgbwLightHudControl
@@ -120,6 +134,9 @@ const renderOverlayControl = (
   }
   if (definition.controlType === "light") {
     return <LightOverlayControl definition={definition} onClose={onCloseControl} />;
+  }
+  if (definition.controlType === "dimmer") {
+    return <DimmerOverlayControl definition={definition} onClose={onCloseControl} />;
   }
   if (definition.controlType === "rgbw-light") {
     return <RgbwLightOverlayControl definition={definition} onClose={onCloseControl} />;

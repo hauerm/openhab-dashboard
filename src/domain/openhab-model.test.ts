@@ -232,6 +232,35 @@ describe("buildOpenHABSemanticModel", () => {
     expect(rgbwControl.itemRefs.colorItemName).toBe("LED_Strip_Color");
   });
 
+  it("maps dimmer light equipment to dimmer controls while switches stay light controls", () => {
+    const model = buildOpenHABSemanticModel([
+      ...fixtureItems(),
+      createItem("Equ_Dimmed_Spots", "Group", ["Chandelier"], ["Wohnzimmer"], {
+        label: "Dimmed Spots",
+      }),
+      createItem(
+        "Dimmed_Spots_Brightness",
+        "Dimmer",
+        ["Light", "Control"],
+        ["Equ_Dimmed_Spots"]
+      ),
+    ]);
+
+    const switchControl = model.controls.find(
+      (control) => control.controlId === "Equ_Spots_Couch"
+    );
+    const dimmerControl = model.controls.find(
+      (control) => control.controlId === "Equ_Dimmed_Spots"
+    );
+
+    expect(switchControl?.controlType).toBe("light");
+    expect(dimmerControl?.controlType).toBe("dimmer");
+    if (!dimmerControl || dimmerControl.controlType !== "dimmer") {
+      throw new Error("Expected dimmer control");
+    }
+    expect(dimmerControl.itemRefs.itemName).toBe("Dimmed_Spots_Brightness");
+  });
+
   it("aggregates multi-point opening equipment into one control", () => {
     const model = buildOpenHABSemanticModel(fixtureItems());
     const opening = model.controls.find((control) => control.controlType === "opening");
