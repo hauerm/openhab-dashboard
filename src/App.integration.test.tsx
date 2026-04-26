@@ -627,6 +627,23 @@ describe("App integration", () => {
     expect(
       screen.queryByTestId(`light-control-${SAH3_Licht_Couch}`)
     ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(
+          `living-control-placeholder-icon-${SAH3_Licht_Couch}-light-off`
+        )
+      ).toBeInTheDocument();
+    });
+    await user.click(
+      screen.getByTestId(`living-control-placeholder-${SAH3_Licht_Couch}`)
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(
+          `living-control-placeholder-icon-${SAH3_Licht_Couch}-light-on`
+        )
+      ).toBeInTheDocument();
+    });
 
     await user.click(screen.getByTestId(`living-control-placeholder-${SAH3_Licht_TV}`));
     expect(
@@ -648,6 +665,11 @@ describe("App integration", () => {
     await user.click(
       screen.getByTestId(`living-tv-overlay-power-${Samsung_TV_Wohnzimmer_Power}`)
     );
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`living-tv-overlay-state-${Samsung_TV_Wohnzimmer_Power}`)
+      ).toHaveTextContent("Aus");
+    });
     await user.click(screen.getByTestId("overlay-backdrop"));
 
     await user.click(
@@ -664,6 +686,13 @@ describe("App integration", () => {
     await user.click(
       screen.getByTestId(`living-power-overlay-power-${Shelly_Plug_Wohnzimmer_Betrieb}`)
     );
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(
+          `living-power-overlay-state-${Shelly_Plug_Wohnzimmer_Betrieb}`
+        )
+      ).toHaveTextContent("Aus");
+    });
     await user.click(screen.getByTestId("overlay-backdrop"));
 
     await waitFor(() => {
@@ -685,6 +714,11 @@ describe("App integration", () => {
       expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
         SAH3_Licht_Couch,
         "OFF",
+        "OnOff"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        SAH3_Licht_Couch,
+        "ON",
         "OnOff"
       );
       expect(mocks.websocketSendCommand).toHaveBeenCalledWith(

@@ -16,6 +16,8 @@ function App() {
   const [activeOverlay, setActiveOverlay] = useState<ActiveViewOverlay | null>(null);
   const initializeViewStore = useViewStore((state) => state.initialize);
   const currentView = useViewStore((state) => state.currentView);
+  const loading = useViewStore((state) => state.loading);
+  const error = useViewStore((state) => state.error);
   const currentViewConfig = useViewStore(
     (state) => state.viewConfigs[currentView]
   );
@@ -41,6 +43,19 @@ function App() {
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-ui-surface-shell text-ui-foreground">
       <ViewBackground />
+      {loading ? (
+        <div className="fixed left-1/2 top-4 z-50 -translate-x-1/2 rounded-lg border border-ui-border-subtle bg-ui-surface-overlay px-3 py-2 text-sm font-semibold text-ui-foreground shadow-xl backdrop-blur">
+          Lade openHAB-Daten...
+        </div>
+      ) : null}
+      {error ? (
+        <div
+          data-testid="view-store-error"
+          className="fixed left-1/2 top-4 z-50 max-w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border border-ui-warning-border bg-ui-warning-solid px-3 py-2 text-sm font-semibold text-ui-warning-foreground shadow-xl"
+        >
+          {error}
+        </div>
+      ) : null}
       {hasSidebar ? (
         <ViewSidebar
           viewId={currentView}

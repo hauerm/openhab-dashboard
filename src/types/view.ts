@@ -18,6 +18,7 @@ export interface ViewTrackedItemState {
   kind: ViewRawStateKind;
   effectiveState: ViewBinaryState;
   hasLastValidState: boolean;
+  optimisticUpdateId?: number;
 }
 
 export interface ViewState {

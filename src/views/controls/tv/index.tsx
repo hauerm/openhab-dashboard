@@ -154,7 +154,9 @@ export const TvOverlayControl = ({
     const command = isOn ? "OFF" : "ON";
     try {
       setSending(true);
-      await sendViewItemCommand(itemName, command, "OnOff");
+      await sendViewItemCommand(itemName, command, "OnOff", {
+        optimisticRawState: command,
+      });
     } catch (error) {
       void error;
       toast.error("TV-Befehl konnte nicht gesendet werden.");

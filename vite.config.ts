@@ -16,6 +16,25 @@ export default defineConfig(({ mode }) => {
 
   const httpTarget = `${httpProtocol}://${openhabHost}:${openhabPort}`;
   const wsTarget = `${wsProtocol}://${openhabHost}:${openhabPort}`;
+  const openhabProxy = {
+    "/api": {
+      target: httpTarget,
+      changeOrigin: true,
+      secure: !openhabInsecure,
+      rewrite: (path: string) => path.replace(/^\/api/, "/rest"),
+    },
+    "/ws": {
+      target: wsTarget,
+      changeOrigin: true,
+      secure: !openhabInsecure,
+      ws: true,
+    },
+    "/static": {
+      target: httpTarget,
+      changeOrigin: true,
+      secure: !openhabInsecure,
+    },
+  };
 
   return {
     plugins: [react(), tailwindcss()],
@@ -48,25 +67,10 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      proxy: {
-        "/api": {
-          target: httpTarget,
-          changeOrigin: true,
-          secure: !openhabInsecure,
-          rewrite: (path) => path.replace(/^\/api/, "/rest"),
-        },
-        "/ws": {
-          target: wsTarget,
-          changeOrigin: true,
-          secure: !openhabInsecure,
-          ws: true,
-        },
-        "/static": {
-          target: httpTarget,
-          changeOrigin: true,
-          secure: !openhabInsecure,
-        },
-      },
+      proxy: openhabProxy,
+    },
+    preview: {
+      proxy: openhabProxy,
     },
   };
 });

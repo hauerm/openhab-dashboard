@@ -99,14 +99,15 @@ export class ItemService {
    * Fetch all items from OpenHAB
    */
   static async fetchItems(): Promise<Item[]> {
+    const url = `${OPENHAB_BASE_URL}/items?recursive=false&metadata=semantics,automation,dashboard-location,dashboard-layout,dashboard-location-property`;
     const response = await fetch(
-      `${OPENHAB_BASE_URL}/items?recursive=false&metadata=semantics,automation,dashboard-location,dashboard-layout,dashboard-location-property`,
+      url,
       {
         headers: getOpenHABAuthHeaders(),
       }
     );
     if (!response.ok) {
-      throw new Error("Failed to fetch items");
+      throw new Error(`Failed to fetch items (${response.status}) from ${url}`);
     }
     return response.json();
   }
@@ -128,6 +129,22 @@ export class ItemService {
       });
 
     return this.itemsCachePromise;
+  }
+
+  private static getCachedItemMetadata(
+    itemName: string,
+    namespace: string
+  ): ItemMetadataNamespace | null | undefined {
+    if (!this.itemsCache) {
+      return undefined;
+    }
+
+    const item = this.itemsCache.find((candidate) => candidate.name === itemName);
+    if (!item) {
+      return undefined;
+    }
+
+    return item.metadata?.[namespace] ?? null;
   }
 
   /**
@@ -174,6 +191,33 @@ export class ItemService {
     itemName: string,
     namespace: string
   ): Promise<ItemMetadataNamespace | null> {
+    const cachedMetadata = this.getCachedItemMetadata(itemName, namespace);
+    if (cachedMetadata !== undefined) {
+      return cachedMetadata;
+    }
+
+    const itemWithMetadataUrl = `${OPENHAB_BASE_URL}/items/${encodeURIComponent(
+      itemName
+    )}?metadata=${encodeURIComponent(namespace)}`;
+    const itemWithMetadataResponse = await fetch(itemWithMetadataUrl, {
+      headers: getOpenHABAuthHeaders(),
+    });
+
+    if (itemWithMetadataResponse.ok) {
+      const itemPayload = (await itemWithMetadataResponse.json()) as {
+        metadata?: Record<string, ItemMetadataNamespace>;
+      };
+      return itemPayload.metadata?.[namespace] ?? null;
+    }
+
+    if (itemWithMetadataResponse.status === 404) {
+      return null;
+    }
+    if (itemWithMetadataResponse.status !== 405) {
+      throw new Error(`Failed to fetch item metadata ${namespace} for ${itemName}`);
+    }
+
+    // Some openHAB variants may only support the namespace-specific route.
     const singleNamespaceUrl = `${OPENHAB_BASE_URL}/items/${encodeURIComponent(
       itemName
     )}/metadata/${encodeURIComponent(namespace)}`;
@@ -190,28 +234,6 @@ export class ItemService {
     }
     if (singleResponse.status !== 405) {
       throw new Error(`Failed to fetch metadata ${namespace} for ${itemName}`);
-    }
-
-    // openHAB variants may not support GET on /metadata/{namespace}; fetch item with metadata query.
-    const itemWithMetadataUrl = `${OPENHAB_BASE_URL}/items/${encodeURIComponent(
-      itemName
-    )}?metadata=${encodeURIComponent(namespace)}`;
-    const itemWithMetadataResponse = await fetch(itemWithMetadataUrl, {
-      headers: getOpenHABAuthHeaders(),
-    });
-
-    if (itemWithMetadataResponse.ok) {
-      const itemPayload = (await itemWithMetadataResponse.json()) as {
-        metadata?: Record<string, ItemMetadataNamespace>;
-      };
-      return itemPayload.metadata?.[namespace] ?? null;
-    }
-
-    if (itemWithMetadataResponse.status !== 405) {
-      if (itemWithMetadataResponse.status === 404) {
-        return null;
-      }
-      throw new Error(`Failed to fetch item metadata ${namespace} for ${itemName}`);
     }
 
     // Last fallback for servers exposing only /metadata list route.
@@ -253,6 +275,7 @@ export class ItemService {
     });
 
     if (putResponse.ok) {
+      this.updateCachedItemMetadata(itemName, namespace, metadata);
       return;
     }
 
@@ -264,11 +287,36 @@ export class ItemService {
         body: requestBody,
       });
       if (postResponse.ok) {
+        this.updateCachedItemMetadata(itemName, namespace, metadata);
         return;
       }
     }
 
     throw new Error(`Failed to upsert metadata ${namespace} for ${itemName}`);
+  }
+
+  private static updateCachedItemMetadata(
+    itemName: string,
+    namespace: string,
+    metadata: ItemMetadataNamespace
+  ): void {
+    if (!this.itemsCache) {
+      return;
+    }
+
+    this.itemsCache = this.itemsCache.map((item) => {
+      if (item.name !== itemName) {
+        return item;
+      }
+
+      return {
+        ...item,
+        metadata: {
+          ...item.metadata,
+          [namespace]: metadata,
+        },
+      };
+    });
   }
 
   /**

@@ -28,13 +28,24 @@ const buildDefaultViewLabels = (): Record<ViewId, string> => ({
 });
 
 let trackedItemNames = new Set<string>();
+let nextOptimisticUpdateId = 1;
 
 type ViewConfigRecord = ViewState["viewConfigs"];
+export interface OptimisticItemStateSnapshot {
+  itemName: string;
+  optimisticUpdateId: number;
+  previousState: ViewTrackedItemState | undefined;
+}
 
 interface ViewActions {
   initialize: () => Promise<void>;
   setCurrentView: (viewId: ViewId) => void;
   handleItemStateUpdate: (itemName: string, rawState: string) => void;
+  setOptimisticItemState: (
+    itemName: string,
+    rawState: string
+  ) => OptimisticItemStateSnapshot;
+  rollbackOptimisticItemState: (snapshot: OptimisticItemStateSnapshot) => void;
   setMissingAsset: (viewId: ViewId, missing: boolean) => void;
 }
 
@@ -133,7 +144,12 @@ export const useViewStore = create<ViewStoreState>((set, get) => ({
         logger.info("View store initialization completed");
       } catch (error) {
         logger.error("View store initialization failed:", error);
-        set({ error: "Failed to initialize view data" });
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to initialize view data",
+        });
       } finally {
         set({ loading: false });
       }
@@ -149,7 +165,7 @@ export const useViewStore = create<ViewStoreState>((set, get) => ({
   setCurrentView: (viewId) => set({ currentView: viewId }),
 
   handleItemStateUpdate: (itemName, rawState) => {
-    if (!trackedItemNames.has(itemName)) {
+    if (!trackedItemNames.has(itemName) && !get().itemStates[itemName]) {
       return;
     }
 
@@ -162,6 +178,47 @@ export const useViewStore = create<ViewStoreState>((set, get) => ({
       return {
         itemStates: nextItemStates,
       };
+    });
+  },
+
+  setOptimisticItemState: (itemName, rawState) => {
+    const optimisticUpdateId = nextOptimisticUpdateId++;
+    const previousState = get().itemStates[itemName];
+
+    set((state) => ({
+      itemStates: {
+        ...state.itemStates,
+        [itemName]: applyViewItemStateUpdate(previousState, rawState, {
+          optimisticUpdateId,
+        }),
+      },
+    }));
+
+    return {
+      itemName,
+      optimisticUpdateId,
+      previousState,
+    };
+  },
+
+  rollbackOptimisticItemState: (snapshot) => {
+    set((state) => {
+      const currentState = state.itemStates[snapshot.itemName];
+      if (
+        !currentState ||
+        currentState.optimisticUpdateId !== snapshot.optimisticUpdateId
+      ) {
+        return state;
+      }
+
+      const nextItemStates = { ...state.itemStates };
+      if (snapshot.previousState) {
+        nextItemStates[snapshot.itemName] = snapshot.previousState;
+      } else {
+        delete nextItemStates[snapshot.itemName];
+      }
+
+      return { itemStates: nextItemStates };
     });
   },
 
@@ -187,6 +244,7 @@ export const resetViewStoreForTests = (): void => {
   initializePromise = null;
   hasInitialized = false;
   trackedItemNames = new Set<string>();
+  nextOptimisticUpdateId = 1;
   useViewStore.setState({
     ...initialState,
     viewLabels: buildDefaultViewLabels(),

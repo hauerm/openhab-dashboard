@@ -1,7 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PROPERTY_TEMPERATURE } from "../domain/openhab-properties";
 import { ItemService } from "./item-service";
 import type { Item } from "../types/item";
+
+type ItemServiceInternals = {
+  itemsCache: Item[] | null;
+  itemsCachePromise: Promise<Item[]> | null;
+};
 
 const createItem = (
   name: string,
@@ -198,5 +203,104 @@ describe("ItemService.filterItems location scoping", () => {
     expect(filtered.map((item) => item.name)).toEqual([
       "Shelly_Plug_Temperature",
     ]);
+  });
+});
+
+describe("ItemService.fetchItemMetadata", () => {
+  beforeEach(() => {
+    const internals = ItemService as unknown as ItemServiceInternals;
+    internals.itemsCache = null;
+    internals.itemsCachePromise = null;
+    vi.restoreAllMocks();
+  });
+
+  it("reads metadata from the items cache before making per-item requests", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [
+        {
+          ...createItem("Equ_Light", "Group", {}),
+          metadata: {
+            "dashboard-layout": {
+              value: "v1",
+              config: { x: "42", y: "24" },
+            },
+          },
+        },
+      ],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await ItemService.fetchItemsMetadata();
+    const metadata = await ItemService.fetchItemMetadata(
+      "Equ_Light",
+      "dashboard-layout"
+    );
+
+    expect(metadata).toEqual({
+      value: "v1",
+      config: { x: "42", y: "24" },
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses item metadata query before namespace-specific metadata route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        metadata: {
+          "dashboard-layout": {
+            value: "v1",
+            config: { x: "12", y: "34" },
+          },
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const metadata = await ItemService.fetchItemMetadata(
+      "Equ_Light",
+      "dashboard-layout"
+    );
+
+    expect(metadata).toEqual({
+      value: "v1",
+      config: { x: "12", y: "34" },
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toContain(
+      "/items/Equ_Light?metadata=dashboard-layout"
+    );
+  });
+
+  it("falls back to namespace-specific metadata route when item metadata query is not supported", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 405,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          value: "v1",
+          config: { x: "8", y: "16" },
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const metadata = await ItemService.fetchItemMetadata(
+      "Equ_Light",
+      "dashboard-layout"
+    );
+
+    expect(metadata).toEqual({
+      value: "v1",
+      config: { x: "8", y: "16" },
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[0]).toContain(
+      "/items/Equ_Light/metadata/dashboard-layout"
+    );
   });
 });
