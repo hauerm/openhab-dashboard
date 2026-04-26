@@ -23,7 +23,22 @@ const CHANNEL_BAR_CLASS =
   "pointer-events-none absolute left-3 right-3 rounded-full border border-white/80 bg-white/85 shadow-[0_0_22px_rgba(255,255,255,0.8)]";
 const CHANNEL_BAR_HEIGHT_PX = 28;
 
-const LedStripIcon = ({
+const COLOR_SPECTRUM_SEGMENTS = [
+  { color: "#ef4444", rotation: 0 },
+  { color: "#f97316", rotation: 30 },
+  { color: "#f59e0b", rotation: 60 },
+  { color: "#84cc16", rotation: 90 },
+  { color: "#22c55e", rotation: 120 },
+  { color: "#14b8a6", rotation: 150 },
+  { color: "#06b6d4", rotation: 180 },
+  { color: "#3b82f6", rotation: 210 },
+  { color: "#6366f1", rotation: 240 },
+  { color: "#8b5cf6", rotation: 270 },
+  { color: "#d946ef", rotation: 300 },
+  { color: "#ec4899", rotation: 330 },
+];
+
+const ColorSpectrumCircleIcon = ({
   className,
   ...props
 }: SVGProps<SVGSVGElement>) => (
@@ -34,21 +49,36 @@ const LedStripIcon = ({
     focusable="false"
     {...props}
   >
-    <path
-      d="M18 35h44c11 0 20 9 20 20s-9 20-20 20H30"
+    {COLOR_SPECTRUM_SEGMENTS.map((segment) => (
+      <circle
+        key={segment.rotation}
+        cx="50"
+        cy="50"
+        r="32"
+        fill="none"
+        stroke={segment.color}
+        strokeWidth="22"
+        strokeDasharray="15.2 186"
+        strokeLinecap="butt"
+        transform={`rotate(${segment.rotation} 50 50)`}
+      />
+    ))}
+    <circle
+      cx="50"
+      cy="50"
+      r="21"
+      fill="currentColor"
+      opacity="0.94"
+    />
+    <circle
+      cx="50"
+      cy="50"
+      r="42"
       fill="none"
       stroke="currentColor"
-      strokeWidth="10"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      strokeWidth="4"
+      opacity="0.82"
     />
-    <circle cx="28" cy="35" r="4" fill="currentColor" />
-    <circle cx="45" cy="35" r="4" fill="currentColor" />
-    <circle cx="62" cy="36" r="4" fill="currentColor" />
-    <circle cx="73" cy="48" r="4" fill="currentColor" />
-    <circle cx="70" cy="63" r="4" fill="currentColor" />
-    <circle cx="54" cy="70" r="4" fill="currentColor" />
-    <circle cx="37" cy="70" r="4" fill="currentColor" />
   </svg>
 );
 
@@ -179,7 +209,7 @@ export const RgbwLightHudControl = ({
             : undefined
         }
       >
-        <LedStripIcon
+        <ColorSpectrumCircleIcon
           data-testid={`living-control-placeholder-icon-${definition.itemRefs.colorItemName}-${hudState}`}
           className={`h-11 w-11 md:h-14 md:w-14 ${
             isOn ? "text-ui-surface-shell" : "text-ui-foreground"
@@ -211,13 +241,13 @@ export const RgbwLightOverlayControl = ({
         data-testid={`rgbw-light-control-${definition.controlId}`}
         className="pointer-events-none grid h-full min-h-0 w-full grid-cols-5 gap-2 p-2 md:gap-3 md:p-3"
       >
-        <section className="pointer-events-none flex h-full min-h-0 flex-col justify-start rounded-2xl border border-ui-border-subtle bg-ui-surface-panel/80 p-5 text-ui-foreground backdrop-blur-xl">
+        <section className="pointer-events-none flex flex-col items-start justify-start">
           <p className="text-xs font-semibold tracking-wide text-ui-foreground-muted md:text-sm">
             {definition.label}
           </p>
           <p
             data-testid={`rgbw-light-control-${definition.controlId}-state`}
-            className={`mt-2 text-4xl font-bold md:text-6xl ${TITLE_TEXT_SHADOW_CLASS}`}
+            className={`text-4xl font-bold text-ui-foreground md:text-6xl ${TITLE_TEXT_SHADOW_CLASS}`}
           >
             {isOn ? "Ein" : "Aus"}
           </p>
