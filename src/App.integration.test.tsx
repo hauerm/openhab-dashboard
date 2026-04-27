@@ -36,6 +36,10 @@ const mocks = vi.hoisted(() => ({
   disconnectWebSocket: vi.fn(),
   websocketIsConnected: vi.fn(),
   websocketSendCommand: vi.fn(),
+  getOpenHABRuntimeToken: vi.fn(),
+  setStoredOpenHABToken: vi.fn(),
+  clearStoredOpenHABToken: vi.fn(),
+  validateOpenHABToken: vi.fn(),
   locationPropertyInitialize: vi.fn(),
   locationPropertyEnsureHistoryRange: vi.fn(),
   wsListener: null as ((update: { itemName: string; rawState: string }) => void) | null,
@@ -56,6 +60,13 @@ vi.mock("./services/websocket-service", () => ({
     isConnected: mocks.websocketIsConnected,
     sendCommand: mocks.websocketSendCommand,
   },
+}));
+
+vi.mock("./services/auth-token", () => ({
+  getOpenHABRuntimeToken: mocks.getOpenHABRuntimeToken,
+  setStoredOpenHABToken: mocks.setStoredOpenHABToken,
+  clearStoredOpenHABToken: mocks.clearStoredOpenHABToken,
+  validateOpenHABToken: mocks.validateOpenHABToken,
 }));
 
 vi.mock("./stores/locationPropertyHistoryStore", () => ({
@@ -311,6 +322,12 @@ describe("App integration", () => {
     mocks.websocketIsConnected.mockReturnValue(true);
     mocks.websocketSendCommand.mockReset();
     mocks.websocketSendCommand.mockResolvedValue(undefined);
+    mocks.getOpenHABRuntimeToken.mockReset();
+    mocks.getOpenHABRuntimeToken.mockReturnValue("stored-token");
+    mocks.setStoredOpenHABToken.mockReset();
+    mocks.clearStoredOpenHABToken.mockReset();
+    mocks.validateOpenHABToken.mockReset();
+    mocks.validateOpenHABToken.mockResolvedValue(undefined);
     mocks.locationPropertyInitialize.mockReset();
     mocks.locationPropertyInitialize.mockResolvedValue(undefined);
     mocks.locationPropertyEnsureHistoryRange.mockReset();
@@ -322,6 +339,80 @@ describe("App integration", () => {
         mocks.wsListener = null;
       };
     });
+  });
+
+  it("shows the token login and does not initialize openHAB without a token", () => {
+    mocks.getOpenHABRuntimeToken.mockReturnValue(null);
+
+    render(<App />);
+
+    expect(screen.getByText("openHAB verbinden")).toBeInTheDocument();
+    expect(screen.getByTestId("openhab-token-input")).toBeInTheDocument();
+    expect(mocks.initializeWebSocket).not.toHaveBeenCalled();
+    expect(mocks.fetchItemsMetadata).not.toHaveBeenCalled();
+  });
+
+  it("keeps the login visible when token validation fails", async () => {
+    const user = userEvent.setup();
+    mocks.getOpenHABRuntimeToken.mockReturnValue(null);
+    mocks.validateOpenHABToken.mockRejectedValue(
+      new Error("openHAB API Token konnte nicht verifiziert werden.")
+    );
+
+    render(<App />);
+
+    await user.type(screen.getByTestId("openhab-token-input"), "bad-token");
+    await user.click(screen.getByTestId("openhab-token-submit"));
+
+    expect(await screen.findByTestId("openhab-token-error")).toHaveTextContent(
+      "openHAB API Token konnte nicht verifiziert werden."
+    );
+    expect(mocks.setStoredOpenHABToken).not.toHaveBeenCalled();
+    expect(mocks.initializeWebSocket).not.toHaveBeenCalled();
+    expect(mocks.fetchItemsMetadata).not.toHaveBeenCalled();
+  });
+
+  it("stores a valid token and initializes the dashboard after login", async () => {
+    const user = userEvent.setup();
+    mocks.getOpenHABRuntimeToken.mockReturnValue(null);
+
+    render(<App />);
+
+    await user.type(screen.getByTestId("openhab-token-input"), "valid-token");
+    await user.click(screen.getByTestId("openhab-token-submit"));
+
+    await waitFor(() => {
+      expect(mocks.validateOpenHABToken).toHaveBeenCalledWith("valid-token");
+      expect(mocks.setStoredOpenHABToken).toHaveBeenCalledWith("valid-token");
+      expect(mocks.initializeWebSocket).toHaveBeenCalledTimes(1);
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("skips the login when a runtime token already exists", async () => {
+    render(<App />);
+
+    expect(screen.queryByTestId("openhab-token-input")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(mocks.initializeWebSocket).toHaveBeenCalledTimes(1);
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("forgets the token and returns to login on logout", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.initializeWebSocket).toHaveBeenCalledTimes(1);
+    });
+
+    await user.click(screen.getByTestId("openhab-token-logout"));
+
+    expect(mocks.clearStoredOpenHABToken).toHaveBeenCalledTimes(1);
+    expect(mocks.disconnectWebSocket).toHaveBeenCalled();
+    expect(screen.getByTestId("openhab-token-input")).toBeInTheDocument();
   });
 
   it("loads initial state and renders house view without interaction", async () => {

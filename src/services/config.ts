@@ -1,9 +1,10 @@
 // OpenHAB Configuration
+import { getOpenHABRuntimeToken } from "./auth-token";
+
 export const OPENHAB_HOST = import.meta.env.VITE_OPENHAB_HOST || "localhost";
 export const OPENHAB_PROTOCOL =
   (import.meta.env.VITE_OPENHAB_PROTOCOL || "http").toLowerCase();
 export const OPENHAB_INSECURE = import.meta.env.VITE_OPENHAB_INSECURE === "true";
-export const OPENHAB_API_TOKEN = import.meta.env.VITE_OPENHAB_API_TOKEN;
 export const OPENHAB_USE_PROXY =
   import.meta.env.DEV || import.meta.env.VITE_OPENHAB_USE_PROXY !== "false";
 
@@ -20,23 +21,25 @@ export const OPENHAB_PORT = configuredPort;
 export const getOpenHABAuthHeaders = (
   headers: Record<string, string> = {}
 ): Record<string, string> => {
-  if (!OPENHAB_API_TOKEN) {
+  const token = getOpenHABRuntimeToken();
+  if (!token) {
     return headers;
   }
   return {
-    Authorization: `Bearer ${OPENHAB_API_TOKEN}`,
+    Authorization: `Bearer ${token}`,
     ...headers,
   };
 };
 
 export const getWebSocketSubprotocols = (): string[] => {
   const protocols = ["org.openhab.ws.protocol.default"];
-  if (!OPENHAB_API_TOKEN) {
+  const token = getOpenHABRuntimeToken();
+  if (!token) {
     return protocols;
   }
 
   try {
-    const encodedToken = btoa(OPENHAB_API_TOKEN).replace(/=*$/, "");
+    const encodedToken = btoa(token).replace(/=*$/, "");
     return [`org.openhab.ws.accessToken.base64.${encodedToken}`, ...protocols];
   } catch {
     return protocols;

@@ -236,7 +236,7 @@ export const useViewStore = create<ViewStoreState>((set, get) => ({
     }),
 }));
 
-export const resetViewStoreForTests = (): void => {
+export const resetViewStore = (): void => {
   if (unsubscribeWebSocket) {
     unsubscribeWebSocket();
     unsubscribeWebSocket = null;
@@ -253,3 +253,5 @@ export const resetViewStoreForTests = (): void => {
     missingAssetByView: buildDefaultMissingAssets(),
   });
 };
+
+export const resetViewStoreForTests = resetViewStore;
