@@ -79,6 +79,25 @@ export type TvControlDefinition = ControlDefinitionBase<
   TvControlItemRefs
 >;
 
+export interface EvccControlItemRefs {
+  connectedItemName: string;
+  chargingItemName: string;
+  modeItemName: string;
+  limitSocItemName: string;
+  vehicleSocItemName: string;
+  vehicleRangeItemName: string;
+  vehicleNameItemName: string;
+  vehicleTitleItemName: string;
+  activePhasesItemName: string;
+  chargePowerItemName: string;
+  effectiveLimitSocItemName: string;
+}
+
+export type EvccControlDefinition = ControlDefinitionBase<
+  "evcc",
+  EvccControlItemRefs
+>;
+
 export interface PowerControlItemRefs {
   powerItemName: string;
   consumptionItemName: string;
@@ -120,6 +139,7 @@ export type ViewControlDefinition =
   | RgbwLightControlDefinition
   | OpeningControlDefinition
   | TvControlDefinition
+  | EvccControlDefinition
   | PowerControlDefinition
   | LocationPropertyHistoryControlDefinition
   | VentilationControlDefinition;

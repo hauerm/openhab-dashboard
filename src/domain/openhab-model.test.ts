@@ -153,6 +153,55 @@ const fixtureItems = (): Item[] => [
       },
     }
   ),
+  createItem("EVCC_Garage", "Group", ["EVSE"], ["Garage"], {
+    label: "EVCC Garage",
+  }),
+  createItem(
+    "EVCC_Garage_Connected",
+    "Switch",
+    ["Status", "Presence"],
+    ["EVCC_Garage"]
+  ),
+  createItem(
+    "EVCC_Garage_Charging",
+    "Switch",
+    ["Status", "Energy"],
+    ["EVCC_Garage"]
+  ),
+  createItem("EVCC_Garage_Mode", "String", ["Control"], ["EVCC_Garage"]),
+  createItem(
+    "EVCC_Garage_LimitSoC",
+    "Number:Dimensionless",
+    ["Control", "Level"],
+    ["EVCC_Garage"]
+  ),
+  createItem(
+    "EVCC_Garage_VehicleSoC",
+    "Number:Dimensionless",
+    ["Measurement", "Level"],
+    ["EVCC_Garage"]
+  ),
+  createItem(
+    "EVCC_Garage_VehicleRange",
+    "Number:Length",
+    ["Measurement"],
+    ["EVCC_Garage"]
+  ),
+  createItem("EVCC_Garage_VehicleName", "String", ["Status"], ["EVCC_Garage"]),
+  createItem("EVCC_Garage_VehicleTitle", "String", ["Status"], ["EVCC_Garage"]),
+  createItem("EVCC_Garage_ActivePhases", "Number", ["Status"], ["EVCC_Garage"]),
+  createItem(
+    "EVCC_Garage_ChargePower",
+    "Number:Power",
+    ["Measurement", "Power"],
+    ["EVCC_Garage"]
+  ),
+  createItem(
+    "EVCC_Garage_EffectiveLimitSoC",
+    "Number:Dimensionless",
+    ["Status", "Level"],
+    ["EVCC_Garage"]
+  ),
   createItem("Samsung_TV", "Group", ["Television"], ["Wohnzimmer"]),
   createItem("Samsung_TV_Power", "Switch", ["Enabled", "Switch"], ["Samsung_TV"]),
   createItem("Samsung_TV_Application", "String", ["App", "Control"], ["Samsung_TV"]),
@@ -209,7 +258,10 @@ describe("buildOpenHABSemanticModel", () => {
       "power",
     ]);
     expect(egControls.map((control) => control.controlType)).toEqual(["ventilation"]);
-    expect(garageControls.map((control) => control.controlType)).toEqual(["opening"]);
+    expect(garageControls.map((control) => control.controlType)).toEqual([
+      "opening",
+      "evcc",
+    ]);
   });
 
   it("maps color light equipment to rgbw light controls", () => {
@@ -282,6 +334,29 @@ describe("buildOpenHABSemanticModel", () => {
     }
     expect(garageDoor.itemRefs.itemNames).toEqual(["KNX_Hormann_Garagentor_Garagentor"]);
     expect(garageDoor.subtype).toBe("garagedoor");
+  });
+
+  it("maps EVSE equipment to evcc controls", () => {
+    const model = buildOpenHABSemanticModel(fixtureItems());
+    const evcc = model.controls.find((control) => control.controlId === "EVCC_Garage");
+
+    expect(evcc?.controlType).toBe("evcc");
+    if (!evcc || evcc.controlType !== "evcc") {
+      throw new Error("Expected EVCC control");
+    }
+    expect(evcc.itemRefs).toEqual({
+      connectedItemName: "EVCC_Garage_Connected",
+      chargingItemName: "EVCC_Garage_Charging",
+      modeItemName: "EVCC_Garage_Mode",
+      limitSocItemName: "EVCC_Garage_LimitSoC",
+      vehicleSocItemName: "EVCC_Garage_VehicleSoC",
+      vehicleRangeItemName: "EVCC_Garage_VehicleRange",
+      vehicleNameItemName: "EVCC_Garage_VehicleName",
+      vehicleTitleItemName: "EVCC_Garage_VehicleTitle",
+      activePhasesItemName: "EVCC_Garage_ActivePhases",
+      chargePowerItemName: "EVCC_Garage_ChargePower",
+      effectiveLimitSocItemName: "EVCC_Garage_EffectiveLimitSoC",
+    });
   });
 
   it("supports raw openHAB property tags for sidebar metrics", () => {

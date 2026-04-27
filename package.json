@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "migrate:layout-metadata": "node scripts/migrate-dashboard-layout-metadata.mjs",
+    "provision:evcc-garage": "node scripts/provision-evcc-garage.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
