@@ -7,6 +7,7 @@ import {
   LightHudControl,
   LightOverlayControl,
 } from "../controls/light";
+import { EvccHudControl, EvccOverlayControl } from "../controls/evcc";
 import { PowerHudControl, PowerOverlayControl } from "../controls/power";
 import {
   RaffstoreHudControl,
@@ -101,6 +102,15 @@ const renderHudControl = (
       />
     );
   }
+  if (definition.controlType === "evcc") {
+    return (
+      <EvccHudControl
+        definition={definition}
+        interactive={!layoutEditMode}
+        onOpenControl={onOpenControl}
+      />
+    );
+  }
   if (definition.controlType === "power") {
     return (
       <PowerHudControl
@@ -143,6 +153,9 @@ const renderOverlayControl = (
   }
   if (definition.controlType === "tv") {
     return <TvOverlayControl definition={definition} onClose={onCloseControl} />;
+  }
+  if (definition.controlType === "evcc") {
+    return <EvccOverlayControl definition={definition} onClose={onCloseControl} />;
   }
   if (definition.controlType === "power") {
     return <PowerOverlayControl definition={definition} onClose={onCloseControl} />;

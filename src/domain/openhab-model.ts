@@ -2,6 +2,7 @@ import type { Item, ItemMetadataNamespace } from "../types/item";
 import type {
   ControlPosition,
   DimmerControlDefinition,
+  EvccControlDefinition,
   LightControlDefinition,
   PowerControlDefinition,
   RgbwLightControlDefinition,
@@ -50,6 +51,7 @@ const LIGHT_EQUIPMENT_TAGS = new Set([
 const SUPPORTED_EQUIPMENT_TAGS = new Set([
   ...LIGHT_EQUIPMENT_TAGS,
   "Blinds",
+  "EVSE",
   "GarageDoor",
   "PowerOutlet",
   "Television",
@@ -92,6 +94,7 @@ export type DiscoveredControlDefinition =
   | OpeningControlDefinition
   | PowerControlDefinition
   | TvControlDefinition
+  | EvccControlDefinition
   | VentilationControlDefinition;
 
 export interface OpenHABLocationView {
@@ -463,6 +466,21 @@ const getAutomationSubtype = (item: Item): OpeningControlSubtype => {
 const compareByName = (left: Item, right: Item): number =>
   left.name.localeCompare(right.name);
 
+const findEvccChild = (
+  children: readonly Item[],
+  predicate: (item: Item) => boolean
+): Item | undefined => children.find(predicate);
+
+const findEvccChildByNameSuffix = (
+  children: readonly Item[],
+  suffix: string,
+  type?: string
+): Item | undefined =>
+  findEvccChild(
+    children,
+    (item) => item.name.endsWith(suffix) && (!type || item.type === type)
+  );
+
 const createControlsForEquipment = (
   equipment: Item,
   children: readonly Item[],
@@ -592,6 +610,104 @@ const createControlsForEquipment = (
           channelNameItemName: channelNameItem?.name ?? "",
           channelNumberItemName: channelNumberItem?.name ?? "",
           titleItemName: titleItem?.name ?? "",
+        },
+      },
+    ];
+  }
+
+  if (hasTag(equipment, "EVSE")) {
+    const connectedItem =
+      findEvccChildByNameSuffix(children, "_Connected", "Switch") ??
+      findEvccChild(
+        children,
+        (item) =>
+          item.type === "Switch" &&
+          hasTag(item, "Presence") &&
+          hasTag(item, "Status")
+      );
+    const chargingItem =
+      findEvccChildByNameSuffix(children, "_Charging", "Switch") ??
+      findEvccChild(
+        children,
+        (item) =>
+          item.type === "Switch" &&
+          hasTag(item, "Energy") &&
+          hasTag(item, "Status")
+      );
+    const modeItem = findEvccChildByNameSuffix(children, "_Mode", "String");
+    const limitSocItem = findEvccChildByNameSuffix(
+      children,
+      "_LimitSoC",
+      "Number:Dimensionless"
+    );
+    const vehicleSocItem = findEvccChildByNameSuffix(
+      children,
+      "_VehicleSoC",
+      "Number:Dimensionless"
+    );
+    const vehicleRangeItem = findEvccChildByNameSuffix(
+      children,
+      "_VehicleRange",
+      "Number:Length"
+    );
+    const vehicleNameItem = findEvccChildByNameSuffix(
+      children,
+      "_VehicleName",
+      "String"
+    );
+    const vehicleTitleItem = findEvccChildByNameSuffix(
+      children,
+      "_VehicleTitle",
+      "String"
+    );
+    const activePhasesItem = findEvccChildByNameSuffix(
+      children,
+      "_ActivePhases",
+      "Number"
+    );
+    const chargePowerItem = findEvccChildByNameSuffix(
+      children,
+      "_ChargePower",
+      "Number:Power"
+    );
+    const effectiveLimitSocItem = findEvccChildByNameSuffix(
+      children,
+      "_EffectiveLimitSoC",
+      "Number:Dimensionless"
+    );
+
+    if (
+      !connectedItem ||
+      !chargingItem ||
+      !modeItem ||
+      !limitSocItem ||
+      !vehicleSocItem ||
+      !vehicleRangeItem ||
+      !vehicleNameItem ||
+      !vehicleTitleItem ||
+      !activePhasesItem ||
+      !chargePowerItem ||
+      !effectiveLimitSocItem
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        ...createControlBase("evcc", equipment, locationName),
+        controlType: "evcc",
+        itemRefs: {
+          connectedItemName: connectedItem.name,
+          chargingItemName: chargingItem.name,
+          modeItemName: modeItem.name,
+          limitSocItemName: limitSocItem.name,
+          vehicleSocItemName: vehicleSocItem.name,
+          vehicleRangeItemName: vehicleRangeItem.name,
+          vehicleNameItemName: vehicleNameItem.name,
+          vehicleTitleItemName: vehicleTitleItem.name,
+          activePhasesItemName: activePhasesItem.name,
+          chargePowerItemName: chargePowerItem.name,
+          effectiveLimitSocItemName: effectiveLimitSocItem.name,
         },
       },
     ];
