@@ -399,22 +399,6 @@ describe("App integration", () => {
     });
   });
 
-  it("forgets the token and returns to login on logout", async () => {
-    const user = userEvent.setup();
-
-    render(<App />);
-
-    await waitFor(() => {
-      expect(mocks.initializeWebSocket).toHaveBeenCalledTimes(1);
-    });
-
-    await user.click(screen.getByTestId("openhab-token-logout"));
-
-    expect(mocks.clearStoredOpenHABToken).toHaveBeenCalledTimes(1);
-    expect(mocks.disconnectWebSocket).toHaveBeenCalled();
-    expect(screen.getByTestId("openhab-token-input")).toBeInTheDocument();
-  });
-
   it("loads initial state and renders house view without interaction", async () => {
     render(<App />);
 

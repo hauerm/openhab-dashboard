@@ -6,14 +6,13 @@ import {
   disconnectWebSocket,
 } from "./services/websocket-service";
 import {
-  clearStoredOpenHABToken,
   getOpenHABRuntimeToken,
   setStoredOpenHABToken,
   validateOpenHABToken,
 } from "./services/auth-token";
 import ViewBackground from "./components/ViewBackground";
 import BottomDock from "./components/BottomDock";
-import { resetViewStore, useViewStore } from "./stores/viewStore";
+import { useViewStore } from "./stores/viewStore";
 import type { ActiveViewOverlay } from "./types/overlay";
 import ViewSidebar, { VIEW_SIDEBAR_SAFE_ZONE_PX } from "./views/ViewSidebar";
 import ViewLayer from "./views/ViewLayer";
@@ -134,14 +133,6 @@ function App() {
     };
   }, [initializeViewStore, isAuthenticated]);
 
-  const handleLogout = () => {
-    clearStoredOpenHABToken();
-    disconnectWebSocket();
-    resetViewStore();
-    setActiveOverlay(null);
-    setIsAuthenticated(false);
-  };
-
   const visibleOverlay = useMemo(() => {
     if (!activeOverlay) {
       return null;
@@ -195,14 +186,6 @@ function App() {
           setActiveOverlay(null);
         }}
       />
-      <button
-        type="button"
-        data-testid="openhab-token-logout"
-        onClick={handleLogout}
-        className="fixed right-3 top-3 z-50 rounded-md border border-ui-border-subtle bg-ui-surface-overlay px-3 py-2 text-xs font-semibold text-ui-foreground shadow-lg backdrop-blur transition hover:bg-ui-surface-muted"
-      >
-        Token vergessen
-      </button>
       <ToastContainer
         position="top-right"
         autoClose={3000}
