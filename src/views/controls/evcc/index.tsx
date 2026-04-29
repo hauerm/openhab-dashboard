@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { MdBolt, MdDirectionsCar } from "react-icons/md";
 import { toast } from "react-toastify";
+import kiaLogoUrl from "../../../assets/kia.svg";
+import skodaLogoUrl from "../../../assets/skoda.svg";
 import ViewOverlayShell from "../../ViewOverlayShell";
 import type { EvccControlDefinition } from "../controlDefinitions";
 import { sendViewItemCommand } from "../viewItemCommand";
@@ -29,6 +31,11 @@ const MODE_OPTIONS = [
 ] as const;
 
 const LIMIT_OPTIONS = [100, 80, 50] as const;
+
+const VEHICLE_LOGO_BY_KEY: Record<EvccVehicleLogoKey, string> = {
+  kia: kiaLogoUrl,
+  skoda: skodaLogoUrl,
+};
 
 const VEHICLE_LOGO_LABEL_BY_KEY: Record<EvccVehicleLogoKey, string> = {
   kia: "KIA",
@@ -136,6 +143,19 @@ const VehicleLogo = ({
     return null;
   }
 
+  if (logoKey) {
+    return (
+      <span className="inline-flex min-h-8 min-w-16 items-center justify-center rounded-md bg-white px-2 py-1 shadow-xl md:min-h-10 md:min-w-20">
+        <img
+          src={VEHICLE_LOGO_BY_KEY[logoKey]}
+          alt={label}
+          className="block h-5 w-auto max-w-[4.5rem] object-contain md:h-6 md:max-w-[5.5rem]"
+          data-testid={`living-control-evcc-logo-${logoKey}`}
+        />
+      </span>
+    );
+  }
+
   return (
     <span className="inline-flex min-h-8 min-w-16 items-center justify-center rounded-md border border-ui-border-subtle bg-ui-surface-image-strong px-2 py-1 text-sm font-black text-ui-foreground shadow-xl backdrop-blur-md md:min-h-10 md:min-w-20 md:text-base">
       {label}
@@ -163,7 +183,7 @@ const renderEvccInfo = ({
   }
 
   return (
-    <span className="flex min-w-0 items-center gap-2 md:gap-3">
+    <span className="flex min-w-0 items-start justify-center gap-2 md:gap-3">
       <span className="flex min-w-0 flex-col items-start">
         <VehicleLogo
           logoKey={vehicleLogoKey}
@@ -172,43 +192,88 @@ const renderEvccInfo = ({
         {vehicleRangeDisplay ? (
           <span
             data-testid={`living-control-evcc-range-${itemName}`}
-            className={`mt-1 text-xs font-semibold text-ui-foreground-muted md:text-sm ${TITLE_TEXT_SHADOW_CLASS}`}
+            className={`mt-1 text-left text-xs font-semibold text-ui-foreground-muted md:text-sm ${TITLE_TEXT_SHADOW_CLASS}`}
           >
             {vehicleRangeDisplay}
           </span>
         ) : null}
       </span>
-      {vehicleSocDisplay ? (
-        <span
-          data-testid={`living-control-evcc-soc-${itemName}`}
-          className={`text-2xl font-bold text-ui-foreground md:text-3xl ${TITLE_TEXT_SHADOW_CLASS}`}
-        >
-          {vehicleSocDisplay}
-        </span>
-      ) : null}
+      <span className="flex min-h-8 items-center md:min-h-10">
+        {vehicleSocDisplay ? (
+          <span
+            data-testid={`living-control-evcc-soc-${itemName}`}
+            className={`text-2xl font-bold text-ui-foreground md:text-3xl ${TITLE_TEXT_SHADOW_CLASS}`}
+          >
+            {vehicleSocDisplay}
+          </span>
+        ) : null}
+      </span>
     </span>
   );
 };
 
-const StatLine = ({
-  label,
-  value,
-  testId,
+const OverlayVehicleIdentity = ({
+  itemName,
+  vehicleDisplayName,
+  vehicleLogoKey,
+  vehicleRangeDisplay,
 }: {
-  label: string;
-  value: string | null;
-  testId?: string;
+  itemName: string;
+  vehicleDisplayName: string | null;
+  vehicleLogoKey: EvccVehicleLogoKey | null;
+  vehicleRangeDisplay: string | null;
 }) => {
-  if (!value) {
+  const logoLabel = vehicleLogoKey
+    ? VEHICLE_LOGO_LABEL_BY_KEY[vehicleLogoKey]
+    : null;
+
+  if (!logoLabel && !vehicleDisplayName && !vehicleRangeDisplay) {
     return null;
   }
 
   return (
-    <p className="mt-2 text-sm text-ui-foreground-muted md:text-base">
-      <span className="font-semibold text-ui-foreground">{label}: </span>
-      <span data-testid={testId}>{value}</span>
-    </p>
+    <div className="mt-8 flex max-w-full flex-col items-start text-ui-foreground">
+      {vehicleLogoKey && logoLabel ? (
+        <span className="inline-flex min-h-12 min-w-28 max-w-full items-center justify-center rounded-lg bg-white px-4 py-2 shadow-xl md:min-h-16 md:min-w-36">
+          <img
+            src={VEHICLE_LOGO_BY_KEY[vehicleLogoKey]}
+            alt={logoLabel}
+            className="block h-7 w-auto max-w-24 object-contain md:h-9 md:max-w-32"
+            data-testid={`living-evcc-overlay-logo-${itemName}-${vehicleLogoKey}`}
+          />
+        </span>
+      ) : vehicleDisplayName ? (
+        <p
+          data-testid={`living-evcc-overlay-vehicle-${itemName}`}
+          className={`break-words text-4xl font-bold md:text-6xl ${TITLE_TEXT_SHADOW_CLASS}`}
+        >
+          {vehicleDisplayName}
+        </p>
+      ) : null}
+      {vehicleRangeDisplay ? (
+        <p
+          data-testid={`living-evcc-overlay-range-${itemName}`}
+          className={`mt-3 text-2xl font-bold text-ui-foreground-muted md:text-3xl ${TITLE_TEXT_SHADOW_CLASS}`}
+        >
+          {vehicleRangeDisplay}
+        </p>
+      ) : null}
+    </div>
   );
+};
+
+const resolveOverlayPrimaryStatus = ({
+  connected,
+  vehicleSocDisplay,
+}: {
+  connected: boolean;
+  vehicleSocDisplay: string | null;
+}): string => {
+  if (!connected) {
+    return "Nicht verbunden";
+  }
+
+  return vehicleSocDisplay ?? "Verbunden";
 };
 
 export const EvccHudControl = ({
@@ -279,11 +344,10 @@ export const EvccOverlayControl = ({
   const [sendingCommand, setSendingCommand] = useState<string | null>(null);
   const model = useEvccControlModel(definition);
   const itemName = definition.itemRefs.connectedItemName;
-  const statusLabel = !model.connected
-    ? "Nicht verbunden"
-    : model.charging
-      ? "Lädt"
-      : "Verbunden";
+  const primaryStatus = resolveOverlayPrimaryStatus({
+    connected: model.connected,
+    vehicleSocDisplay: model.vehicleSocDisplay,
+  });
 
   const sendModeCommand = async (command: string) => {
     if (sendingCommand) {
@@ -334,43 +398,28 @@ export const EvccOverlayControl = ({
             <p className="text-xs font-semibold tracking-wide text-ui-foreground-muted md:text-sm">
               {definition.label}
             </p>
-            <p
-              data-testid={`living-evcc-overlay-state-${itemName}`}
-              className={`text-4xl font-bold text-ui-foreground md:text-6xl ${TITLE_TEXT_SHADOW_CLASS}`}
-            >
-              {statusLabel}
+            <p className="flex max-w-full flex-wrap items-baseline gap-x-3">
+              <span
+                data-testid={`living-evcc-overlay-state-${itemName}`}
+                className={`text-4xl font-bold text-ui-foreground md:text-6xl ${TITLE_TEXT_SHADOW_CLASS}`}
+              >
+                {primaryStatus}
+              </span>
+              {model.charging && model.chargePowerDisplay ? (
+                <span
+                  data-testid={`living-evcc-overlay-power-${itemName}`}
+                  className={`text-xl font-bold text-ui-foreground-muted md:text-3xl ${TITLE_TEXT_SHADOW_CLASS}`}
+                >
+                  ({model.chargePowerDisplay})
+                </span>
+              ) : null}
             </p>
-            <div className="mt-4 text-ui-foreground">
-              <StatLine
-                label="Fahrzeug"
-                value={model.vehicleDisplayName}
-                testId={`living-evcc-overlay-vehicle-${itemName}`}
-              />
-              <StatLine
-                label="SoC"
-                value={model.vehicleSocDisplay}
-                testId={`living-evcc-overlay-soc-${itemName}`}
-              />
-              <StatLine
-                label="Reichweite"
-                value={model.vehicleRangeDisplay}
-                testId={`living-evcc-overlay-range-${itemName}`}
-              />
-              <StatLine
-                label="Ladeleistung"
-                value={model.chargePowerDisplay}
-                testId={`living-evcc-overlay-power-${itemName}`}
-              />
-              <StatLine
-                label="Phasen"
-                value={model.activePhases === null ? null : String(model.activePhases)}
-              />
-              <StatLine label="Modus" value={model.mode} />
-              <StatLine
-                label="Limit"
-                value={model.effectiveLimitSocDisplay ?? model.limitSocDisplay}
-              />
-            </div>
+            <OverlayVehicleIdentity
+              itemName={itemName}
+              vehicleDisplayName={model.vehicleDisplayName}
+              vehicleLogoKey={model.vehicleLogoKey}
+              vehicleRangeDisplay={model.vehicleRangeDisplay}
+            />
           </section>
 
           <section className="pointer-events-none grid h-full min-h-0 grid-rows-4 gap-2 md:gap-3">

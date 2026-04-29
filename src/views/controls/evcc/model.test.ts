@@ -40,18 +40,34 @@ describe("evcc model", () => {
     expect(state.vehicleRangeDisplay).toBe("312 km");
   });
 
+  it("normalizes openHAB dimensionless fraction states for percent values", () => {
+    const state = resolveEvccDisplayState({
+      ...baseState,
+      connectedRawState: "ON",
+      vehicleSocRawState: "0.33041",
+      limitSocRawState: "0.8",
+      effectiveLimitSocRawState: "1",
+    });
+
+    expect(state.vehicleSoc).toBeCloseTo(33.041);
+    expect(state.vehicleSocDisplay).toBe("33%");
+    expect(state.limitSocDisplay).toBe("80%");
+    expect(state.effectiveLimitSocDisplay).toBe("100%");
+  });
+
   it("formats charging power in kW with one decimal without unit for the HUD", () => {
     const state = resolveEvccDisplayState({
       ...baseState,
       connectedRawState: "ON",
       chargingRawState: "ON",
       chargePowerRawState: "7340 W",
+      locale: "de-AT",
     });
 
     expect(state.hudState).toBe("charging");
     expect(state.chargePowerKw).toBeCloseTo(7.34);
-    expect(state.chargePowerHudDisplay).toBe("7.3");
-    expect(state.chargePowerDisplay).toBe("7.3 kW");
+    expect(state.chargePowerHudDisplay).toBe("7,3");
+    expect(state.chargePowerDisplay).toBe("7,3 kW");
   });
 
   it("keeps missing charging power nullable for icon fallback", () => {

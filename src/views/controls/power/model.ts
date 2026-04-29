@@ -1,4 +1,8 @@
 import { useMemo } from "react";
+import {
+  formatLocalizedNumber,
+  type LocaleInput,
+} from "../../../services/number-format";
 import { useViewStore } from "../../../stores/viewStore";
 import type { PowerControlDefinition } from "../controlDefinitions";
 
@@ -22,18 +26,23 @@ const normalizeRawState = (rawState: string | undefined): string | null => {
   return trimmed;
 };
 
-const formatNumber = (value: number): string => {
+const formatNumber = (value: number, locale?: LocaleInput): string => {
   if (Number.isInteger(value)) {
     return String(value);
   }
 
-  return new Intl.NumberFormat("de-AT", {
-    maximumFractionDigits: value < 100 ? 1 : 0,
-  }).format(value);
+  return formatLocalizedNumber(
+    value,
+    {
+      maximumFractionDigits: value < 100 ? 1 : 0,
+    },
+    locale
+  );
 };
 
 export const resolvePowerConsumptionDisplay = (
-  rawState: string | undefined
+  rawState: string | undefined,
+  locale?: LocaleInput
 ): string | null => {
   const normalizedState = normalizeRawState(rawState);
   if (!normalizedState) {
@@ -53,10 +62,10 @@ export const resolvePowerConsumptionDisplay = (
   const normalizedUpper = normalizedState.toUpperCase();
   const watts = /\bKW\b/.test(normalizedUpper) ? parsed * 1000 : parsed;
   if (Math.abs(watts) >= 1000) {
-    return `${formatNumber(watts / 1000)} kW`;
+    return `${formatNumber(watts / 1000, locale)} kW`;
   }
 
-  return `${formatNumber(watts)} W`;
+  return `${formatNumber(watts, locale)} W`;
 };
 
 export const resolvePowerControlDisplayState = (

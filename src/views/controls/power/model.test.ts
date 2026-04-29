@@ -21,10 +21,10 @@ describe("power control model", () => {
   });
 
   it("formats current consumption values in watts", () => {
-    expect(resolvePowerConsumptionDisplay("24.3 W")).toBe("24,3 W");
-    expect(resolvePowerConsumptionDisplay("4.25 W")).toBe("4,3 W");
-    expect(resolvePowerConsumptionDisplay("0,2 W")).toBe("0,2 W");
-    expect(resolvePowerConsumptionDisplay("1.2 kW")).toBe("1,2 kW");
-    expect(resolvePowerConsumptionDisplay("UNDEF")).toBeNull();
+    expect(resolvePowerConsumptionDisplay("24.3 W", "de-AT")).toBe("24,3 W");
+    expect(resolvePowerConsumptionDisplay("4.25 W", "de-AT")).toBe("4,3 W");
+    expect(resolvePowerConsumptionDisplay("0,2 W", "de-AT")).toBe("0,2 W");
+    expect(resolvePowerConsumptionDisplay("1.2 kW", "de-AT")).toBe("1,2 kW");
+    expect(resolvePowerConsumptionDisplay("UNDEF", "de-AT")).toBeNull();
   });
 });

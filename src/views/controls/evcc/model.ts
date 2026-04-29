@@ -1,4 +1,8 @@
 import { useMemo } from "react";
+import {
+  formatLocalizedNumber,
+  type LocaleInput,
+} from "../../../services/number-format";
 import { useViewStore } from "../../../stores/viewStore";
 import type { EvccControlDefinition } from "../controlDefinitions";
 
@@ -60,6 +64,20 @@ const parseNumericValue = (rawState: string | undefined): number | null => {
   return Number.isFinite(value) ? value : null;
 };
 
+const parsePercentValue = (rawState: string | undefined): number | null => {
+  const value = parseNumericValue(rawState);
+  const normalized = normalizeEvccStateValue(rawState);
+  if (value === null || !normalized) {
+    return null;
+  }
+
+  if (normalized.includes("%")) {
+    return value;
+  }
+
+  return value > 0 && value <= 1 ? value * 100 : value;
+};
+
 const roundToInt = (value: number): number => Math.round(value);
 
 const formatPercent = (value: number | null): string | null =>
@@ -68,8 +86,20 @@ const formatPercent = (value: number | null): string | null =>
 const formatRange = (value: number | null): string | null =>
   value === null ? null : `${roundToInt(value)} km`;
 
-const formatPower = (value: number | null): string | null =>
-  value === null ? null : value.toFixed(1);
+const formatPower = (
+  value: number | null,
+  locale?: LocaleInput
+): string | null =>
+  value === null
+    ? null
+    : formatLocalizedNumber(
+        value,
+        {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        },
+        locale
+      );
 
 const resolveOnOffState = (rawState: string | undefined): boolean =>
   normalizeEvccStateValue(rawState)?.toUpperCase() === "ON";
@@ -123,6 +153,7 @@ export const resolveEvccDisplayState = ({
   chargePowerRawState,
   limitSocRawState,
   effectiveLimitSocRawState,
+  locale,
 }: {
   connectedRawState: string | undefined;
   chargingRawState: string | undefined;
@@ -135,18 +166,19 @@ export const resolveEvccDisplayState = ({
   chargePowerRawState: string | undefined;
   limitSocRawState: string | undefined;
   effectiveLimitSocRawState: string | undefined;
+  locale?: LocaleInput;
 }): EvccDisplayState => {
   const connected = resolveOnOffState(connectedRawState);
   const charging = connected && resolveOnOffState(chargingRawState);
   const vehicleName = normalizeEvccStateValue(vehicleNameRawState);
   const vehicleTitle = normalizeEvccStateValue(vehicleTitleRawState);
   const vehicleDisplayName = vehicleTitle ?? vehicleName;
-  const vehicleSoc = parseNumericValue(vehicleSocRawState);
+  const vehicleSoc = parsePercentValue(vehicleSocRawState);
   const vehicleRangeKm = resolveRangeKm(vehicleRangeRawState);
   const activePhases = parseNumericValue(activePhasesRawState);
   const chargePowerKw = resolvePowerKw(chargePowerRawState);
-  const limitSoc = parseNumericValue(limitSocRawState);
-  const effectiveLimitSoc = parseNumericValue(effectiveLimitSocRawState);
+  const limitSoc = parsePercentValue(limitSocRawState);
+  const effectiveLimitSoc = parsePercentValue(effectiveLimitSocRawState);
 
   return {
     connected,
@@ -163,9 +195,9 @@ export const resolveEvccDisplayState = ({
     vehicleRangeDisplay: formatRange(vehicleRangeKm),
     activePhases: activePhases === null ? null : roundToInt(activePhases),
     chargePowerKw,
-    chargePowerHudDisplay: formatPower(chargePowerKw),
+    chargePowerHudDisplay: formatPower(chargePowerKw, locale),
     chargePowerDisplay:
-      chargePowerKw === null ? null : `${formatPower(chargePowerKw)} kW`,
+      chargePowerKw === null ? null : `${formatPower(chargePowerKw, locale)} kW`,
     limitSoc,
     limitSocDisplay: formatPercent(limitSoc),
     effectiveLimitSoc,
