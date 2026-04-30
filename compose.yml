@@ -1,0 +1,12 @@
+services:
+  openhab-dashboard:
+    image: "${DASHBOARD_IMAGE:-ghcr.io/hauerm/openhab-dashboard:latest}"
+    container_name: openhab-dashboard
+    restart: unless-stopped
+    ports:
+      - "${DASHBOARD_PORT:-8088}:80"
+    environment:
+      OPENHAB_HOST: "${OPENHAB_HOST:-192.168.1.15}"
+      OPENHAB_PORT: "${OPENHAB_PORT:-9443}"
+      OPENHAB_PROTOCOL: "${OPENHAB_PROTOCOL:-https}"
+      OPENHAB_PROXY_SSL_VERIFY: "${OPENHAB_PROXY_SSL_VERIFY:-off}"
