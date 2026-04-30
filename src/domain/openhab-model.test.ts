@@ -202,6 +202,25 @@ const fixtureItems = (): Item[] => [
     ["Status", "Level"],
     ["EVCC_Garage"]
   ),
+  createItem("EVCC_Garage_EffectivePlanId", "Number", ["Status"], ["EVCC_Garage"]),
+  createItem(
+    "EVCC_Garage_EffectivePlanSoC",
+    "Number:Dimensionless",
+    ["Status", "Level"],
+    ["EVCC_Garage"]
+  ),
+  createItem(
+    "EVCC_Garage_EffectivePlanTime",
+    "DateTime",
+    ["Status"],
+    ["EVCC_Garage"]
+  ),
+  createItem(
+    "EVCC_EV6_Repeating_Plan_1_Active",
+    "Switch",
+    ["Control"],
+    []
+  ),
   createItem("Samsung_TV", "Group", ["Television"], ["Wohnzimmer"]),
   createItem("Samsung_TV_Power", "Switch", ["Enabled", "Switch"], ["Samsung_TV"]),
   createItem("Samsung_TV_Application", "String", ["App", "Control"], ["Samsung_TV"]),
@@ -356,6 +375,10 @@ describe("buildOpenHABSemanticModel", () => {
       activePhasesItemName: "EVCC_Garage_ActivePhases",
       chargePowerItemName: "EVCC_Garage_ChargePower",
       effectiveLimitSocItemName: "EVCC_Garage_EffectiveLimitSoC",
+      effectivePlanIdItemName: "EVCC_Garage_EffectivePlanId",
+      effectivePlanSocItemName: "EVCC_Garage_EffectivePlanSoC",
+      effectivePlanTimeItemName: "EVCC_Garage_EffectivePlanTime",
+      repeatingPlanActiveItemName: "EVCC_EV6_Repeating_Plan_1_Active",
     });
   });
 

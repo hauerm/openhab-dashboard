@@ -91,6 +91,10 @@ export interface EvccControlItemRefs {
   activePhasesItemName: string;
   chargePowerItemName: string;
   effectiveLimitSocItemName: string;
+  effectivePlanIdItemName?: string;
+  effectivePlanSocItemName?: string;
+  effectivePlanTimeItemName?: string;
+  repeatingPlanActiveItemName?: string;
 }
 
 export type EvccControlDefinition = ControlDefinitionBase<

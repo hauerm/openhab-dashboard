@@ -5,6 +5,7 @@ import path from "node:path";
 import process from "node:process";
 
 const LOADPOINT_UID = "evcc:loadpoint:a60ed4e797:garage";
+const REPEATING_PLAN_UID = "evcc:plan:a60ed4e797:CAD5407F5A";
 
 const ITEM_DEFINITIONS = [
   {
@@ -106,6 +107,39 @@ const ITEM_DEFINITIONS = [
     groupNames: ["EVCC_Garage"],
     tags: ["Status", "Level"],
     channel: `${LOADPOINT_UID}:loadpoint-effective-limit-soc`,
+  },
+  {
+    name: "EVCC_Garage_EffectivePlanId",
+    type: "Number",
+    label: "EVCC Garage aktiver Ladeplan",
+    groupNames: ["EVCC_Garage"],
+    tags: ["Status"],
+    channel: `${LOADPOINT_UID}:loadpoint-effective-plan-id`,
+  },
+  {
+    name: "EVCC_Garage_EffectivePlanSoC",
+    type: "Number:Dimensionless",
+    label: "EVCC Garage aktiver Ladeplan SoC",
+    category: "batterylevel",
+    groupNames: ["EVCC_Garage"],
+    tags: ["Status", "Level"],
+    channel: `${LOADPOINT_UID}:loadpoint-effective-plan-soc`,
+  },
+  {
+    name: "EVCC_Garage_EffectivePlanTime",
+    type: "DateTime",
+    label: "EVCC Garage aktiver Ladeplan Zeit",
+    groupNames: ["EVCC_Garage"],
+    tags: ["Status"],
+    channel: `${LOADPOINT_UID}:loadpoint-effective-plan-time`,
+  },
+  {
+    name: "EVCC_EV6_Repeating_Plan_1_Active",
+    type: "Switch",
+    label: "EVCC EV6 Wiederholplan 1 aktiv",
+    groupNames: ["EVCC_Garage"],
+    tags: ["Control"],
+    channel: `${REPEATING_PLAN_UID}:plan-active`,
   },
 ];
 

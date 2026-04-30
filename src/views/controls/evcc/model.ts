@@ -30,6 +30,13 @@ export interface EvccDisplayState {
   limitSocDisplay: string | null;
   effectiveLimitSoc: number | null;
   effectiveLimitSocDisplay: string | null;
+  effectivePlanId: number | null;
+  effectivePlanSoc: number | null;
+  effectivePlanSocDisplay: string | null;
+  effectivePlanTime: Date | null;
+  effectivePlanTimeDisplay: string | null;
+  effectivePlanStatusDisplay: string;
+  repeatingPlanActive: boolean | null;
 }
 
 const NULLISH_STATE_VALUES = new Set(["UNDEF", "NULL", "-"]);
@@ -104,6 +111,20 @@ const formatPower = (
 const resolveOnOffState = (rawState: string | undefined): boolean =>
   normalizeEvccStateValue(rawState)?.toUpperCase() === "ON";
 
+const resolveNullableOnOffState = (rawState: string | undefined): boolean | null => {
+  const normalized = normalizeEvccStateValue(rawState)?.toUpperCase();
+  if (!normalized) {
+    return null;
+  }
+  if (normalized === "ON") {
+    return true;
+  }
+  if (normalized === "OFF") {
+    return false;
+  }
+  return null;
+};
+
 const resolvePowerKw = (rawState: string | undefined): number | null => {
   const value = parseNumericValue(rawState);
   const normalized = normalizeEvccStateValue(rawState);
@@ -125,6 +146,70 @@ const resolveRangeKm = (rawState: string | undefined): number | null => {
     return value / 1000;
   }
   return value;
+};
+
+const parseDateTimeValue = (rawState: string | undefined): Date | null => {
+  const normalized = normalizeEvccStateValue(rawState)?.replace(/\[[^\]]+\]$/, "");
+  if (!normalized) {
+    return null;
+  }
+
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatPlanTime = (
+  value: Date | null,
+  locale?: LocaleInput,
+  now = new Date()
+): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  const currentDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const planDay = new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  const diffDays = Math.round(
+    (planDay.getTime() - currentDay.getTime()) / 86_400_000
+  );
+  const dayLabel =
+    diffDays === 0
+      ? "heute"
+      : diffDays === 1
+        ? "morgen"
+        : new Intl.DateTimeFormat(locale, {
+            day: "2-digit",
+            month: "2-digit",
+          }).format(value);
+  const timeLabel = new Intl.DateTimeFormat(locale, {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(value);
+
+  return `${dayLabel} ${timeLabel}`;
+};
+
+const formatPlanStatus = ({
+  effectivePlanId,
+  effectivePlanSoc,
+  effectivePlanTime,
+  locale,
+  now,
+}: {
+  effectivePlanId: number | null;
+  effectivePlanSoc: number | null;
+  effectivePlanTime: Date | null;
+  locale?: LocaleInput;
+  now?: Date;
+}): string => {
+  const socDisplay = formatPercent(effectivePlanSoc);
+  const timeDisplay = formatPlanTime(effectivePlanTime, locale, now);
+  if (effectivePlanId === null || !socDisplay || !timeDisplay) {
+    return "Keine Ladeplanung aktiv";
+  }
+
+  const planType = effectivePlanId === 0 ? "Einmalplan" : "Wiederholender Plan";
+  return `${planType}: ${socDisplay} bis ${timeDisplay}`;
 };
 
 export const resolveEvccVehicleLogoKey = (
@@ -153,7 +238,12 @@ export const resolveEvccDisplayState = ({
   chargePowerRawState,
   limitSocRawState,
   effectiveLimitSocRawState,
+  effectivePlanIdRawState,
+  effectivePlanSocRawState,
+  effectivePlanTimeRawState,
+  repeatingPlanActiveRawState,
   locale,
+  now,
 }: {
   connectedRawState: string | undefined;
   chargingRawState: string | undefined;
@@ -166,7 +256,12 @@ export const resolveEvccDisplayState = ({
   chargePowerRawState: string | undefined;
   limitSocRawState: string | undefined;
   effectiveLimitSocRawState: string | undefined;
+  effectivePlanIdRawState?: string | undefined;
+  effectivePlanSocRawState?: string | undefined;
+  effectivePlanTimeRawState?: string | undefined;
+  repeatingPlanActiveRawState?: string | undefined;
   locale?: LocaleInput;
+  now?: Date;
 }): EvccDisplayState => {
   const connected = resolveOnOffState(connectedRawState);
   const charging = connected && resolveOnOffState(chargingRawState);
@@ -179,6 +274,9 @@ export const resolveEvccDisplayState = ({
   const chargePowerKw = resolvePowerKw(chargePowerRawState);
   const limitSoc = parsePercentValue(limitSocRawState);
   const effectiveLimitSoc = parsePercentValue(effectiveLimitSocRawState);
+  const effectivePlanId = parseNumericValue(effectivePlanIdRawState);
+  const effectivePlanSoc = parsePercentValue(effectivePlanSocRawState);
+  const effectivePlanTime = parseDateTimeValue(effectivePlanTimeRawState);
 
   return {
     connected,
@@ -202,6 +300,21 @@ export const resolveEvccDisplayState = ({
     limitSocDisplay: formatPercent(limitSoc),
     effectiveLimitSoc,
     effectiveLimitSocDisplay: formatPercent(effectiveLimitSoc),
+    effectivePlanId:
+      effectivePlanId === null ? null : roundToInt(effectivePlanId),
+    effectivePlanSoc,
+    effectivePlanSocDisplay: formatPercent(effectivePlanSoc),
+    effectivePlanTime,
+    effectivePlanTimeDisplay: formatPlanTime(effectivePlanTime, locale, now),
+    effectivePlanStatusDisplay: formatPlanStatus({
+      effectivePlanId:
+        effectivePlanId === null ? null : roundToInt(effectivePlanId),
+      effectivePlanSoc,
+      effectivePlanTime,
+      locale,
+      now,
+    }),
+    repeatingPlanActive: resolveNullableOnOffState(repeatingPlanActiveRawState),
   };
 };
 
@@ -232,6 +345,18 @@ export const useEvccControlModel = (definition: EvccControlDefinition) => {
           itemStates[definition.itemRefs.limitSocItemName]?.rawState,
         effectiveLimitSocRawState:
           itemStates[definition.itemRefs.effectiveLimitSocItemName]?.rawState,
+        effectivePlanIdRawState: definition.itemRefs.effectivePlanIdItemName
+          ? itemStates[definition.itemRefs.effectivePlanIdItemName]?.rawState
+          : undefined,
+        effectivePlanSocRawState: definition.itemRefs.effectivePlanSocItemName
+          ? itemStates[definition.itemRefs.effectivePlanSocItemName]?.rawState
+          : undefined,
+        effectivePlanTimeRawState: definition.itemRefs.effectivePlanTimeItemName
+          ? itemStates[definition.itemRefs.effectivePlanTimeItemName]?.rawState
+          : undefined,
+        repeatingPlanActiveRawState: definition.itemRefs.repeatingPlanActiveItemName
+          ? itemStates[definition.itemRefs.repeatingPlanActiveItemName]?.rawState
+          : undefined,
       }),
     [definition, itemStates]
   );
