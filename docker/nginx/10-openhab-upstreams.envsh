@@ -1,0 +1,37 @@
+#!/bin/sh
+
+: "${OPENHAB_HOST:=192.168.1.15}"
+: "${OPENHAB_PORT:=9443}"
+: "${OPENHAB_PROTOCOL:=https}"
+: "${OPENHAB_PROXY_SSL_VERIFY:=off}"
+
+case "$OPENHAB_PROTOCOL" in
+  http)
+    openhab_ws_protocol="ws"
+    ;;
+  https)
+    openhab_ws_protocol="wss"
+    ;;
+  *)
+    echo "Unsupported OPENHAB_PROTOCOL: $OPENHAB_PROTOCOL" >&2
+    exit 1
+    ;;
+esac
+
+case "$OPENHAB_PROXY_SSL_VERIFY" in
+  on|off)
+    ;;
+  *)
+    echo "Unsupported OPENHAB_PROXY_SSL_VERIFY: $OPENHAB_PROXY_SSL_VERIFY" >&2
+    exit 1
+    ;;
+esac
+
+export OPENHAB_HOST
+export OPENHAB_PORT
+export OPENHAB_PROTOCOL
+export OPENHAB_PROXY_SSL_VERIFY
+export OPENHAB_HTTP_UPSTREAM="${OPENHAB_PROTOCOL}://${OPENHAB_HOST}:${OPENHAB_PORT}"
+export OPENHAB_WS_UPSTREAM="${openhab_ws_protocol}://${OPENHAB_HOST}:${OPENHAB_PORT}"
+
+echo "openHAB upstream configured: ${OPENHAB_HTTP_UPSTREAM}"

@@ -1,0 +1,5 @@
+services:
+  openhab-dashboard:
+    build:
+      context: .
+    image: openhab-dashboard:latest

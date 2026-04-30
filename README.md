@@ -82,6 +82,98 @@ When testing from a tablet, open the preview URL via the Mac IP address, for
 example `http://192.168.1.67:4173/`. Keep `VITE_OPENHAB_HOST` pointed at the
 openHAB server address that the Mac can reach.
 
+## Synology NAS Container Manager
+
+The production container serves the built dashboard with Nginx and proxies the
+same-origin `/api` and `/ws` endpoints to openHAB. The openHAB API token is not
+built into the image. Enter the token in the dashboard login screen on each
+browser/device that should use the dashboard.
+
+### Private GHCR Image
+
+The default deployment image is private and hosted in GitHub Container Registry:
+
+```text
+ghcr.io/hauerm/openhab-dashboard:latest
+```
+
+The GitHub Actions workflow in `.github/workflows/container.yml` builds and
+pushes a multi-arch image for `linux/amd64` and `linux/arm64` on pushes to
+`main`, version tags like `v1.0.0`, or manual workflow runs.
+
+Image tags are assigned from the Git ref:
+
+- Push to `main`: publishes `latest` and `main`.
+- Push to a version tag like `v1.0.0`: publishes `v1.0.0`.
+- Pushes to branches other than `main`: do not run the container publish
+  workflow.
+- Generated `sha-*` image tags are intentionally disabled.
+
+Use `latest` on Synology for automatic latest-main deployments, or pin
+`DASHBOARD_IMAGE` to a version tag like `ghcr.io/hauerm/openhab-dashboard:v1.0.0`
+for explicit releases.
+
+When the package is created the first time, keep the GHCR package visibility set
+to `Private`. Do not change it to `Public`; public package visibility cannot be
+reverted to private.
+
+### Synology Registry Login
+
+Because the image is private, Container Manager must authenticate to `ghcr.io`
+before it can pull the image.
+
+1. Create a GitHub personal access token with `read:packages`.
+2. In Synology Container Manager, add/log in to the registry `ghcr.io` using:
+   - username: `hauerm`
+   - password: the personal access token
+3. Pull or deploy `ghcr.io/hauerm/openhab-dashboard:latest`.
+
+The token is only for pulling the private container image from GitHub. It is not
+the openHAB API token.
+
+### Container Manager Project
+
+1. Copy this repository to a folder on the Synology NAS.
+2. In Container Manager, create a new Project from the repository folder and use
+   `compose.yml`.
+3. Start the project.
+4. Open the dashboard at `http://<nas-ip>:8088/`.
+
+Default runtime settings in `compose.yml`:
+
+```yaml
+DASHBOARD_PORT: 8088
+OPENHAB_HOST: 192.168.1.15
+OPENHAB_PORT: 9443
+OPENHAB_PROTOCOL: https
+OPENHAB_PROXY_SSL_VERIFY: off
+```
+
+`OPENHAB_PROXY_SSL_VERIFY=off` is intended for a self-signed openHAB HTTPS
+certificate. If openHAB later uses a certificate trusted by the container, set it
+to `on`.
+
+To use a different NAS port or openHAB address, set project environment
+variables before starting/recreating the project, for example:
+
+```env
+DASHBOARD_PORT=8090
+OPENHAB_HOST=192.168.1.15
+OPENHAB_PORT=9443
+OPENHAB_PROTOCOL=https
+OPENHAB_PROXY_SSL_VERIFY=off
+```
+
+The Docker build context excludes `.env`, `node_modules`, `dist`, and Git/local
+files via `.dockerignore` so local development secrets are not sent into the
+image build.
+
+For a local image build instead of GHCR, run:
+
+```bash
+docker compose -f compose.yml -f compose.build.yml build
+```
+
 ## openHAB Item Model
 
 The dashboard reads item state, labels, semantic metadata, and automation metadata
