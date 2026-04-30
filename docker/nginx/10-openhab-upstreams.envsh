@@ -7,10 +7,8 @@
 
 case "$OPENHAB_PROTOCOL" in
   http)
-    openhab_ws_protocol="ws"
     ;;
   https)
-    openhab_ws_protocol="wss"
     ;;
   *)
     echo "Unsupported OPENHAB_PROTOCOL: $OPENHAB_PROTOCOL" >&2
@@ -32,6 +30,6 @@ export OPENHAB_PORT
 export OPENHAB_PROTOCOL
 export OPENHAB_PROXY_SSL_VERIFY
 export OPENHAB_HTTP_UPSTREAM="${OPENHAB_PROTOCOL}://${OPENHAB_HOST}:${OPENHAB_PORT}"
-export OPENHAB_WS_UPSTREAM="${openhab_ws_protocol}://${OPENHAB_HOST}:${OPENHAB_PORT}"
+export OPENHAB_WS_UPSTREAM="${OPENHAB_PROTOCOL}://${OPENHAB_HOST}:${OPENHAB_PORT}"
 
 echo "openHAB upstream configured: ${OPENHAB_HTTP_UPSTREAM}"
