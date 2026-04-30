@@ -98,8 +98,8 @@ ghcr.io/hauerm/openhab-dashboard:latest
 ```
 
 The GitHub Actions workflow in `.github/workflows/container.yml` builds and
-pushes a multi-arch image for `linux/amd64` and `linux/arm64` on pushes to
-`main`, version tags like `v1.0.0`, or manual workflow runs.
+pushes a `linux/amd64` image on pushes to `main`, version tags like `v1.0.0`, or
+manual workflow runs.
 
 Image tags are assigned from the Git ref:
 
@@ -108,6 +108,10 @@ Image tags are assigned from the Git ref:
 - Pushes to branches other than `main`: do not run the container publish
   workflow.
 - Generated `sha-*` image tags are intentionally disabled.
+- Build provenance and SBOM attestations are disabled to avoid extra untagged
+  GHCR package versions.
+- Docker layer caching uses the GitHub Actions cache. The first build can still
+  take longer; subsequent builds should reuse npm and image layers.
 
 Use `latest` on Synology for automatic latest-main deployments, or pin
 `DASHBOARD_IMAGE` to a version tag like `ghcr.io/hauerm/openhab-dashboard:v1.0.0`
