@@ -8,6 +8,7 @@ import type { EvccControlDefinition } from "../controlDefinitions";
 
 export type EvccVehicleLogoKey = "kia" | "skoda";
 export type EvccHudState = "disconnected" | "connected-idle" | "charging";
+export type EvccBatteryPowerState = "charging" | "discharging" | null;
 
 export interface EvccDisplayState {
   connected: boolean;
@@ -37,6 +38,13 @@ export interface EvccDisplayState {
   effectivePlanTimeDisplay: string | null;
   effectivePlanStatusDisplay: string;
   repeatingPlanActive: boolean | null;
+  batteryPowerKw: number | null;
+  batterySoc: number | null;
+  batterySocDisplay: string | null;
+  batteryTitle: string | null;
+  batteryCharging: boolean;
+  batteryPowerState: EvccBatteryPowerState;
+  batteryPowerStateDisplay: string | null;
 }
 
 const NULLISH_STATE_VALUES = new Set(["UNDEF", "NULL", "-"]);
@@ -212,6 +220,27 @@ const formatPlanStatus = ({
   return `${planType}: ${socDisplay} bis ${timeDisplay}`;
 };
 
+const resolveBatteryPowerState = (
+  batteryPowerKw: number | null
+): EvccBatteryPowerState => {
+  if (batteryPowerKw === null || Math.abs(batteryPowerKw) <= 0.1) {
+    return null;
+  }
+  return batteryPowerKw < 0 ? "charging" : "discharging";
+};
+
+const formatBatteryPowerState = (
+  batteryPowerState: EvccBatteryPowerState
+): string | null => {
+  if (batteryPowerState === "charging") {
+    return "lädt";
+  }
+  if (batteryPowerState === "discharging") {
+    return "entlädt";
+  }
+  return null;
+};
+
 export const resolveEvccVehicleLogoKey = (
   vehicleName: string | null,
   vehicleTitle: string | null
@@ -242,6 +271,9 @@ export const resolveEvccDisplayState = ({
   effectivePlanSocRawState,
   effectivePlanTimeRawState,
   repeatingPlanActiveRawState,
+  batteryPowerRawState,
+  batterySocRawState,
+  batteryTitleRawState,
   locale,
   now,
 }: {
@@ -260,6 +292,9 @@ export const resolveEvccDisplayState = ({
   effectivePlanSocRawState?: string | undefined;
   effectivePlanTimeRawState?: string | undefined;
   repeatingPlanActiveRawState?: string | undefined;
+  batteryPowerRawState?: string | undefined;
+  batterySocRawState?: string | undefined;
+  batteryTitleRawState?: string | undefined;
   locale?: LocaleInput;
   now?: Date;
 }): EvccDisplayState => {
@@ -277,6 +312,10 @@ export const resolveEvccDisplayState = ({
   const effectivePlanId = parseNumericValue(effectivePlanIdRawState);
   const effectivePlanSoc = parsePercentValue(effectivePlanSocRawState);
   const effectivePlanTime = parseDateTimeValue(effectivePlanTimeRawState);
+  const batteryPowerKw = resolvePowerKw(batteryPowerRawState);
+  const batterySoc = parsePercentValue(batterySocRawState);
+  const batteryTitle = normalizeEvccStateValue(batteryTitleRawState);
+  const batteryPowerState = resolveBatteryPowerState(batteryPowerKw);
 
   return {
     connected,
@@ -315,6 +354,13 @@ export const resolveEvccDisplayState = ({
       now,
     }),
     repeatingPlanActive: resolveNullableOnOffState(repeatingPlanActiveRawState),
+    batteryPowerKw,
+    batterySoc,
+    batterySocDisplay: formatPercent(batterySoc),
+    batteryTitle,
+    batteryCharging: batteryPowerState === "charging",
+    batteryPowerState,
+    batteryPowerStateDisplay: formatBatteryPowerState(batteryPowerState),
   };
 };
 
@@ -356,6 +402,15 @@ export const useEvccControlModel = (definition: EvccControlDefinition) => {
           : undefined,
         repeatingPlanActiveRawState: definition.itemRefs.repeatingPlanActiveItemName
           ? itemStates[definition.itemRefs.repeatingPlanActiveItemName]?.rawState
+          : undefined,
+        batteryPowerRawState: definition.itemRefs.batteryPowerItemName
+          ? itemStates[definition.itemRefs.batteryPowerItemName]?.rawState
+          : undefined,
+        batterySocRawState: definition.itemRefs.batterySocItemName
+          ? itemStates[definition.itemRefs.batterySocItemName]?.rawState
+          : undefined,
+        batteryTitleRawState: definition.itemRefs.batteryTitleItemName
+          ? itemStates[definition.itemRefs.batteryTitleItemName]?.rawState
           : undefined,
       }),
     [definition, itemStates]

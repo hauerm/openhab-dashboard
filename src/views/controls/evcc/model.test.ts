@@ -20,6 +20,9 @@ const baseState = {
   effectivePlanSocRawState: "UNDEF",
   effectivePlanTimeRawState: "UNDEF",
   repeatingPlanActiveRawState: "OFF",
+  batteryPowerRawState: "UNDEF",
+  batterySocRawState: "UNDEF",
+  batteryTitleRawState: "UNDEF",
 };
 
 describe("evcc model", () => {
@@ -167,5 +170,48 @@ describe("evcc model", () => {
         repeatingPlanActiveRawState: "UNDEF",
       }).repeatingPlanActive
     ).toBeNull();
+  });
+
+  it("detects active house battery charging below -100 W", () => {
+    const state = resolveEvccDisplayState({
+      ...baseState,
+      batteryPowerRawState: "-500 W",
+      batterySocRawState: "42 %",
+      batteryTitleRawState: "byd hvs 7.7",
+    });
+
+    expect(state.batteryPowerKw).toBeCloseTo(-0.5);
+    expect(state.batteryCharging).toBe(true);
+    expect(state.batterySoc).toBe(42);
+    expect(state.batterySocDisplay).toBe("42%");
+    expect(state.batteryTitle).toBe("byd hvs 7.7");
+    expect(state.batteryPowerState).toBe("charging");
+    expect(state.batteryPowerStateDisplay).toBe("lädt");
+  });
+
+  it("detects active house battery discharging above 100 W", () => {
+    const state = resolveEvccDisplayState({
+      ...baseState,
+      batteryPowerRawState: "500 W",
+      batterySocRawState: "42 %",
+    });
+
+    expect(state.batteryPowerKw).toBeCloseTo(0.5);
+    expect(state.batteryCharging).toBe(false);
+    expect(state.batteryPowerState).toBe("discharging");
+    expect(state.batteryPowerStateDisplay).toBe("entlädt");
+  });
+
+  it("does not show house battery activity at or below 100 W absolute", () => {
+    for (const rawState of ["-100 W", "-50 W", "0 W", "100 W", "UNDEF"]) {
+      const state = resolveEvccDisplayState({
+        ...baseState,
+        batteryPowerRawState: rawState,
+      });
+
+      expect(state.batteryCharging).toBe(false);
+      expect(state.batteryPowerState).toBeNull();
+      expect(state.batteryPowerStateDisplay).toBeNull();
+    }
   });
 });
