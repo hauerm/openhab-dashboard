@@ -8,7 +8,9 @@ import {
 import {
   PROPERTY_CO2,
   PROPERTY_HUMIDITY,
+  PROPERTY_RAIN,
   PROPERTY_TEMPERATURE,
+  PROPERTY_WIND,
 } from "./openhab-properties";
 
 const createItem = (
@@ -406,10 +408,14 @@ describe("buildOpenHABSemanticModel", () => {
       "Healthy_Home_Coach_Humidity",
       "Healthy_Home_Coach_CO2",
     ].map((itemName) => fixtureItems().find((item) => item.name === itemName)!);
+    const rain = createItem("Weather_Rain", "Switch", ["Status", "Rain"]);
+    const wind = createItem("Weather_Wind", "Number", ["Measurement", "Wind"]);
 
     expect(itemHasSemanticProperty(temperature, PROPERTY_TEMPERATURE)).toBe(true);
     expect(itemHasSemanticProperty(humidity, PROPERTY_HUMIDITY)).toBe(true);
     expect(itemHasSemanticProperty(co2, PROPERTY_CO2)).toBe(true);
+    expect(itemHasSemanticProperty(rain, PROPERTY_RAIN)).toBe(true);
+    expect(itemHasSemanticProperty(wind, PROPERTY_WIND)).toBe(true);
   });
 
   it("excludes hidden locations from root and child navigation lists", () => {

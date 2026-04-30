@@ -4,7 +4,9 @@ import {
   PROPERTY_CO2,
   PROPERTY_HUMIDITY,
   PROPERTY_ILLUMINANCE,
+  PROPERTY_RAIN,
   PROPERTY_TEMPERATURE,
+  PROPERTY_WIND,
 } from "../../../domain/openhab-properties";
 import { createLocationPropertySidebarDefinitions } from "./sidebarDefinitions";
 
@@ -19,6 +21,8 @@ describe("createLocationPropertySidebarDefinitions", () => {
       "temperature",
       "humidity",
       "illuminance",
+      "rain",
+      "wind",
       "co2",
       "air-quality",
     ]);
@@ -28,6 +32,18 @@ describe("createLocationPropertySidebarDefinitions", () => {
       property: PROPERTY_ILLUMINANCE,
       label: "Helligkeit",
       title: "Helligkeit Hauer",
+    });
+    expect(definitions[3]).toMatchObject({
+      metricKey: "rain",
+      property: PROPERTY_RAIN,
+      label: "Regen",
+      title: "Regen Hauer",
+    });
+    expect(definitions[4]).toMatchObject({
+      metricKey: "wind",
+      property: PROPERTY_WIND,
+      label: "Wind",
+      title: "Wind Hauer",
     });
   });
 
@@ -39,6 +55,8 @@ describe("createLocationPropertySidebarDefinitions", () => {
       {
         temperature: "direct",
         humidity: "direct",
+        rain: "direct",
+        wind: "direct",
         co2: "direct",
         "air-quality": "direct",
       }
@@ -63,12 +81,24 @@ describe("createLocationPropertySidebarDefinitions", () => {
       measurementRole: undefined,
     });
     expect(definitions[3]).toMatchObject({
+      metricKey: "rain",
+      property: PROPERTY_RAIN,
+      locationScope: "direct",
+      measurementRole: undefined,
+    });
+    expect(definitions[4]).toMatchObject({
+      metricKey: "wind",
+      property: PROPERTY_WIND,
+      locationScope: "direct",
+      measurementRole: undefined,
+    });
+    expect(definitions[5]).toMatchObject({
       metricKey: "co2",
       property: PROPERTY_CO2,
       locationScope: "direct",
       measurementRole: "ambient",
     });
-    expect(definitions[4]).toMatchObject({
+    expect(definitions[6]).toMatchObject({
       metricKey: "air-quality",
       property: PROPERTY_AIR_QUALITY,
       locationScope: "direct",

@@ -1,9 +1,17 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Item } from "./types/item";
 import {
   KNX_Wetterstation_Regen,
+  KNX_Wetterstation_Windgeschwindigkeit,
   KNX_Wetterstation_Helligkeit,
   KNX_JA1_Raffstore_Wohnzimmer,
   KNX_JA1_Raffstore_Wohnzimmer_Strasse,
@@ -42,6 +50,7 @@ const mocks = vi.hoisted(() => ({
   validateOpenHABToken: vi.fn(),
   locationPropertyInitialize: vi.fn(),
   locationPropertyEnsureHistoryRange: vi.fn(),
+  locationPropertyValues: {} as Record<string, number | null>,
   wsListener: null as ((update: { itemName: string; rawState: string }) => void) | null,
 }));
 
@@ -71,18 +80,10 @@ vi.mock("./services/auth-token", () => ({
 
 vi.mock("./stores/locationPropertyHistoryStore", () => ({
   createLocationPropertyHistoryStore: (config: { property: string }) => {
-    const valueByProperty: Record<string, number> = {
-      Property_Temperature: 22.4,
-      Property_Humidity: 51,
-      Property_Illuminance: 1800,
-      Property_AirQuality_CO2: 810,
-      Property_AirQuality_AQI: 1,
-    };
-
     const state = {
       initialize: mocks.locationPropertyInitialize,
       ensureHistoryRange: mocks.locationPropertyEnsureHistoryRange,
-      currentValue: valueByProperty[config.property] ?? null,
+      currentValue: mocks.locationPropertyValues[config.property] ?? null,
       history: {},
       metadata: [],
       itemNames: new Set<string>([`${config.property}-item`]),
@@ -173,8 +174,12 @@ const buildDefaultItems = (): Item[] => [
       },
     },
   }),
-  createItem(KNX_Wetterstation_Regen, "OFF", "Switch", {
+  createItem(KNX_Wetterstation_Regen, "ON", "Switch", {
     tags: ["Status", "Rain"],
+    groupNames: ["Hauer"],
+  }),
+  createItem(KNX_Wetterstation_Windgeschwindigkeit, "10.8", "Number:Dimensionless", {
+    tags: ["Measurement", "Wind"],
     groupNames: ["Hauer"],
   }),
   createItem(KNX_Wetterstation_Helligkeit, "1800 lx", "Number:Illuminance", {
@@ -332,6 +337,15 @@ describe("App integration", () => {
     mocks.locationPropertyInitialize.mockResolvedValue(undefined);
     mocks.locationPropertyEnsureHistoryRange.mockReset();
     mocks.locationPropertyEnsureHistoryRange.mockResolvedValue(undefined);
+    mocks.locationPropertyValues = {
+      Property_Temperature: 22.4,
+      Property_Humidity: 51,
+      Property_Illuminance: 1800,
+      Property_Precipitation_Rain: 1,
+      Property_Wind: 10.790000000000001,
+      Property_AirQuality_CO2: 810,
+      Property_AirQuality_AQI: 1,
+    };
     mocks.subscribeWebSocketListener.mockReset();
     mocks.subscribeWebSocketListener.mockImplementation((listener) => {
       mocks.wsListener = listener;
@@ -433,6 +447,10 @@ describe("App integration", () => {
       screen.getByTestId("hud-metric-illuminance-display-icon")
     ).toBeInTheDocument();
     expect(screen.queryByText("1.800 lx")).not.toBeInTheDocument();
+    const rainBlock = screen.getByTestId("hud-metric-rain");
+    expect(within(rainBlock).getByTestId("hud-metric-rain-icon")).toBeInTheDocument();
+    expect(rainBlock.textContent).toBe("");
+    expect(screen.getByTestId("hud-metric-wind")).toHaveTextContent("10,8 km/h");
     expect(screen.getByTestId("hud-metric-co2")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-health")).toBeInTheDocument();
     await waitFor(() => {
@@ -442,6 +460,19 @@ describe("App integration", () => {
         "ambient"
       );
     });
+  });
+
+  it("hides the rain sidebar metric when the rain state is inactive", async () => {
+    mocks.locationPropertyValues.Property_Precipitation_Rain = 0;
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.queryByTestId("hud-metric-rain")).not.toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-wind")).toHaveTextContent("10,8 km/h");
   });
 
   it("switches views and updates the view background + hud", async () => {

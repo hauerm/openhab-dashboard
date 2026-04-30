@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import {
+  MdAir,
   MdCo2,
   MdHealthAndSafety,
   MdLightMode,
@@ -11,7 +12,9 @@ import {
   PROPERTY_CO2,
   PROPERTY_HUMIDITY,
   PROPERTY_ILLUMINANCE,
+  PROPERTY_RAIN,
   PROPERTY_TEMPERATURE,
+  PROPERTY_WIND,
 } from "../../../domain/openhab-properties";
 
 export type HistoryRangeKey = "year" | "month" | "week" | "day" | "8h" | "4h" | "2h";
@@ -52,6 +55,8 @@ export interface LocationPropertyControlConfig {
   icon: ComponentType<{ className?: string }>;
   title: string;
   backgroundTintBands: BackgroundTintBand[];
+  parseState?: (rawValue: string) => number | null;
+  isVisibleInSidebar?: (value: number | null) => boolean;
 }
 
 export type BackgroundTintLevel = "good" | "moderate" | "bad";
@@ -76,6 +81,27 @@ export const getBackgroundTintLevel = (
     if (minOk && maxOk) {
       return band.level;
     }
+  }
+
+  return null;
+};
+
+export const parseRainState = (rawValue: string): number | null => {
+  const normalized = rawValue.trim().toUpperCase();
+
+  if (normalized === "ON") {
+    return 1;
+  }
+  if (normalized === "OFF") {
+    return 0;
+  }
+  if (normalized === "UNDEF" || normalized === "NULL" || normalized === "-") {
+    return null;
+  }
+
+  const numericValue = Number.parseFloat(normalized);
+  if (Number.isFinite(numericValue)) {
+    return numericValue > 0 ? 1 : 0;
   }
 
   return null;
@@ -120,6 +146,26 @@ export const LOCATION_PROPERTY_CONTROL_CONFIGS: Record<
     unit: "lx",
     icon: MdLightMode,
     title: "Illuminance",
+    backgroundTintBands: [],
+  },
+  [PROPERTY_RAIN]: {
+    property: PROPERTY_RAIN,
+    defaultHistoryRangeKey: "day",
+    maxHistoryRangeKey: "year",
+    unit: "",
+    icon: MdWaterDrop,
+    title: "Rain",
+    backgroundTintBands: [],
+    parseState: parseRainState,
+    isVisibleInSidebar: (value) => value !== null && value > 0,
+  },
+  [PROPERTY_WIND]: {
+    property: PROPERTY_WIND,
+    defaultHistoryRangeKey: "day",
+    maxHistoryRangeKey: "year",
+    unit: "km/h",
+    icon: MdAir,
+    title: "Wind",
     backgroundTintBands: [],
   },
   [PROPERTY_CO2]: {

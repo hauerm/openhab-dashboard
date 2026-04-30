@@ -3,3 +3,5 @@ export const PROPERTY_TEMPERATURE = "Property_Temperature";
 export const PROPERTY_ILLUMINANCE = "Property_Illuminance";
 export const PROPERTY_CO2 = "Property_AirQuality_CO2";
 export const PROPERTY_AIR_QUALITY = "Property_AirQuality_AQI";
+export const PROPERTY_RAIN = "Property_Precipitation_Rain";
+export const PROPERTY_WIND = "Property_Wind";

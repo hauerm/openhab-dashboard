@@ -4,8 +4,10 @@ import {
   PROPERTY_CO2,
   PROPERTY_HUMIDITY,
   PROPERTY_ILLUMINANCE,
+  PROPERTY_RAIN,
   PROPERTY_TEMPERATURE,
 } from "../../../domain/openhab-properties";
+import { parseRainState } from "./config";
 import {
   formatLocationPropertyValue,
   resolveIlluminancePresentation,
@@ -18,8 +20,22 @@ describe("location-property-history presentation", () => {
     expect(formatLocationPropertyValue("temperature", 22.4)).toBe("22,4 °C");
     expect(formatLocationPropertyValue("humidity", 48.3)).toBe("48%");
     expect(formatLocationPropertyValue("illuminance", 1800.2)).toBe("1.800 lx");
+    expect(formatLocationPropertyValue("rain", 1)).toBe("");
+    expect(formatLocationPropertyValue("wind", 10.790000000000001)).toBe(
+      "10,8 km/h"
+    );
     expect(formatLocationPropertyValue("co2", 641)).toBe("641 ppm");
     expect(formatLocationPropertyValue("air-quality", 0)).toBe("Gesund");
+  });
+
+  it("maps rain switch and numeric states to active numeric values", () => {
+    expect(parseRainState("ON")).toBe(1);
+    expect(parseRainState("1")).toBe(1);
+    expect(parseRainState("0.2")).toBe(1);
+    expect(parseRainState("OFF")).toBe(0);
+    expect(parseRainState("0")).toBe(0);
+    expect(parseRainState("NULL")).toBeNull();
+    expect(parseRainState("UNDEF")).toBeNull();
   });
 
   it("maps illuminance lux ranges to semantic states", () => {
@@ -85,6 +101,11 @@ describe("location-property-history presentation", () => {
       block: "border-illuminance-sunny-emphasis bg-illuminance-sunny-surface",
       iconContainer: "bg-illuminance-sunny-emphasis",
       icon: "text-illuminance-sunny-foreground",
+    });
+    expect(resolveLocationPropertyTint(PROPERTY_RAIN, 1)).toEqual({
+      block: "border-rain-active-emphasis bg-rain-active-surface",
+      iconContainer: "bg-rain-active-emphasis",
+      icon: "text-rain-active-foreground",
     });
   });
 

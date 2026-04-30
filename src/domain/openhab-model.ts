@@ -18,7 +18,9 @@ import {
   PROPERTY_CO2,
   PROPERTY_HUMIDITY,
   PROPERTY_ILLUMINANCE,
+  PROPERTY_RAIN,
   PROPERTY_TEMPERATURE,
+  PROPERTY_WIND,
 } from "./openhab-properties";
 
 const LOCATION_TAGS = new Set([
@@ -83,6 +85,8 @@ const PROPERTY_TAGS_BY_SEMANTIC_PROPERTY: Record<string, readonly string[]> = {
   [PROPERTY_ILLUMINANCE]: ["Illuminance"],
   [PROPERTY_CO2]: ["CO2"],
   [PROPERTY_AIR_QUALITY]: ["AQI"],
+  [PROPERTY_RAIN]: ["Rain"],
+  [PROPERTY_WIND]: ["Wind"],
 };
 
 const DEFAULT_LOCATION_IMAGE = "/views/missing.jpg";
