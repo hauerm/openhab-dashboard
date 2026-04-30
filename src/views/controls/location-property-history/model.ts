@@ -74,6 +74,8 @@ export const useLocationPropertyHistoryControlModel = (
       icon: resolvedConfig.icon,
       unit: resolvedConfig.unit,
       hasItems: itemCount > 0,
+      isVisibleInSidebar:
+        resolvedConfig.isVisibleInSidebar?.(currentValue) ?? true,
       value: formatValue(definition.metricKey, currentValue),
       tint:
         illuminancePresentation?.tint ??

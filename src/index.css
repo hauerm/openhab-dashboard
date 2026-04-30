@@ -53,6 +53,10 @@
   --color-illuminance-sunny-emphasis: #fde04766;
   --color-illuminance-sunny-foreground: #fefce8;
 
+  --color-rain-active-surface: #0ea5e966;
+  --color-rain-active-emphasis: #38bdf8a6;
+  --color-rain-active-foreground: #eff6ff;
+
   --color-chart-series-1: #38bdf8;
   --color-chart-series-2: #34d399;
   --color-chart-series-3: #f59e0b;

@@ -92,6 +92,19 @@ const computeAverage = (
   return numericValues.reduce((sum, value) => sum + value, 0) / numericValues.length;
 };
 
+const parseLocationPropertyState = (
+  config: LocationPropertyControlConfig,
+  rawValue: string
+) => {
+  const parsed = parseOpenHABState(rawValue);
+  return {
+    ...parsed,
+    numericValue: config.parseState
+      ? config.parseState(parsed.raw)
+      : parsed.numericValue,
+  };
+};
+
 const parseHistoryTimestamp = (value: number | string): number | null => {
   const normalizeEpoch = (epoch: number): number =>
     epoch < 1_000_000_000_000 ? epoch * 1000 : epoch;
@@ -242,7 +255,7 @@ const createStoreForConfig = (config: LocationPropertyControlConfig) => {
           const history: Record<string, HistoryPoint[]> = {};
 
           for (const item of filteredItems) {
-            const parsed = parseOpenHABState(item.state);
+            const parsed = parseLocationPropertyState(config, item.state);
             latestValues[item.name] = parsed.numericValue;
             latestRawStates[item.name] = parsed.raw;
             latestStateKinds[item.name] = parsed.kind;
@@ -349,7 +362,10 @@ const createStoreForConfig = (config: LocationPropertyControlConfig) => {
 
               const incomingPoints = historyResponse.data
                 .map((datapoint) => {
-                  const parsed = parseOpenHABState(datapoint.state);
+                  const parsed = parseLocationPropertyState(
+                    config,
+                    datapoint.state
+                  );
                   const timestamp = parseHistoryTimestamp(datapoint.time);
                   if (parsed.numericValue === null || timestamp === null) {
                     return null;
@@ -467,7 +483,11 @@ const createStoreForConfig = (config: LocationPropertyControlConfig) => {
         return;
       }
 
-      if (update.numericValue === null) {
+      const parsedValue = config.parseState
+        ? config.parseState(update.rawState)
+        : update.numericValue;
+
+      if (parsedValue === null) {
         get().setUnavailableState(
           update.itemName,
           update.rawState,
@@ -478,7 +498,7 @@ const createStoreForConfig = (config: LocationPropertyControlConfig) => {
 
       get().updateValue(
         update.itemName,
-        update.numericValue,
+        parsedValue,
         update.timestamp,
         update.rawState
       );

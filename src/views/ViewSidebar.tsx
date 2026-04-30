@@ -11,6 +11,8 @@ const TEST_ID_SUFFIX_BY_METRIC_KEY = {
   temperature: "temp",
   humidity: "humidity",
   illuminance: "illuminance",
+  rain: "rain",
+  wind: "wind",
   co2: "co2",
   "air-quality": "health",
 } as const;
@@ -52,6 +54,8 @@ const ViewSidebar = ({
       createLocationPropertySidebarDefinitions(viewId, location, locationScope, {
         temperature: "direct",
         humidity: "direct",
+        rain: "direct",
+        wind: "direct",
         co2: "direct",
         "air-quality": "direct",
       }),
@@ -62,6 +66,8 @@ const ViewSidebar = ({
     temperatureDefinition,
     humidityDefinition,
     illuminanceDefinition,
+    rainDefinition,
+    windDefinition,
     co2Definition,
     airQualityDefinition,
   ] = definitions;
@@ -69,6 +75,8 @@ const ViewSidebar = ({
   const temperatureModel = useLocationPropertyHistoryControlModel(temperatureDefinition);
   const humidityModel = useLocationPropertyHistoryControlModel(humidityDefinition);
   const illuminanceModel = useLocationPropertyHistoryControlModel(illuminanceDefinition);
+  const rainModel = useLocationPropertyHistoryControlModel(rainDefinition);
+  const windModel = useLocationPropertyHistoryControlModel(windDefinition);
   const co2Model = useLocationPropertyHistoryControlModel(co2Definition);
   const airQualityModel = useLocationPropertyHistoryControlModel(airQualityDefinition);
 
@@ -78,9 +86,11 @@ const ViewSidebar = ({
         { definition: temperatureDefinition, model: temperatureModel },
         { definition: humidityDefinition, model: humidityModel },
         { definition: illuminanceDefinition, model: illuminanceModel },
+        { definition: rainDefinition, model: rainModel },
+        { definition: windDefinition, model: windModel },
         { definition: co2Definition, model: co2Model },
         { definition: airQualityDefinition, model: airQualityModel },
-      ].filter((entry) => entry.model.hasItems),
+      ].filter((entry) => entry.model.hasItems && entry.model.isVisibleInSidebar),
     [
       airQualityDefinition,
       airQualityModel,
@@ -90,8 +100,12 @@ const ViewSidebar = ({
       humidityModel,
       illuminanceDefinition,
       illuminanceModel,
+      rainDefinition,
+      rainModel,
       temperatureDefinition,
       temperatureModel,
+      windDefinition,
+      windModel,
     ]
   );
 
@@ -129,10 +143,15 @@ const ViewSidebar = ({
               const valueClassName =
                 definition.metricKey === "air-quality"
                   ? "text-2xl md:text-[2rem]"
+                  : definition.metricKey === "wind"
+                  ? "text-2xl md:text-[2rem]"
                   : "text-3xl md:text-[2.4rem]";
               const isIlluminance = definition.metricKey === "illuminance";
+              const isRain = definition.metricKey === "rain";
+              const isWind = definition.metricKey === "wind";
               const isAirQuality = definition.metricKey === "air-quality";
               const IlluminanceStateIcon = model.illuminancePresentation?.icon;
+              const MetricIcon = model.icon;
 
               return (
                 <button
@@ -159,6 +178,21 @@ const ViewSidebar = ({
                         aria-label={model.illuminancePresentation?.label}
                       >
                         <IlluminanceStateIcon className="h-10 w-10 md:h-11 md:w-11" />
+                      </span>
+                    ) : isRain ? (
+                      <span
+                        data-testid="hud-metric-rain-icon"
+                        className={`flex items-center justify-center ${model.tint.icon}`}
+                        aria-label={definition.label}
+                      >
+                        <MetricIcon className="h-10 w-10 md:h-11 md:w-11" />
+                      </span>
+                    ) : isWind ? (
+                      <span className="flex items-center justify-center gap-2 text-ui-foreground">
+                        <MetricIcon className="h-8 w-8 shrink-0 text-ui-foreground-muted md:h-9 md:w-9" />
+                        <span className={`truncate font-semibold leading-none ${valueClassName}`}>
+                          {model.value}
+                        </span>
                       </span>
                     ) : isAirQuality ? (
                       <span className="flex flex-col items-center gap-1 text-center text-ui-foreground">

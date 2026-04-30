@@ -3,7 +3,9 @@ import {
   PROPERTY_CO2,
   PROPERTY_HUMIDITY,
   PROPERTY_ILLUMINANCE,
+  PROPERTY_RAIN,
   PROPERTY_TEMPERATURE,
+  PROPERTY_WIND,
 } from "../../../domain/openhab-properties";
 import type { LocationScope, ViewId } from "../../../types/view";
 import type { LocationPropertyHistoryControlDefinition } from "../controlDefinitions";
@@ -40,6 +42,18 @@ const SIDEBAR_LOCATION_METRICS: readonly SidebarMetricDefinition[] = [
     title: "Helligkeit",
   },
   {
+    metricKey: "rain",
+    property: PROPERTY_RAIN,
+    label: "Regen",
+    title: "Regen",
+  },
+  {
+    metricKey: "wind",
+    property: PROPERTY_WIND,
+    label: "Wind",
+    title: "Wind",
+  },
+  {
     metricKey: "co2",
     property: PROPERTY_CO2,
     label: "CO₂",
@@ -71,7 +85,11 @@ export const createLocationPropertySidebarDefinitions = (
     location,
     locationScope: metricLocationScopes[metricDefinition.metricKey] ?? locationScope,
     measurementRole:
-      metricDefinition.metricKey === "illuminance" ? undefined : "ambient",
+      metricDefinition.metricKey === "illuminance" ||
+      metricDefinition.metricKey === "rain" ||
+      metricDefinition.metricKey === "wind"
+        ? undefined
+        : "ambient",
     title: `${metricDefinition.title} ${location}`,
     comfortBand: metricDefinition.comfortBand,
     itemRefs: {},

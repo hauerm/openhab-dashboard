@@ -116,9 +116,18 @@ export type PowerControlDefinition = ControlDefinitionBase<
   PowerControlItemRefs
 >;
 
+export type LocationPropertyMetricKey =
+  | "temperature"
+  | "humidity"
+  | "illuminance"
+  | "rain"
+  | "wind"
+  | "co2"
+  | "air-quality";
+
 export interface LocationPropertyHistoryControlDefinition
   extends ControlDefinitionBase<"location-property-history", Record<string, never>> {
-  metricKey: "temperature" | "humidity" | "illuminance" | "co2" | "air-quality";
+  metricKey: LocationPropertyMetricKey;
   property: string;
   location?: string;
   locationScope?: LocationScope;

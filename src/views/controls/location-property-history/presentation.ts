@@ -7,7 +7,10 @@ import {
   MdWbSunny,
 } from "react-icons/md";
 import { getHealthIndexLabel } from "../../../domain/air-quality";
-import { PROPERTY_ILLUMINANCE } from "../../../domain/openhab-properties";
+import {
+  PROPERTY_ILLUMINANCE,
+  PROPERTY_RAIN,
+} from "../../../domain/openhab-properties";
 import {
   getBackgroundTintLevel,
   LOCATION_PROPERTY_CONTROL_CONFIGS,
@@ -57,6 +60,12 @@ const DEFAULT_TINT: LocationPropertyTint = {
   block: "border-ui-border-subtle bg-ui-surface-panel",
   iconContainer: "bg-status-neutral-surface",
   icon: "text-status-neutral-foreground",
+};
+
+const RAIN_ACTIVE_TINT: LocationPropertyTint = {
+  block: "border-rain-active-emphasis bg-rain-active-surface",
+  iconContainer: "bg-rain-active-emphasis",
+  icon: "text-rain-active-foreground",
 };
 
 const ILLUMINANCE_PRESENTATIONS: Record<
@@ -152,6 +161,14 @@ const formatHealthStatus = (value: number | null): string => {
   return getHealthIndexLabel(value) ?? "--";
 };
 
+const formatWindValue = (value: number | null): string => {
+  if (value === null) {
+    return "-- km/h";
+  }
+
+  return `${value.toFixed(1).replace(".", ",")} km/h`;
+};
+
 export const resolveIlluminanceVisualState = (
   value: number | null
 ): IlluminanceVisualState | null => {
@@ -199,6 +216,10 @@ export const formatLocationPropertyValue = (
       return formatHumidityValue(value);
     case "illuminance":
       return formatIlluminanceValue(value);
+    case "rain":
+      return "";
+    case "wind":
+      return formatWindValue(value);
     case "co2":
       return formatCo2Value(value);
     case "air-quality":
@@ -212,6 +233,10 @@ export const resolveLocationPropertyTint = (
 ): LocationPropertyTint => {
   if (property === PROPERTY_ILLUMINANCE) {
     return resolveIlluminancePresentation(value)?.tint ?? DEFAULT_TINT;
+  }
+
+  if (property === PROPERTY_RAIN) {
+    return value !== null && value > 0 ? RAIN_ACTIVE_TINT : DEFAULT_TINT;
   }
 
   const config = LOCATION_PROPERTY_CONTROL_CONFIGS[property];

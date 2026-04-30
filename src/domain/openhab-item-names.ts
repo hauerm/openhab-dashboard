@@ -1,4 +1,6 @@
 export const KNX_Wetterstation_Regen = "KNX_Wetterstation_Regen" as const;
+export const KNX_Wetterstation_Windgeschwindigkeit =
+  "KNX_Wetterstation_Windgeschwindigkeit" as const;
 export const KNX_Wetterstation_Helligkeit =
   "KNX_Wetterstation_Helligkeit" as const;
 
@@ -32,6 +34,7 @@ export const KNX_Helios_KWRL_Ist_Stufe =
 
 export const OPENHAB_ITEM_NAMES = {
   KNX_Wetterstation_Regen,
+  KNX_Wetterstation_Windgeschwindigkeit,
   KNX_Wetterstation_Helligkeit,
   KNX_JA1_Raffstore_Wohnzimmer,
   KNX_JA1_Raffstore_Wohnzimmer_Strasse,
