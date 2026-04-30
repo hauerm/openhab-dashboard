@@ -95,6 +95,10 @@ export interface EvccControlItemRefs {
   effectivePlanSocItemName?: string;
   effectivePlanTimeItemName?: string;
   repeatingPlanActiveItemName?: string;
+  batteryPowerItemName?: string;
+  batterySocItemName?: string;
+  batteryTitleItemName?: string;
+  sitePrioritySocItemName?: string;
 }
 
 export type EvccControlDefinition = ControlDefinitionBase<

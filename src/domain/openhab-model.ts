@@ -703,6 +703,26 @@ const createControlsForEquipment = (
       "EVCC_EV6_Repeating_Plan_1_Active",
       "Switch"
     );
+    const batteryPowerItem = findItemByName(
+      allItems,
+      "EVCC_Battery_Power",
+      "Number:Power"
+    );
+    const batterySocItem = findItemByName(
+      allItems,
+      "EVCC_Battery_SoC",
+      "Number:Dimensionless"
+    );
+    const batteryTitleItem = findItemByName(
+      allItems,
+      "EVCC_Battery_Title",
+      "String"
+    );
+    const sitePrioritySocItem = findItemByName(
+      allItems,
+      "EVCC_Site_PrioritySoC",
+      "Number:Dimensionless"
+    );
 
     if (
       !connectedItem ||
@@ -747,6 +767,16 @@ const createControlsForEquipment = (
             : {}),
           ...(repeatingPlanActiveItem
             ? { repeatingPlanActiveItemName: repeatingPlanActiveItem.name }
+            : {}),
+          ...(batteryPowerItem
+            ? { batteryPowerItemName: batteryPowerItem.name }
+            : {}),
+          ...(batterySocItem ? { batterySocItemName: batterySocItem.name } : {}),
+          ...(batteryTitleItem
+            ? { batteryTitleItemName: batteryTitleItem.name }
+            : {}),
+          ...(sitePrioritySocItem
+            ? { sitePrioritySocItemName: sitePrioritySocItem.name }
             : {}),
         },
       },

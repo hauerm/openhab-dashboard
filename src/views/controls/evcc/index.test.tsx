@@ -42,6 +42,10 @@ const itemRefs = {
   effectivePlanSocItemName: "EVCC_Garage_EffectivePlanSoC",
   effectivePlanTimeItemName: "EVCC_Garage_EffectivePlanTime",
   repeatingPlanActiveItemName: "EVCC_EV6_Repeating_Plan_1_Active",
+  batteryPowerItemName: "EVCC_Battery_Power",
+  batterySocItemName: "EVCC_Battery_SoC",
+  batteryTitleItemName: "EVCC_Battery_Title",
+  sitePrioritySocItemName: "EVCC_Site_PrioritySoC",
 } as const;
 
 const definition: EvccControlDefinition = {
@@ -80,6 +84,10 @@ const baseHudStates = (vehicleSocRawState: string): Record<string, string> => ({
   [itemRefs.effectivePlanSocItemName]: "50 %",
   [itemRefs.effectivePlanTimeItemName]: "2099-05-01T05:50:00",
   [itemRefs.repeatingPlanActiveItemName]: "ON",
+  [itemRefs.batteryPowerItemName]: "0 W",
+  [itemRefs.batterySocItemName]: "42 %",
+  [itemRefs.batteryTitleItemName]: "byd hvs 7.7",
+  [itemRefs.sitePrioritySocItemName]: "50 %",
 });
 
 describe("EvccOverlayControl", () => {
@@ -258,6 +266,192 @@ describe("EvccOverlayControl", () => {
       "stroke",
       "#22c55e"
     );
+  });
+
+  it("renders the house battery HUD icon while the battery is active", () => {
+    setItemStates({
+      ...baseHudStates("65 %"),
+      [itemRefs.batteryPowerItemName]: "-500 W",
+      [itemRefs.batterySocItemName]: "49 %",
+    });
+
+    const { rerender } = render(
+      <EvccHudControl
+        definition={definition}
+        onOpenControl={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByTestId(`living-control-evcc-battery-${itemRefs.connectedItemName}`)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`living-control-evcc-battery-${itemRefs.connectedItemName}`)
+        .parentElement
+    ).toHaveClass("justify-self-center");
+    expect(
+      screen.getByTestId(`living-control-evcc-battery-${itemRefs.connectedItemName}`)
+    ).toHaveClass("h-15", "w-15", "md:h-18", "md:w-18");
+    expect(
+      screen.getByTestId("living-control-evcc-battery-soc-ring-44")
+    ).toHaveAttribute("stroke", "#f59e0b");
+    expect(
+      screen.getByTestId(
+        `living-control-evcc-battery-soc-${itemRefs.connectedItemName}`
+      )
+    ).toHaveTextContent("49%");
+    expect(
+      screen.getByTestId(
+        `living-control-evcc-battery-soc-${itemRefs.connectedItemName}`
+      )
+    ).toHaveClass("text-[#f59e0b]");
+    expect(
+      screen.getByTestId(
+        `living-control-evcc-battery-state-${itemRefs.connectedItemName}`
+      )
+    ).toHaveTextContent("lädt");
+
+    act(() => {
+      setItemStates({
+        ...baseHudStates("65 %"),
+        [itemRefs.batteryPowerItemName]: "500 W",
+        [itemRefs.batterySocItemName]: "49 %",
+      });
+    });
+    rerender(
+      <EvccHudControl
+        definition={definition}
+        onOpenControl={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByTestId(`living-control-evcc-battery-${itemRefs.connectedItemName}`)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        `living-control-evcc-battery-state-${itemRefs.connectedItemName}`
+      )
+    ).toHaveTextContent("entlädt");
+
+    act(() => {
+      setItemStates({
+        ...baseHudStates("65 %"),
+        [itemRefs.batteryPowerItemName]: "-50 W",
+      });
+    });
+    rerender(
+      <EvccHudControl
+        definition={definition}
+        onOpenControl={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByTestId(
+        `living-control-evcc-battery-${itemRefs.connectedItemName}`
+      )
+    ).not.toBeInTheDocument();
+  });
+
+  it("colors the battery SoC text with the same thresholds as the ring", () => {
+    setItemStates({
+      ...baseHudStates("65 %"),
+      [itemRefs.batteryPowerItemName]: "-500 W",
+      [itemRefs.batterySocItemName]: "14 %",
+    });
+    const { rerender } = render(
+      <EvccHudControl
+        definition={definition}
+        onOpenControl={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByTestId(
+        `living-control-evcc-battery-soc-${itemRefs.connectedItemName}`
+      )
+    ).toHaveClass("text-[#f43f5e]");
+
+    act(() => {
+      setItemStates({
+        ...baseHudStates("65 %"),
+        [itemRefs.batteryPowerItemName]: "-500 W",
+        [itemRefs.batterySocItemName]: "50 %",
+      });
+    });
+    rerender(
+      <EvccHudControl
+        definition={definition}
+        onOpenControl={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByTestId(
+        `living-control-evcc-battery-soc-${itemRefs.connectedItemName}`
+      )
+    ).toHaveClass("text-[#22c55e]");
+  });
+
+  it("keeps the HUD unchanged when battery item refs are not configured", () => {
+    const definitionWithoutBatteryRefs: EvccControlDefinition = {
+      ...definition,
+      itemRefs: {
+        connectedItemName: itemRefs.connectedItemName,
+        chargingItemName: itemRefs.chargingItemName,
+        modeItemName: itemRefs.modeItemName,
+        limitSocItemName: itemRefs.limitSocItemName,
+        vehicleSocItemName: itemRefs.vehicleSocItemName,
+        vehicleRangeItemName: itemRefs.vehicleRangeItemName,
+        vehicleNameItemName: itemRefs.vehicleNameItemName,
+        vehicleTitleItemName: itemRefs.vehicleTitleItemName,
+        activePhasesItemName: itemRefs.activePhasesItemName,
+        chargePowerItemName: itemRefs.chargePowerItemName,
+        effectiveLimitSocItemName: itemRefs.effectiveLimitSocItemName,
+      },
+    };
+
+    setItemStates({
+      ...baseHudStates("65 %"),
+      [itemRefs.batteryPowerItemName]: "-500 W",
+    });
+
+    render(
+      <EvccHudControl
+        definition={definitionWithoutBatteryRefs}
+        onOpenControl={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByTestId(
+        `living-control-evcc-battery-${itemRefs.connectedItemName}`
+      )
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens the EVCC overlay when the battery HUD area is clicked", async () => {
+    const user = userEvent.setup();
+    const onOpenControl = vi.fn();
+    setItemStates({
+      ...baseHudStates("65 %"),
+      [itemRefs.batteryPowerItemName]: "-500 W",
+      [itemRefs.batterySocItemName]: "65 %",
+    });
+
+    render(
+      <EvccHudControl
+        definition={definition}
+        onOpenControl={onOpenControl}
+      />
+    );
+
+    await user.click(
+      screen.getByTestId(`living-control-evcc-battery-${itemRefs.connectedItemName}`)
+    );
+
+    expect(onOpenControl).toHaveBeenCalledWith("EVCC_Garage");
   });
 
   it("writes limit changes only to the live EVCC limit SoC item", async () => {

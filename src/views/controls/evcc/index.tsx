@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { MdBolt, MdDirectionsCar } from "react-icons/md";
+import {
+  MdBatteryChargingFull,
+  MdBatteryFull,
+  MdBolt,
+  MdDirectionsCar,
+} from "react-icons/md";
 import { toast } from "react-toastify";
 import kiaLogoUrl from "../../../assets/kia.svg";
 import skodaLogoUrl from "../../../assets/skoda.svg";
@@ -7,7 +12,7 @@ import ViewOverlayShell from "../../ViewOverlayShell";
 import type { EvccControlDefinition } from "../controlDefinitions";
 import { sendViewItemCommand } from "../viewItemCommand";
 import { useEvccControlModel } from "./model";
-import type { EvccVehicleLogoKey } from "./model";
+import type { EvccBatteryPowerState, EvccVehicleLogoKey } from "./model";
 
 const TITLE_TEXT_SHADOW_CLASS = "[text-shadow:0_2px_10px_var(--color-ui-shadow-text)]";
 
@@ -76,12 +81,27 @@ const getSocProgressStroke = (soc: number): string => {
   return "#22c55e";
 };
 
+const getSocTextClassName = (soc: number | null): string => {
+  if (soc === null) {
+    return "text-white";
+  }
+  if (soc < 15) {
+    return "text-[#f43f5e]";
+  }
+  if (soc < 50) {
+    return "text-[#f59e0b]";
+  }
+  return "text-[#22c55e]";
+};
+
 const SocProgressRings = ({
   soc,
   phases,
+  testIdPrefix = "living-control-evcc-soc-ring",
 }: {
   soc: number | null;
   phases: number | null;
+  testIdPrefix?: string;
 }) => {
   if (soc === null) {
     return null;
@@ -127,7 +147,7 @@ const SocProgressRings = ({
               strokeWidth={strokeWidth}
               strokeDasharray={circumference}
               strokeDashoffset={circumference * (1 - progress / 100)}
-              data-testid={`living-control-evcc-soc-ring-${radius}`}
+              data-testid={`${testIdPrefix}-${radius}`}
             />
           </g>
         );
@@ -143,6 +163,69 @@ const ChargingIcon = ({ className }: { className: string }) => (
   </span>
 );
 
+const BatteryChargingIcon = ({
+  itemName,
+  batterySoc,
+  batteryPowerState,
+}: {
+  itemName: string;
+  batterySoc: number | null;
+  batteryPowerState: EvccBatteryPowerState;
+}) => {
+  const Icon =
+    batteryPowerState === "discharging" ? MdBatteryFull : MdBatteryChargingFull;
+
+  return (
+    <span
+      data-testid={`living-control-evcc-battery-${itemName}`}
+      className="pointer-events-auto relative flex h-15 w-15 items-center justify-center rounded-full bg-status-good-surface backdrop-blur-sm transition hover:brightness-110 md:h-18 md:w-18"
+      aria-hidden="true"
+    >
+      <SocProgressRings
+        soc={batterySoc}
+        phases={1}
+        testIdPrefix="living-control-evcc-battery-soc-ring"
+      />
+      <Icon className="relative z-10 h-7 w-7 text-semantic-active-solid md:h-9 md:w-9" />
+    </span>
+  );
+};
+
+const BatteryHudInfo = ({
+  itemName,
+  batterySoc,
+  batterySocDisplay,
+  batteryPowerStateDisplay,
+}: {
+  itemName: string;
+  batterySoc: number | null;
+  batterySocDisplay: string | null;
+  batteryPowerStateDisplay: string | null;
+}) => {
+  if (!batterySocDisplay) {
+    return null;
+  }
+
+  return (
+    <span
+      data-testid={`living-control-evcc-battery-soc-${itemName}`}
+      className={`rounded-md bg-black/85 px-2 py-1 text-lg font-bold leading-none shadow-xl md:text-2xl ${getSocTextClassName(
+        batterySoc
+      )} ${TITLE_TEXT_SHADOW_CLASS}`}
+    >
+      <span>{batterySocDisplay}</span>
+      {batteryPowerStateDisplay ? (
+        <span
+          data-testid={`living-control-evcc-battery-state-${itemName}`}
+          className="ml-2 text-sm font-semibold text-white/85 md:text-base"
+        >
+          {batteryPowerStateDisplay}
+        </span>
+      ) : null}
+    </span>
+  );
+};
+
 const VehicleLogo = ({
   logoKey,
   vehicleDisplayName,
@@ -157,11 +240,11 @@ const VehicleLogo = ({
 
   if (logoKey) {
     return (
-      <span className="inline-flex min-h-8 min-w-16 items-center justify-center rounded-tl-md bg-white/85 px-2 py-1 shadow-xl md:min-h-10 md:min-w-20">
+      <span className="inline-flex min-h-10 min-w-20 shrink-0 items-center justify-center rounded-tl-md bg-white/85 px-2.5 py-1.5 shadow-xl md:min-h-12 md:min-w-24">
         <img
           src={VEHICLE_LOGO_BY_KEY[logoKey]}
           alt={label}
-          className="block h-5 w-auto max-w-[4.5rem] object-contain md:h-6 md:max-w-[5.5rem]"
+          className="block h-6 w-auto max-w-[5.625rem] object-contain md:h-7 md:max-w-[6.875rem]"
           data-testid={`living-control-evcc-logo-${logoKey}`}
         />
       </span>
@@ -169,7 +252,7 @@ const VehicleLogo = ({
   }
 
   return (
-    <span className="inline-flex min-h-8 min-w-16 items-center justify-center rounded-tl-md border border-ui-border-subtle bg-white/85 px-2 py-1 text-sm font-black text-black shadow-xl backdrop-blur-md md:min-h-10 md:min-w-20 md:text-base">
+    <span className="inline-flex min-h-10 min-w-20 shrink-0 items-center justify-center rounded-tl-md border border-ui-border-subtle bg-white/85 px-2.5 py-1.5 text-base font-black text-black shadow-xl backdrop-blur-md md:min-h-12 md:min-w-24 md:text-xl">
       {label}
     </span>
   );
@@ -204,7 +287,7 @@ const renderEvccInfo = ({
       : "Keine Ladeplanung aktiv";
 
   return (
-    <span className="flex min-w-0 flex-col items-stretch">
+    <span className="inline-flex w-max min-w-0 flex-col items-stretch">
       <span className="flex min-w-0 items-stretch justify-center">
         <VehicleLogo
           logoKey={vehicleLogoKey}
@@ -212,12 +295,12 @@ const renderEvccInfo = ({
         />
         <span
           data-testid={`living-control-evcc-values-${itemName}`}
-          className="flex min-h-8 min-w-16 flex-col items-start justify-center rounded-tr-md bg-black/85 px-2 py-1 shadow-xl md:min-h-10 md:min-w-20"
+          className="flex min-h-10 min-w-20 shrink-0 flex-col items-start justify-center rounded-tr-md bg-black/85 px-2.5 py-1.5 shadow-xl md:min-h-12 md:min-w-24"
         >
           {vehicleSocDisplay ? (
             <span
               data-testid={`living-control-evcc-soc-${itemName}`}
-              className={`text-lg font-bold leading-none text-white md:text-2xl ${TITLE_TEXT_SHADOW_CLASS}`}
+              className={`text-2xl font-bold leading-none text-white md:text-3xl ${TITLE_TEXT_SHADOW_CLASS}`}
             >
               {vehicleSocDisplay}
             </span>
@@ -225,7 +308,7 @@ const renderEvccInfo = ({
           {vehicleRangeDisplay ? (
             <span
               data-testid={`living-control-evcc-range-${itemName}`}
-              className={`mt-0.5 text-xs font-semibold leading-none text-white/85 md:text-sm ${TITLE_TEXT_SHADOW_CLASS}`}
+              className={`mt-0.5 text-sm font-semibold leading-none text-white/85 md:text-lg ${TITLE_TEXT_SHADOW_CLASS}`}
             >
               {vehicleRangeDisplay}
             </span>
@@ -234,7 +317,7 @@ const renderEvccInfo = ({
       </span>
       <span
         data-testid={`living-control-evcc-plan-${itemName}`}
-        className="w-full max-w-full rounded-b-md bg-blue-600/85 px-2 py-1 text-left text-[0.68rem] font-bold leading-tight text-white shadow-xl md:text-xs"
+        className="w-full max-w-full whitespace-nowrap rounded-b-md bg-blue-600/85 px-2.5 py-1.5 text-left text-sm font-bold leading-tight text-white shadow-xl md:text-base"
       >
         {planDetails}
       </span>
@@ -395,45 +478,66 @@ export const EvccHudControl = ({
         onOpenControl(definition.controlId);
       }}
       disabled={disabled}
-      className="flex items-center gap-3 md:gap-4"
+      className="pointer-events-auto flex items-center gap-3 md:gap-4"
       aria-label={`${definition.label} (EVCC steuern)`}
     >
-      <span
-        className={`pointer-events-auto relative flex h-20 w-20 items-center justify-center rounded-full backdrop-blur-sm transition md:h-24 md:w-24 ${getHudSurfaceClassName(
-          model.hudState
-        )}`}
-      >
-        {model.connected ? (
-          <SocProgressRings
-            soc={model.vehicleSoc}
-            phases={model.activePhases}
-          />
-        ) : null}
-        {model.charging && model.chargePowerHudDisplay ? (
+      <span className="flex flex-col items-start gap-1 md:gap-1.5">
+        <span className="grid grid-cols-[5rem_auto] items-center gap-3 md:grid-cols-[6rem_auto] md:gap-4">
           <span
-            data-testid={`living-control-placeholder-icon-${itemName}-evcc-power`}
-            className={`relative z-10 text-2xl font-black md:text-3xl ${getHudIconClassName(
+            className={`pointer-events-auto relative flex h-20 w-20 items-center justify-center rounded-full backdrop-blur-sm transition md:h-24 md:w-24 ${getHudSurfaceClassName(
               model.hudState
-            )}`}
+            )} justify-self-center`}
           >
-            {model.chargePowerHudDisplay}
+            {model.connected ? (
+              <SocProgressRings
+                soc={model.vehicleSoc}
+                phases={model.activePhases}
+              />
+            ) : null}
+            {model.charging && model.chargePowerHudDisplay ? (
+              <span
+                data-testid={`living-control-placeholder-icon-${itemName}-evcc-power`}
+                className={`relative z-10 text-2xl font-black md:text-3xl ${getHudIconClassName(
+                  model.hudState
+                )}`}
+              >
+                {model.chargePowerHudDisplay}
+              </span>
+            ) : (
+              <ChargingIcon
+                className={`relative z-10 ${getHudIconClassName(model.hudState)}`}
+              />
+            )}
           </span>
-        ) : (
-          <ChargingIcon
-            className={`relative z-10 ${getHudIconClassName(model.hudState)}`}
-          />
-        )}
+          {renderEvccInfo({
+            connected: model.connected,
+            itemName,
+            vehicleDisplayName: model.vehicleDisplayName,
+            vehicleLogoKey: model.vehicleLogoKey,
+            vehicleSocDisplay: model.vehicleSocDisplay,
+            vehicleRangeDisplay: model.vehicleRangeDisplay,
+            effectivePlanSocDisplay: model.effectivePlanSocDisplay,
+            effectivePlanTimeDisplay: model.effectivePlanTimeDisplay,
+          })}
+        </span>
+        {model.batteryPowerState ? (
+          <span className="grid grid-cols-[5rem_auto] items-center gap-3 md:grid-cols-[6rem_auto] md:gap-4">
+            <span className="justify-self-center">
+              <BatteryChargingIcon
+                itemName={itemName}
+                batterySoc={model.batterySoc}
+                batteryPowerState={model.batteryPowerState}
+              />
+            </span>
+            <BatteryHudInfo
+              itemName={itemName}
+              batterySoc={model.batterySoc}
+              batterySocDisplay={model.batterySocDisplay}
+              batteryPowerStateDisplay={model.batteryPowerStateDisplay}
+            />
+          </span>
+        ) : null}
       </span>
-      {renderEvccInfo({
-        connected: model.connected,
-        itemName,
-        vehicleDisplayName: model.vehicleDisplayName,
-        vehicleLogoKey: model.vehicleLogoKey,
-        vehicleSocDisplay: model.vehicleSocDisplay,
-        vehicleRangeDisplay: model.vehicleRangeDisplay,
-        effectivePlanSocDisplay: model.effectivePlanSocDisplay,
-        effectivePlanTimeDisplay: model.effectivePlanTimeDisplay,
-      })}
     </button>
   );
 };

@@ -6,6 +6,8 @@ import process from "node:process";
 
 const LOADPOINT_UID = "evcc:loadpoint:a60ed4e797:garage";
 const REPEATING_PLAN_UID = "evcc:plan:a60ed4e797:CAD5407F5A";
+const BATTERY_UID = "evcc:battery:a60ed4e797:byd-hvs";
+const SITE_UID = "evcc:site:a60ed4e797:site";
 
 const ITEM_DEFINITIONS = [
   {
@@ -140,6 +142,41 @@ const ITEM_DEFINITIONS = [
     groupNames: ["EVCC_Garage"],
     tags: ["Control"],
     channel: `${REPEATING_PLAN_UID}:plan-active`,
+  },
+  {
+    name: "EVCC_Battery_Power",
+    type: "Number:Power",
+    label: "EVCC Batterie Leistung",
+    category: "energy",
+    groupNames: ["EVCC_Garage"],
+    tags: ["Measurement", "Power"],
+    channel: `${BATTERY_UID}:battery-power`,
+  },
+  {
+    name: "EVCC_Battery_SoC",
+    type: "Number:Dimensionless",
+    label: "EVCC Batterie SoC",
+    category: "batterylevel",
+    groupNames: ["EVCC_Garage"],
+    tags: ["Measurement", "Level"],
+    channel: `${BATTERY_UID}:battery-soc`,
+  },
+  {
+    name: "EVCC_Battery_Title",
+    type: "String",
+    label: "EVCC Batterie",
+    groupNames: ["EVCC_Garage"],
+    tags: ["Status"],
+    channel: `${BATTERY_UID}:battery-title`,
+  },
+  {
+    name: "EVCC_Site_PrioritySoC",
+    type: "Number:Dimensionless",
+    label: "EVCC Batterie Priorität SoC",
+    category: "batterylevel",
+    groupNames: ["EVCC_Garage"],
+    tags: ["Status", "Level"],
+    channel: `${SITE_UID}:site-priority-soc`,
   },
 ];
 
