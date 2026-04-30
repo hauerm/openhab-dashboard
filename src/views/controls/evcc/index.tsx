@@ -173,7 +173,7 @@ const BatteryChargingIcon = ({
   batteryPowerState: EvccBatteryPowerState;
 }) => {
   const Icon =
-    batteryPowerState === "discharging" ? MdBatteryFull : MdBatteryChargingFull;
+    batteryPowerState === "charging" ? MdBatteryChargingFull : MdBatteryFull;
 
   return (
     <span
@@ -520,7 +520,7 @@ export const EvccHudControl = ({
             effectivePlanTimeDisplay: model.effectivePlanTimeDisplay,
           })}
         </span>
-        {model.batteryPowerState ? (
+        {model.batterySocDisplay || model.batteryPowerState ? (
           <span className="grid grid-cols-[5rem_auto] items-center gap-3 md:grid-cols-[6rem_auto] md:gap-4">
             <span className="justify-self-center">
               <BatteryChargingIcon

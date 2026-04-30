@@ -268,7 +268,7 @@ describe("EvccOverlayControl", () => {
     );
   });
 
-  it("renders the house battery HUD icon while the battery is active", () => {
+  it("renders the house battery HUD icon when battery SoC is available", () => {
     setItemStates({
       ...baseHudStates("65 %"),
       [itemRefs.batteryPowerItemName]: "-500 W",
@@ -348,8 +348,18 @@ describe("EvccOverlayControl", () => {
     );
 
     expect(
-      screen.queryByTestId(
+      screen.getByTestId(
         `living-control-evcc-battery-${itemRefs.connectedItemName}`
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        `living-control-evcc-battery-soc-${itemRefs.connectedItemName}`
+      )
+    ).toHaveTextContent("42%");
+    expect(
+      screen.queryByTestId(
+        `living-control-evcc-battery-state-${itemRefs.connectedItemName}`
       )
     ).not.toBeInTheDocument();
   });
