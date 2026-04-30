@@ -481,9 +481,17 @@ const findEvccChildByNameSuffix = (
     (item) => item.name.endsWith(suffix) && (!type || item.type === type)
   );
 
+const findItemByName = (
+  items: readonly Item[],
+  name: string,
+  type?: string
+): Item | undefined =>
+  items.find((item) => item.name === name && (!type || item.type === type));
+
 const createControlsForEquipment = (
   equipment: Item,
   children: readonly Item[],
+  allItems: readonly Item[],
   locationName: string
 ): DiscoveredControlDefinition[] => {
   if (hasAnyTag(equipment, LIGHT_EQUIPMENT_TAGS)) {
@@ -675,6 +683,26 @@ const createControlsForEquipment = (
       "_EffectiveLimitSoC",
       "Number:Dimensionless"
     );
+    const effectivePlanIdItem = findEvccChildByNameSuffix(
+      children,
+      "_EffectivePlanId",
+      "Number"
+    );
+    const effectivePlanSocItem = findEvccChildByNameSuffix(
+      children,
+      "_EffectivePlanSoC",
+      "Number:Dimensionless"
+    );
+    const effectivePlanTimeItem = findEvccChildByNameSuffix(
+      children,
+      "_EffectivePlanTime",
+      "DateTime"
+    );
+    const repeatingPlanActiveItem = findItemByName(
+      allItems,
+      "EVCC_EV6_Repeating_Plan_1_Active",
+      "Switch"
+    );
 
     if (
       !connectedItem ||
@@ -708,6 +736,18 @@ const createControlsForEquipment = (
           activePhasesItemName: activePhasesItem.name,
           chargePowerItemName: chargePowerItem.name,
           effectiveLimitSocItemName: effectiveLimitSocItem.name,
+          ...(effectivePlanIdItem
+            ? { effectivePlanIdItemName: effectivePlanIdItem.name }
+            : {}),
+          ...(effectivePlanSocItem
+            ? { effectivePlanSocItemName: effectivePlanSocItem.name }
+            : {}),
+          ...(effectivePlanTimeItem
+            ? { effectivePlanTimeItemName: effectivePlanTimeItem.name }
+            : {}),
+          ...(repeatingPlanActiveItem
+            ? { repeatingPlanActiveItemName: repeatingPlanActiveItem.name }
+            : {}),
         },
       },
     ];
@@ -888,6 +928,7 @@ export const buildOpenHABSemanticModel = (
     const equipmentControls = createControlsForEquipment(
       equipment,
       children,
+      items,
       locationName
     );
     controls.push(...equipmentControls);

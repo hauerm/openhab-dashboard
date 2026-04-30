@@ -66,6 +66,16 @@ const getHudIconClassName = (
   return "text-ui-foreground";
 };
 
+const getSocProgressStroke = (soc: number): string => {
+  if (soc < 15) {
+    return "#f43f5e";
+  }
+  if (soc < 50) {
+    return "#f59e0b";
+  }
+  return "#22c55e";
+};
+
 const SocProgressRings = ({
   soc,
   phases,
@@ -79,6 +89,7 @@ const SocProgressRings = ({
 
   const progress = Math.max(0, Math.min(100, soc));
   const ringCount = phases === 3 ? 3 : 1;
+  const progressStroke = getSocProgressStroke(progress);
   const rings =
     ringCount === 3
       ? [
@@ -111,11 +122,12 @@ const SocProgressRings = ({
               cy="50"
               r={radius}
               fill="none"
-              stroke="var(--color-semantic-active-solid)"
+              stroke={progressStroke}
               strokeLinecap="round"
               strokeWidth={strokeWidth}
               strokeDasharray={circumference}
               strokeDashoffset={circumference * (1 - progress / 100)}
+              data-testid={`living-control-evcc-soc-ring-${radius}`}
             />
           </g>
         );
@@ -145,7 +157,7 @@ const VehicleLogo = ({
 
   if (logoKey) {
     return (
-      <span className="inline-flex min-h-8 min-w-16 items-center justify-center rounded-md bg-white px-2 py-1 shadow-xl md:min-h-10 md:min-w-20">
+      <span className="inline-flex min-h-8 min-w-16 items-center justify-center rounded-tl-md bg-white/85 px-2 py-1 shadow-xl md:min-h-10 md:min-w-20">
         <img
           src={VEHICLE_LOGO_BY_KEY[logoKey]}
           alt={label}
@@ -157,7 +169,7 @@ const VehicleLogo = ({
   }
 
   return (
-    <span className="inline-flex min-h-8 min-w-16 items-center justify-center rounded-md border border-ui-border-subtle bg-ui-surface-image-strong px-2 py-1 text-sm font-black text-ui-foreground shadow-xl backdrop-blur-md md:min-h-10 md:min-w-20 md:text-base">
+    <span className="inline-flex min-h-8 min-w-16 items-center justify-center rounded-tl-md border border-ui-border-subtle bg-white/85 px-2 py-1 text-sm font-black text-black shadow-xl backdrop-blur-md md:min-h-10 md:min-w-20 md:text-base">
       {label}
     </span>
   );
@@ -170,6 +182,8 @@ const renderEvccInfo = ({
   vehicleLogoKey,
   vehicleSocDisplay,
   vehicleRangeDisplay,
+  effectivePlanSocDisplay,
+  effectivePlanTimeDisplay,
 }: {
   connected: boolean;
   itemName: string;
@@ -177,40 +191,125 @@ const renderEvccInfo = ({
   vehicleLogoKey: EvccVehicleLogoKey | null;
   vehicleSocDisplay: string | null;
   vehicleRangeDisplay: string | null;
+  effectivePlanSocDisplay: string | null;
+  effectivePlanTimeDisplay: string | null;
 }) => {
   if (!connected) {
     return null;
   }
 
+  const planDetails =
+    effectivePlanSocDisplay && effectivePlanTimeDisplay
+      ? `${effectivePlanSocDisplay} bis ${effectivePlanTimeDisplay}`
+      : "Keine Ladeplanung aktiv";
+
   return (
-    <span className="flex min-w-0 items-start justify-center gap-2 md:gap-3">
-      <span className="flex min-w-0 flex-col items-start">
+    <span className="flex min-w-0 flex-col items-stretch">
+      <span className="flex min-w-0 items-stretch justify-center">
         <VehicleLogo
           logoKey={vehicleLogoKey}
           vehicleDisplayName={vehicleDisplayName}
         />
-        {vehicleRangeDisplay ? (
-          <span
-            data-testid={`living-control-evcc-range-${itemName}`}
-            className={`mt-1 text-left text-xs font-semibold text-ui-foreground-muted md:text-sm ${TITLE_TEXT_SHADOW_CLASS}`}
-          >
-            {vehicleRangeDisplay}
-          </span>
-        ) : null}
+        <span
+          data-testid={`living-control-evcc-values-${itemName}`}
+          className="flex min-h-8 min-w-16 flex-col items-start justify-center rounded-tr-md bg-black/85 px-2 py-1 shadow-xl md:min-h-10 md:min-w-20"
+        >
+          {vehicleSocDisplay ? (
+            <span
+              data-testid={`living-control-evcc-soc-${itemName}`}
+              className={`text-lg font-bold leading-none text-white md:text-2xl ${TITLE_TEXT_SHADOW_CLASS}`}
+            >
+              {vehicleSocDisplay}
+            </span>
+          ) : null}
+          {vehicleRangeDisplay ? (
+            <span
+              data-testid={`living-control-evcc-range-${itemName}`}
+              className={`mt-0.5 text-xs font-semibold leading-none text-white/85 md:text-sm ${TITLE_TEXT_SHADOW_CLASS}`}
+            >
+              {vehicleRangeDisplay}
+            </span>
+          ) : null}
+        </span>
       </span>
-      <span className="flex min-h-8 items-center md:min-h-10">
-        {vehicleSocDisplay ? (
-          <span
-            data-testid={`living-control-evcc-soc-${itemName}`}
-            className={`text-2xl font-bold text-ui-foreground md:text-3xl ${TITLE_TEXT_SHADOW_CLASS}`}
-          >
-            {vehicleSocDisplay}
-          </span>
-        ) : null}
+      <span
+        data-testid={`living-control-evcc-plan-${itemName}`}
+        className="w-full max-w-full rounded-b-md bg-blue-600/85 px-2 py-1 text-left text-[0.68rem] font-bold leading-tight text-white shadow-xl md:text-xs"
+      >
+        {planDetails}
       </span>
     </span>
   );
 };
+
+const OverlayPlanStatus = ({
+  itemName,
+  effectivePlanId,
+  effectivePlanSocDisplay,
+  effectivePlanTimeDisplay,
+}: {
+  itemName: string;
+  effectivePlanId: number | null;
+  effectivePlanSocDisplay: string | null;
+  effectivePlanTimeDisplay: string | null;
+}) => {
+  const hasPlan =
+    effectivePlanId !== null && effectivePlanSocDisplay && effectivePlanTimeDisplay;
+  const title = !hasPlan
+    ? "Keine Ladeplanung aktiv"
+    : effectivePlanId === 0
+      ? "Einmalplan"
+      : "Wiederholender Plan";
+  const details = hasPlan
+    ? `${effectivePlanSocDisplay} bis ${effectivePlanTimeDisplay}`
+    : null;
+
+  return (
+    <div
+      data-testid={`living-evcc-overlay-plan-status-${itemName}`}
+      className={`mt-6 rounded-lg bg-blue-600/85 px-4 py-3 text-white shadow-xl ${TITLE_TEXT_SHADOW_CLASS}`}
+    >
+      <p className="text-lg font-bold leading-tight md:text-2xl">{title}</p>
+      {details ? (
+        <p
+          data-testid={`living-evcc-overlay-plan-details-${itemName}`}
+          className="mt-1 text-sm font-semibold leading-tight text-white/90 md:text-lg"
+        >
+          {details}
+        </p>
+      ) : null}
+    </div>
+  );
+};
+
+const RepeatingPlanToggle = ({
+  itemName,
+  active,
+  disabled,
+  onToggle,
+}: {
+  itemName: string;
+  active: boolean | null;
+  disabled: boolean;
+  onToggle: () => void;
+}) => (
+  <button
+    type="button"
+    data-testid={`living-evcc-overlay-repeating-plan-${itemName}`}
+    onClick={onToggle}
+    disabled={disabled}
+    className={`pointer-events-auto flex h-full min-h-0 w-full flex-col items-center justify-center overflow-hidden rounded-2xl px-4 text-center text-2xl font-bold transition disabled:cursor-not-allowed disabled:opacity-70 md:text-4xl ${
+      active
+        ? "bg-blue-600/85 text-white hover:brightness-110"
+        : "bg-ui-surface-panel text-ui-foreground hover:bg-ui-surface-muted"
+    }`}
+  >
+    <span>Wiederholender Plan</span>
+    <span className="mt-2 text-base font-semibold md:text-2xl">
+      {active ? "Aktiv" : "Inaktiv"}
+    </span>
+  </button>
+);
 
 const OverlayVehicleIdentity = ({
   itemName,
@@ -332,6 +431,8 @@ export const EvccHudControl = ({
         vehicleLogoKey: model.vehicleLogoKey,
         vehicleSocDisplay: model.vehicleSocDisplay,
         vehicleRangeDisplay: model.vehicleRangeDisplay,
+        effectivePlanSocDisplay: model.effectivePlanSocDisplay,
+        effectivePlanTimeDisplay: model.effectivePlanTimeDisplay,
       })}
     </button>
   );
@@ -387,6 +488,27 @@ export const EvccOverlayControl = ({
     }
   };
 
+  const sendRepeatingPlanActiveCommand = async () => {
+    const repeatingPlanActiveItemName =
+      definition.itemRefs.repeatingPlanActiveItemName;
+    if (!repeatingPlanActiveItemName || sendingCommand) {
+      return;
+    }
+
+    const command = model.repeatingPlanActive ? "OFF" : "ON";
+    try {
+      setSendingCommand("repeating-plan-active");
+      await sendViewItemCommand(repeatingPlanActiveItemName, command, "OnOff", {
+        optimisticRawState: command,
+      });
+    } catch (error) {
+      void error;
+      toast.error("EVCC-Wiederholplan konnte nicht gesetzt werden.");
+    } finally {
+      setSendingCommand(null);
+    }
+  };
+
   return (
     <ViewOverlayShell onClose={onClose} layout="fullscreen">
       <div
@@ -419,6 +541,12 @@ export const EvccOverlayControl = ({
               vehicleDisplayName={model.vehicleDisplayName}
               vehicleLogoKey={model.vehicleLogoKey}
               vehicleRangeDisplay={model.vehicleRangeDisplay}
+            />
+            <OverlayPlanStatus
+              itemName={itemName}
+              effectivePlanId={model.effectivePlanId}
+              effectivePlanSocDisplay={model.effectivePlanSocDisplay}
+              effectivePlanTimeDisplay={model.effectivePlanTimeDisplay}
             />
           </section>
 
@@ -470,7 +598,18 @@ export const EvccOverlayControl = ({
             })}
           </section>
 
-          <section className="pointer-events-none" aria-hidden="true" />
+          <section className="pointer-events-none flex h-full min-h-0">
+            {definition.itemRefs.repeatingPlanActiveItemName ? (
+              <RepeatingPlanToggle
+                itemName={itemName}
+                active={model.repeatingPlanActive}
+                disabled={Boolean(sendingCommand)}
+                onToggle={() => {
+                  void sendRepeatingPlanActiveCommand();
+                }}
+              />
+            ) : null}
+          </section>
         </div>
       </div>
     </ViewOverlayShell>

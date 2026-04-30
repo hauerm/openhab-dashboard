@@ -16,6 +16,10 @@ const baseState = {
   chargePowerRawState: "7200 W",
   limitSocRawState: "80 %",
   effectiveLimitSocRawState: "80 %",
+  effectivePlanIdRawState: "UNDEF",
+  effectivePlanSocRawState: "UNDEF",
+  effectivePlanTimeRawState: "UNDEF",
+  repeatingPlanActiveRawState: "OFF",
 };
 
 describe("evcc model", () => {
@@ -101,5 +105,67 @@ describe("evcc model", () => {
   it("maps EV6 and Enyaq to vehicle logo placeholders", () => {
     expect(resolveEvccVehicleLogoKey("EV6", null)).toBe("kia");
     expect(resolveEvccVehicleLogoKey(null, "Skoda Enyaq")).toBe("skoda");
+  });
+
+  it("formats missing effective plan values as no active charging plan", () => {
+    const state = resolveEvccDisplayState({
+      ...baseState,
+      connectedRawState: "ON",
+    });
+
+    expect(state.effectivePlanStatusDisplay).toBe("Keine Ladeplanung aktiv");
+  });
+
+  it("formats effective plan id 0 as one-time plan", () => {
+    const state = resolveEvccDisplayState({
+      ...baseState,
+      connectedRawState: "ON",
+      effectivePlanIdRawState: "0",
+      effectivePlanSocRawState: "80 %",
+      effectivePlanTimeRawState: "2026-05-01T05:50:00",
+      locale: "de-AT",
+      now: new Date("2026-04-30T12:00:00"),
+    });
+
+    expect(state.effectivePlanStatusDisplay).toBe(
+      "Einmalplan: 80% bis morgen 05:50"
+    );
+  });
+
+  it("formats effective plan ids above 0 as repeating plans", () => {
+    const state = resolveEvccDisplayState({
+      ...baseState,
+      connectedRawState: "ON",
+      effectivePlanIdRawState: "1",
+      effectivePlanSocRawState: "50 %",
+      effectivePlanTimeRawState: "2026-05-01T05:50:00",
+      locale: "de-AT",
+      now: new Date("2026-04-30T12:00:00"),
+    });
+
+    expect(state.effectivePlanStatusDisplay).toBe(
+      "Wiederholender Plan: 50% bis morgen 05:50"
+    );
+  });
+
+  it("normalizes repeating plan active state", () => {
+    expect(
+      resolveEvccDisplayState({
+        ...baseState,
+        repeatingPlanActiveRawState: "ON",
+      }).repeatingPlanActive
+    ).toBe(true);
+    expect(
+      resolveEvccDisplayState({
+        ...baseState,
+        repeatingPlanActiveRawState: "OFF",
+      }).repeatingPlanActive
+    ).toBe(false);
+    expect(
+      resolveEvccDisplayState({
+        ...baseState,
+        repeatingPlanActiveRawState: "UNDEF",
+      }).repeatingPlanActive
+    ).toBeNull();
   });
 });
