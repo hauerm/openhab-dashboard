@@ -24,7 +24,7 @@ const ViewBackground = () => {
   );
 
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0" style={{ touchAction: "pan-y" }}>
       <img
         data-testid="view-background-image"
         src={resolvedViewImage.resolvedImage}
