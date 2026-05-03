@@ -1,4 +1,9 @@
-import type { PointerEvent } from "react";
+import { useRef, type PointerEvent } from "react";
+import {
+  isPrimaryPointer,
+  releasePointerCaptureSafely,
+  setPointerCaptureSafely,
+} from "../pointerGestures";
 
 const SLIDER_COLUMN_CLASS =
   "pointer-events-auto relative h-full min-h-0 touch-none select-none overflow-hidden rounded-2xl border border-ui-border-subtle shadow-[0_10px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl transition disabled:cursor-not-allowed disabled:opacity-55";
@@ -47,39 +52,63 @@ export const VerticalChannelSlider = ({
   disabled,
   onChange,
 }: VerticalChannelSliderProps) => {
+  const activePointerIdRef = useRef<number | null>(null);
   const handleTopPercent = positionPercentForValue(value, min, max);
-  const handlePointerValue = (
+
+  const updateValueFromPointer = (
     event: PointerEvent<HTMLElement>,
     force = false
-  ) => {
+  ): void => {
     if (disabled) {
       return;
     }
-    event.currentTarget.setPointerCapture?.(event.pointerId);
     onChange(valueFromPointerEvent(event, min, max), force);
   };
 
   return (
     <button
       type="button"
+      role="slider"
       data-testid={testId}
       disabled={disabled}
-      onPointerDown={handlePointerValue}
-      onPointerMove={(event) => {
-        if (event.buttons !== 1) {
+      onPointerDown={(event) => {
+        if (disabled || !isPrimaryPointer(event)) {
           return;
         }
-        handlePointerValue(event);
+        activePointerIdRef.current = event.pointerId;
+        setPointerCaptureSafely(event.currentTarget, event.pointerId);
+        updateValueFromPointer(event);
+      }}
+      onPointerMove={(event) => {
+        if (
+          activePointerIdRef.current !== event.pointerId ||
+          (event.pointerType === "mouse" && event.buttons !== 1)
+        ) {
+          return;
+        }
+        updateValueFromPointer(event);
       }}
       onPointerUp={(event) => {
-        handlePointerValue(event, true);
+        if (activePointerIdRef.current !== event.pointerId) {
+          return;
+        }
+        updateValueFromPointer(event, true);
+        activePointerIdRef.current = null;
+        releasePointerCaptureSafely(event.currentTarget, event.pointerId);
       }}
       onPointerCancel={(event) => {
-        handlePointerValue(event, true);
+        if (activePointerIdRef.current !== event.pointerId) {
+          return;
+        }
+        activePointerIdRef.current = null;
+        releasePointerCaptureSafely(event.currentTarget, event.pointerId);
       }}
       className={SLIDER_COLUMN_CLASS}
       style={{ background }}
       aria-label={label}
+      aria-valuemin={min}
+      aria-valuemax={max}
+      aria-valuenow={value}
     >
       <span
         data-testid={`${testId}-handle`}

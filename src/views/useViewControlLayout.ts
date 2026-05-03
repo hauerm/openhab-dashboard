@@ -10,6 +10,11 @@ import {
 import { toast } from "react-toastify";
 import { fetchItemMetadata, upsertItemMetadata } from "../services/openhab-service";
 import { log } from "../services/logger";
+import {
+  isPrimaryPointer,
+  releasePointerCaptureSafely,
+  setPointerCaptureSafely,
+} from "./pointerGestures";
 
 const logger = log.createLogger("ViewControlLayout");
 
@@ -260,12 +265,12 @@ export const useViewControlLayout = ({
       metadataItemNames: string[],
       event: ReactPointerEvent<HTMLDivElement>
     ) => {
-      if (!dragEnabled || event.button !== 0) {
+      if (!dragEnabled || !isPrimaryPointer(event)) {
         return;
       }
 
       event.preventDefault();
-      event.currentTarget.setPointerCapture(event.pointerId);
+      setPointerCaptureSafely(event.currentTarget, event.pointerId);
       dragStateRef.current = {
         controlId,
         metadataItemNames,
@@ -312,9 +317,7 @@ export const useViewControlLayout = ({
         return;
       }
 
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      }
+      releasePointerCaptureSafely(event.currentTarget, event.pointerId);
 
       dragStateRef.current = null;
       if (persist) {

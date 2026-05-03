@@ -33,7 +33,7 @@ type LocationViewProps = ViewProps & {
 const HUD_ROOT_CLASS = "pointer-events-none absolute inset-0 z-20";
 const HUD_CONTAINER_CLASS = "relative h-full w-full";
 const HUD_LAYOUT_SECTION_CLASS = "contents";
-const HUD_WRAPPER_CLASS = "pointer-events-auto absolute touch-none select-none";
+const HUD_WRAPPER_CLASS = "pointer-events-auto absolute select-none";
 const HUD_WRAPPER_DRAG_CLASS = "cursor-grab active:cursor-grabbing";
 const HUD_LAYOUT_TOGGLE_BASE_CLASS =
   "pointer-events-auto absolute right-1 top-1 z-30 flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold uppercase tracking-wide transition md:text-sm";
@@ -45,7 +45,9 @@ const HUD_LAYOUT_TOGGLE_DEFAULT_CLASS =
 const EMPTY_CONTROLS: readonly ViewControlDefinition[] = [];
 
 const getLayoutWrapperClassName = (layoutEditMode: boolean): string =>
-  `${HUD_WRAPPER_CLASS} ${layoutEditMode ? HUD_WRAPPER_DRAG_CLASS : ""}`;
+  `${HUD_WRAPPER_CLASS} ${
+    layoutEditMode ? `${HUD_WRAPPER_DRAG_CLASS} touch-none` : "touch-manipulation"
+  }`;
 
 const getLayoutToggleClassName = (layoutEditMode: boolean): string =>
   `${HUD_LAYOUT_TOGGLE_BASE_CLASS} ${

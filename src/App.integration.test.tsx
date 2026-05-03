@@ -305,6 +305,69 @@ const buildDefaultItems = (): Item[] => [
   }),
 ];
 
+const fireViewportTap = (target: Element, x = 100, y = 100): void => {
+  fireEvent.pointerDown(target, {
+    pointerId: 101,
+    pointerType: "touch",
+    isPrimary: true,
+    button: 0,
+    buttons: 1,
+    clientX: x,
+    clientY: y,
+  });
+  fireEvent.pointerUp(document, {
+    pointerId: 101,
+    pointerType: "touch",
+    isPrimary: true,
+    button: 0,
+    buttons: 0,
+    clientX: x,
+    clientY: y,
+  });
+};
+
+const fireViewportSwipe = (
+  target: Element,
+  options: {
+    pointerId?: number;
+    startX: number;
+    startY: number;
+    endX: number;
+    endY: number;
+    pointerType?: "mouse" | "pen" | "touch";
+  }
+): void => {
+  const pointerId = options.pointerId ?? 102;
+  const pointerType = options.pointerType ?? "touch";
+  fireEvent.pointerDown(target, {
+    pointerId,
+    pointerType,
+    isPrimary: true,
+    button: 0,
+    buttons: 1,
+    clientX: options.startX,
+    clientY: options.startY,
+  });
+  fireEvent.pointerMove(document, {
+    pointerId,
+    pointerType,
+    isPrimary: true,
+    button: 0,
+    buttons: 1,
+    clientX: options.endX,
+    clientY: options.endY,
+  });
+  fireEvent.pointerUp(document, {
+    pointerId,
+    pointerType,
+    isPrimary: true,
+    button: 0,
+    buttons: 0,
+    clientX: options.endX,
+    clientY: options.endY,
+  });
+};
+
 describe("App integration", () => {
   beforeEach(() => {
     resetViewStoreForTests();
@@ -498,6 +561,10 @@ describe("App integration", () => {
     expect(screen.getByTestId("dock-button-Hauer")).toBeInTheDocument();
     expect(screen.getByTestId("dock-parent-icon-Hauer")).toBeInTheDocument();
     expect(screen.getByTestId("dock-button-Wohnzimmer")).toBeInTheDocument();
+    expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
+      "data-visible",
+      "false"
+    );
   });
 
   it("toggles the bottom dock from a free viewport click", async () => {
@@ -510,7 +577,7 @@ describe("App integration", () => {
     expect(screen.queryByTestId("dock-expand-button")).not.toBeInTheDocument();
     expect(screen.getByTestId("dock-button-EG")).toBeInTheDocument();
 
-    fireEvent.pointerDown(screen.getByTestId("view-background-image"));
+    fireViewportTap(screen.getByTestId("view-background-image"));
     await waitFor(() => {
       expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
         "data-visible",
@@ -524,13 +591,161 @@ describe("App integration", () => {
       "false"
     );
 
-    fireEvent.pointerDown(screen.getByTestId("view-background-image"));
+    fireViewportTap(screen.getByTestId("view-background-image"));
     await waitFor(() => {
       expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
         "data-visible",
         "true"
       );
     });
+  });
+
+  it("switches sibling views from free horizontal swipes without opening the dock", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
+    });
+
+    await user.click(screen.getByTestId("dock-button-EG"));
+    expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
+      "data-visible",
+      "false"
+    );
+    fireViewportTap(screen.getByTestId("view-background-image"));
+    await waitFor(() => {
+      expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
+        "data-visible",
+        "true"
+      );
+    });
+
+    fireViewportSwipe(screen.getByTestId("view-background-image"), {
+      startX: 240,
+      startY: 120,
+      endX: 40,
+      endY: 126,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("view-background-image")).toHaveAttribute(
+        "src",
+        expect.stringContaining("/views/Garage.webp")
+      );
+      expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
+        "data-visible",
+        "false"
+      );
+    });
+
+    fireViewportSwipe(screen.getByTestId("view-background-image"), {
+      pointerId: 103,
+      startX: 40,
+      startY: 120,
+      endX: 240,
+      endY: 126,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("view-background-image")).toHaveAttribute(
+        "src",
+        expect.stringContaining("/views/EG.webp")
+      );
+      expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
+        "data-visible",
+        "false"
+      );
+    });
+
+    fireViewportSwipe(screen.getByTestId("view-background-image"), {
+      pointerId: 104,
+      startX: 240,
+      startY: 120,
+      endX: 40,
+      endY: 126,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("view-background-image")).toHaveAttribute(
+        "src",
+        expect.stringContaining("/views/Garage.webp")
+      );
+      expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
+        "data-visible",
+        "false"
+      );
+    });
+
+    fireViewportSwipe(screen.getByTestId("view-background-image"), {
+      pointerId: 105,
+      startX: 240,
+      startY: 120,
+      endX: 40,
+      endY: 126,
+    });
+    expect(screen.getByTestId("view-background-image")).toHaveAttribute(
+      "src",
+      expect.stringContaining("/views/Garage.webp")
+    );
+    expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
+      "data-visible",
+      "false"
+    );
+
+    fireViewportSwipe(screen.getByTestId("view-background-image"), {
+      pointerId: 106,
+      startX: 120,
+      startY: 40,
+      endX: 128,
+      endY: 190,
+    });
+    expect(screen.getByTestId("view-background-image")).toHaveAttribute(
+      "src",
+      expect.stringContaining("/views/Garage.webp")
+    );
+    expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
+      "data-visible",
+      "false"
+    );
+
+    fireEvent.pointerDown(screen.getByTestId("view-background-image"), {
+      pointerId: 107,
+      pointerType: "touch",
+      isPrimary: true,
+      button: 0,
+      buttons: 1,
+      clientX: 40,
+      clientY: 120,
+    });
+    fireEvent.pointerCancel(document, {
+      pointerId: 107,
+      pointerType: "touch",
+      isPrimary: true,
+      button: 0,
+      buttons: 0,
+      clientX: 40,
+      clientY: 120,
+    });
+    fireViewportTap(screen.getByTestId("view-background-image"));
+    await waitFor(() => {
+      expect(screen.getByTestId("bottom-dock-panel")).toHaveAttribute(
+        "data-visible",
+        "true"
+      );
+    });
+
+    fireViewportSwipe(screen.getByTestId("dock-button-EG"), {
+      pointerId: 108,
+      startX: 240,
+      startY: 120,
+      endX: 40,
+      endY: 126,
+    });
+    expect(screen.getByTestId("view-background-image")).toHaveAttribute(
+      "src",
+      expect.stringContaining("/views/Garage.webp")
+    );
   });
 
   it("keeps the sidebar visible across location-backed views", async () => {
@@ -550,6 +765,129 @@ describe("App integration", () => {
     expect(screen.getByTestId("hud-metric-temp")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-illuminance")).toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-health")).toBeInTheDocument();
+  });
+
+  it("keeps hud clicks working outside layout mode and supports pointer layout drag in edit mode", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalled();
+    });
+
+    await user.click(screen.getByTestId("dock-button-EG"));
+    await user.click(screen.getByTestId("dock-button-Wohnzimmer"));
+
+    await user.click(screen.getByTestId(`living-control-placeholder-${SAH3_Licht_TV}`));
+    expect(screen.getByTestId("dimmer-control-Equ_Spots_TV")).toBeInTheDocument();
+    await user.click(screen.getByTestId("overlay-backdrop"));
+
+    const placeholder = screen.getByTestId(
+      `living-control-placeholder-${SAH3_Licht_TV}`
+    );
+    const wrapper = placeholder.parentElement;
+    const layoutContainer = screen.getByTestId("Wohnzimmer-controls").parentElement;
+    if (!wrapper || !layoutContainer) {
+      throw new Error("Expected Wohnzimmer layout wrapper and container");
+    }
+
+    expect(wrapper).toHaveClass("touch-manipulation");
+    fireEvent.pointerDown(wrapper, {
+      pointerId: 201,
+      pointerType: "mouse",
+      isPrimary: true,
+      button: 0,
+      buttons: 1,
+      clientX: 160,
+      clientY: 160,
+    });
+    fireEvent.pointerMove(wrapper, {
+      pointerId: 201,
+      pointerType: "mouse",
+      isPrimary: true,
+      button: 0,
+      buttons: 1,
+      clientX: 260,
+      clientY: 260,
+    });
+    fireEvent.pointerUp(wrapper, {
+      pointerId: 201,
+      pointerType: "mouse",
+      isPrimary: true,
+      button: 0,
+      buttons: 0,
+      clientX: 260,
+      clientY: 260,
+    });
+    expect(mocks.upsertItemMetadata).not.toHaveBeenCalled();
+
+    vi.spyOn(layoutContainer, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      width: 1000,
+      height: 1000,
+      top: 0,
+      right: 1000,
+      bottom: 1000,
+      left: 0,
+      toJSON: () => ({}),
+    });
+    vi.spyOn(wrapper, "getBoundingClientRect").mockReturnValue({
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 100,
+      top: 100,
+      right: 200,
+      bottom: 200,
+      left: 100,
+      toJSON: () => ({}),
+    });
+
+    await user.click(screen.getByTestId("Wohnzimmer-layout-edit-toggle"));
+    expect(wrapper).toHaveClass("touch-none");
+
+    fireEvent.pointerDown(wrapper, {
+      pointerId: 202,
+      pointerType: "touch",
+      isPrimary: true,
+      button: 0,
+      buttons: 1,
+      clientX: 180,
+      clientY: 180,
+    });
+    fireEvent.pointerMove(wrapper, {
+      pointerId: 202,
+      pointerType: "touch",
+      isPrimary: true,
+      button: 0,
+      buttons: 1,
+      clientX: 300,
+      clientY: 300,
+    });
+    fireEvent.pointerUp(wrapper, {
+      pointerId: 202,
+      pointerType: "touch",
+      isPrimary: true,
+      button: 0,
+      buttons: 0,
+      clientX: 300,
+      clientY: 300,
+    });
+
+    await waitFor(() => {
+      expect(mocks.upsertItemMetadata).toHaveBeenCalledWith(
+        "Equ_Spots_TV",
+        "dashboard-layout",
+        expect.objectContaining({
+          value: "v1",
+          config: expect.objectContaining({
+            x: "30.00",
+            y: "30.00",
+          }),
+        })
+      );
+    });
   });
 
   it("opens and closes location-property overlay from eg hud click", async () => {

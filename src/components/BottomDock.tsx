@@ -6,6 +6,14 @@ import {
 } from "react-icons/md";
 import { useViewStore } from "../stores/viewStore";
 import type { ViewId } from "../types/view";
+import {
+  POINTER_HORIZONTAL_SWIPE_FACTOR,
+  POINTER_SWIPE_MIN_DISTANCE_PX,
+  POINTER_TAP_TOLERANCE_PX,
+  getPointerTargetElement,
+  isInteractiveTarget,
+  isPrimaryPointer,
+} from "../views/pointerGestures";
 
 interface BottomDockProps {
   onViewChange?: (viewId: ViewId) => void;
@@ -22,18 +30,6 @@ const EDGE_FADE_BASE_CLASS =
   "pointer-events-none absolute inset-y-0 z-10 transition-opacity duration-300";
 const EDGE_BUTTON_BASE_CLASS =
   "pointer-events-auto absolute top-1/2 z-20 -translate-y-1/2 rounded-full border border-ui-border-subtle bg-ui-surface-overlay/95 p-1.5 text-ui-foreground shadow-lg backdrop-blur-sm transition";
-const DOCK_OPEN_EXCLUSION_SELECTOR = [
-  "button",
-  "a[href]",
-  "input",
-  "select",
-  "textarea",
-  "summary",
-  "[role='button']",
-  "[role='link']",
-  "[role='slider']",
-  "[data-prevent-dock-open='true']",
-].join(",");
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(Math.max(value, min), max);
@@ -41,6 +37,13 @@ const clamp = (value: number, min: number, max: number): number =>
 interface DockItem {
   viewId: ViewId;
   isParent: boolean;
+}
+
+interface ViewportGestureState {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  handledSwipe: boolean;
 }
 
 const resetHorizontalScroll = (container: HTMLDivElement | null): void => {
@@ -56,16 +59,6 @@ const resetHorizontalScroll = (container: HTMLDivElement | null): void => {
   container.scrollLeft = 0;
 };
 
-const getPointerTargetElement = (target: EventTarget | null): Element | null => {
-  if (target instanceof Element) {
-    return target;
-  }
-  if (target instanceof Node) {
-    return target.parentElement;
-  }
-  return null;
-};
-
 const BottomDock = ({ onViewChange }: BottomDockProps) => {
   const currentView = useViewStore((state) => state.currentView);
   const setCurrentView = useViewStore((state) => state.setCurrentView);
@@ -76,6 +69,7 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
   const dockRootRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const hideTimerRef = useRef<number | null>(null);
+  const viewportGestureRef = useRef<ViewportGestureState | null>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -221,9 +215,50 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
     showDock();
   }, [clearHideTimer, isDockVisible, showDock]);
 
+  const getSiblingView = useCallback(
+    (direction: "previous" | "next"): ViewId | null => {
+      if (!model) {
+        return null;
+      }
+
+      const currentLocation = model.locationsByName.get(currentView);
+      if (!currentLocation?.parentName) {
+        return null;
+      }
+
+      const siblingLocationNames =
+        model.childLocationNamesByParentName[currentLocation.parentName] ?? [];
+      const currentIndex = siblingLocationNames.indexOf(currentView);
+      if (currentIndex === -1) {
+        return null;
+      }
+
+      const targetIndex =
+        direction === "next" ? currentIndex + 1 : currentIndex - 1;
+      return siblingLocationNames[targetIndex] ?? null;
+    },
+    [currentView, model]
+  );
+
+  const handleViewportSwipe = useCallback(
+    (direction: "previous" | "next"): boolean => {
+      const targetView = getSiblingView(direction);
+      if (!targetView) {
+        return false;
+      }
+
+      onViewChange?.(targetView);
+      setCurrentView(targetView);
+      clearHideTimer();
+      setIsDockVisible(false);
+      return true;
+    },
+    [clearHideTimer, getSiblingView, onViewChange, setCurrentView]
+  );
+
   useEffect(() => {
     const handleDocumentPointerDown = (event: PointerEvent) => {
-      if (event.button !== 0) {
+      if (!isPrimaryPointer(event)) {
         return;
       }
 
@@ -235,22 +270,92 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
       if (dockRoot?.contains(targetElement)) {
         return;
       }
-      if (targetElement.closest(DOCK_OPEN_EXCLUSION_SELECTOR)) {
+      if (isInteractiveTarget(targetElement)) {
         return;
       }
 
-      toggleDockFromViewport();
+      viewportGestureRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        handledSwipe: false,
+      };
+    };
+
+    const handleDocumentPointerMove = (event: PointerEvent) => {
+      const gesture = viewportGestureRef.current;
+      if (!gesture || gesture.pointerId !== event.pointerId || gesture.handledSwipe) {
+        return;
+      }
+
+      const deltaX = event.clientX - gesture.startX;
+      const deltaY = event.clientY - gesture.startY;
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+      if (
+        absX < POINTER_SWIPE_MIN_DISTANCE_PX ||
+        absX < absY * POINTER_HORIZONTAL_SWIPE_FACTOR
+      ) {
+        return;
+      }
+
+      gesture.handledSwipe = true;
+      handleViewportSwipe(deltaX < 0 ? "next" : "previous");
+    };
+
+    const handleDocumentPointerUp = (event: PointerEvent) => {
+      const gesture = viewportGestureRef.current;
+      if (!gesture || gesture.pointerId !== event.pointerId) {
+        return;
+      }
+
+      viewportGestureRef.current = null;
+      if (gesture.handledSwipe) {
+        return;
+      }
+
+      const deltaX = event.clientX - gesture.startX;
+      const deltaY = event.clientY - gesture.startY;
+      if (
+        Math.hypot(deltaX, deltaY) <= POINTER_TAP_TOLERANCE_PX
+      ) {
+        toggleDockFromViewport();
+      }
+    };
+
+    const handleDocumentPointerCancel = (event: PointerEvent) => {
+      if (viewportGestureRef.current?.pointerId === event.pointerId) {
+        viewportGestureRef.current = null;
+      }
     };
 
     document.addEventListener("pointerdown", handleDocumentPointerDown, {
+      capture: true,
+    });
+    document.addEventListener("pointermove", handleDocumentPointerMove, {
+      capture: true,
+    });
+    document.addEventListener("pointerup", handleDocumentPointerUp, {
+      capture: true,
+    });
+    document.addEventListener("pointercancel", handleDocumentPointerCancel, {
       capture: true,
     });
     return () => {
       document.removeEventListener("pointerdown", handleDocumentPointerDown, {
         capture: true,
       });
+      document.removeEventListener("pointermove", handleDocumentPointerMove, {
+        capture: true,
+      });
+      document.removeEventListener("pointerup", handleDocumentPointerUp, {
+        capture: true,
+      });
+      document.removeEventListener("pointercancel", handleDocumentPointerCancel, {
+        capture: true,
+      });
     };
-  }, [toggleDockFromViewport]);
+  }, [handleViewportSwipe, toggleDockFromViewport]);
 
   const scrollByDirection = useCallback((direction: "left" | "right") => {
     const container = scrollContainerRef.current;
@@ -312,7 +417,6 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
           <div
             ref={scrollContainerRef}
             onPointerDown={handleDockInteraction}
-            onTouchStart={handleDockInteraction}
             className={`flex gap-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
               isOverflowing ? SCROLL_CONTENT_INSET_CLASS : "justify-center px-4"
             }`}
@@ -334,7 +438,8 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
                   onClick={() => {
                     onViewChange?.(viewId);
                     setCurrentView(viewId);
-                    showDock();
+                    clearHideTimer();
+                    setIsDockVisible(false);
                   }}
                   className="group relative h-32 aspect-[4/3] shrink-0 overflow-hidden bg-ui-surface-panel text-left transition md:h-40"
                   aria-label={
