@@ -41,6 +41,8 @@ interface ListenerRegistration {
   itemNames?: Set<string>;
 }
 
+const INITIAL_CONNECTION_DELAY_MS = 750;
+
 /**
  * Service for handling OpenHAB WebSocket connections and real-time updates
  */
@@ -230,7 +232,18 @@ class WebSocketManager {
   private onMessageCallback: ((event: MessageEvent) => void) | null = null;
   private onErrorCallback: ((error: Event) => void) | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private initialConnectionTimer: ReturnType<typeof setTimeout> | null = null;
   private shouldReconnect = true;
+  private hasConnected = false;
+  private hasShownFinalFailureToast = false;
+  private readonly handleOnline = () => {
+    this.scheduleInitialConnection(0);
+  };
+  private readonly handleVisibilityChange = () => {
+    if (document.visibilityState === "visible") {
+      this.scheduleInitialConnection(0);
+    }
+  };
 
   connect(
     onMessage: (event: MessageEvent) => void,
@@ -239,20 +252,41 @@ class WebSocketManager {
     this.onMessageCallback = onMessage;
     this.onErrorCallback = onError || null;
     this.shouldReconnect = true;
-    this.attemptConnection();
+    this.addLifecycleListeners();
+    this.scheduleInitialConnection(INITIAL_CONNECTION_DELAY_MS);
+  }
+
+  private scheduleInitialConnection(delayMs: number): void {
+    this.clearInitialConnectionTimer();
+
+    if (!this.shouldReconnect || this.isConnectionActive()) {
+      return;
+    }
+
+    this.initialConnectionTimer = setTimeout(() => {
+      this.initialConnectionTimer = null;
+      this.attemptConnection();
+    }, delayMs);
   }
 
   private attemptConnection(): void {
     this.clearReconnectTimer();
 
-    if (!this.shouldReconnect) {
+    if (!this.shouldReconnect || this.isConnectionActive()) {
+      return;
+    }
+
+    if (!this.isPageReadyForConnection()) {
+      this.scheduleInitialConnection(INITIAL_CONNECTION_DELAY_MS);
       return;
     }
 
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       toast.error(
-        "Failed to connect to OpenHAB WebSocket after multiple attempts."
+        "OpenHAB WebSocket konnte nach mehreren Versuchen nicht verbunden werden.",
+        { toastId: "openhab-websocket-final-failure" }
       );
+      this.hasShownFinalFailureToast = true;
       return;
     }
 
@@ -262,7 +296,10 @@ class WebSocketManager {
       this.ws = new WebSocket(wsUrl, getWebSocketSubprotocols());
 
       this.ws.onopen = () => {
-        toast.success("Connected to OpenHAB WebSocket.");
+        this.hasConnected = true;
+        this.hasShownFinalFailureToast = false;
+        toast.dismiss("openhab-websocket-final-failure");
+        toast.dismiss("openhab-websocket-reconnecting");
         this.reconnectAttempts = 0;
         this.reconnectDelay = 1000;
       };
@@ -282,21 +319,16 @@ class WebSocketManager {
         if (!this.shouldReconnect) {
           return;
         }
-        if (event.code === 1006) {
-          // Abnormal closure, likely certificate or network issue
-          toast.error(
-            "WebSocket connection failed. Check your OpenHAB server configuration."
-          );
-        } else {
-          toast.warn("WebSocket connection lost. Retrying...");
+
+        if (this.hasConnected) {
+          toast.warn("OpenHAB WebSocket-Verbindung verloren. Verbinde erneut...", {
+            toastId: "openhab-websocket-reconnecting",
+          });
         }
         this.scheduleReconnect();
       };
     } catch (error) {
       logger.error("Failed to create WebSocket:", error);
-      toast.error(
-        "Failed to create WebSocket connection. Check your OpenHAB configuration."
-      );
       this.scheduleReconnect();
     }
   }
@@ -312,6 +344,9 @@ class WebSocketManager {
         this.reconnectDelay * 2,
         this.maxReconnectDelay
       );
+      if (this.hasShownFinalFailureToast) {
+        return;
+      }
       this.attemptConnection();
     }, this.reconnectDelay);
   }
@@ -324,9 +359,44 @@ class WebSocketManager {
     this.reconnectTimer = null;
   }
 
+  private clearInitialConnectionTimer(): void {
+    if (!this.initialConnectionTimer) {
+      return;
+    }
+    clearTimeout(this.initialConnectionTimer);
+    this.initialConnectionTimer = null;
+  }
+
+  private isConnectionActive(): boolean {
+    return (
+      this.ws?.readyState === WebSocket.CONNECTING ||
+      this.ws?.readyState === WebSocket.OPEN
+    );
+  }
+
+  private isPageReadyForConnection(): boolean {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      return false;
+    }
+
+    return typeof document === "undefined" || document.visibilityState === "visible";
+  }
+
+  private addLifecycleListeners(): void {
+    window.addEventListener("online", this.handleOnline);
+    document.addEventListener("visibilitychange", this.handleVisibilityChange);
+  }
+
+  private removeLifecycleListeners(): void {
+    window.removeEventListener("online", this.handleOnline);
+    document.removeEventListener("visibilitychange", this.handleVisibilityChange);
+  }
+
   disconnect(): void {
     this.shouldReconnect = false;
     this.clearReconnectTimer();
+    this.clearInitialConnectionTimer();
+    this.removeLifecycleListeners();
 
     if (this.ws) {
       this.ws.onopen = null;
