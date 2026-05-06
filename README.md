@@ -210,6 +210,29 @@ discovered semantically. No generated or vendored item package is used.
 - Views do not send domain commands directly.
 - Views do not initialize specialized domain stores.
 
+### Theming and Color Scheme Sources
+
+- Tailwind v4 is configured CSS-first in `src/index.css`.
+- Use `@theme` for design tokens and `@utility` for composed patterns such as
+  gradients, glows, and reusable visual scales.
+- Use these Tailwind references when changing theme structure:
+  - [Tailwind theme variables](https://tailwindcss.com/docs/theme)
+  - [Tailwind functions and directives](https://tailwindcss.com/docs/functions-and-directives)
+- Classify data color schemes before choosing colors:
+  - sequential for ordered low-to-high values
+  - diverging when both extremes matter around a meaningful midpoint
+  - qualitative for nominal categories without magnitude
+- Use these color-scheme references first:
+  - [ColorBrewer scheme types](https://colorbrewer2.org/learnmore/schemes_full.html)
+  - [D3 scale-chromatic](https://d3js.org/d3-scale-chromatic)
+- Prefer colorblind-safe categorical palettes, especially Okabe-Ito/Wong or
+  D3/Tableau-compatible qualitative palettes.
+- Do not define local color scales, hex palettes, or gradient strings inside
+  React controls. If a palette or gradient is needed, add theme tokens/utilities
+  and reference them from components.
+- Document intentional deviations here or with a short code comment near the
+  token definition.
+
 ### Semantic Model
 
 - `src/domain/openhab-model.ts` builds a semantic model from `tags`, `groupNames`, and item metadata.

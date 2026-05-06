@@ -53,29 +53,29 @@ describe("location-property-history presentation", () => {
 
   it("maps tint bands from control config", () => {
     expect(resolveLocationPropertyTint(PROPERTY_TEMPERATURE, 22)).toEqual({
-      block: "border-status-good-emphasis bg-status-good-surface",
-      iconContainer: "bg-status-good-emphasis",
-      icon: "text-status-good-foreground",
+      block: "border-scale-temp-comfort-emphasis bg-scale-temp-comfort-surface",
+      iconContainer: "bg-scale-temp-comfort-emphasis",
+      icon: "text-scale-temp-comfort-foreground",
     });
     expect(resolveLocationPropertyTint(PROPERTY_TEMPERATURE, 29)).toEqual({
-      block: "border-status-critical-emphasis bg-status-critical-surface",
-      iconContainer: "bg-status-critical-emphasis",
-      icon: "text-status-critical-foreground",
+      block: "border-scale-temp-hot-emphasis bg-scale-temp-hot-surface",
+      iconContainer: "bg-scale-temp-hot-emphasis",
+      icon: "text-scale-temp-hot-foreground",
     });
     expect(resolveLocationPropertyTint(PROPERTY_HUMIDITY, 20)).toEqual({
-      block: "border-status-moderate-emphasis bg-status-moderate-surface",
-      iconContainer: "bg-status-moderate-emphasis",
-      icon: "text-status-moderate-foreground",
+      block: "border-scale-humidity-dry-emphasis bg-scale-humidity-dry-surface",
+      iconContainer: "bg-scale-humidity-dry-emphasis",
+      icon: "text-scale-humidity-dry-foreground",
     });
     expect(resolveLocationPropertyTint(PROPERTY_CO2, 1500)).toEqual({
-      block: "border-status-critical-emphasis bg-status-critical-surface",
-      iconContainer: "bg-status-critical-emphasis",
-      icon: "text-status-critical-foreground",
+      block: "border-scale-risk-bad-emphasis bg-scale-risk-bad-surface",
+      iconContainer: "bg-scale-risk-bad-emphasis",
+      icon: "text-scale-risk-bad-foreground",
     });
     expect(resolveLocationPropertyTint(PROPERTY_AIR_QUALITY, 1)).toEqual({
-      block: "border-status-good-emphasis bg-status-good-surface",
-      iconContainer: "bg-status-good-emphasis",
-      icon: "text-status-good-foreground",
+      block: "border-scale-risk-good-emphasis bg-scale-risk-good-surface",
+      iconContainer: "bg-scale-risk-good-emphasis",
+      icon: "text-scale-risk-good-foreground",
     });
     expect(resolveLocationPropertyTint(PROPERTY_ILLUMINANCE, 0)).toEqual({
       block: "border-illuminance-night-emphasis bg-illuminance-night-surface",

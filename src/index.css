@@ -1,7 +1,30 @@
 @import "tailwindcss";
 
-@theme {
-  --color-ui-surface-shell: #020617;
+:root {
+  --sidebar-block-surface-mix: 34%;
+}
+
+@theme static inline {
+  --color-primary: var(--color-sky-500);
+  --color-primary-light: var(--color-sky-400);
+  --color-primary-dark: var(--color-sky-700);
+  --color-surface: var(--color-slate-50);
+  --color-surface-light: var(--color-slate-100);
+  --color-surface-dark: var(--color-slate-800);
+  --color-error: var(--color-red-500);
+  --color-error-light: var(--color-red-300);
+  --color-error-dark: var(--color-red-700);
+  --color-info: var(--color-cyan-400);
+  --color-info-light: var(--color-cyan-300);
+  --color-info-dark: var(--color-cyan-700);
+  --color-success: var(--color-emerald-500);
+  --color-success-light: var(--color-emerald-300);
+  --color-success-dark: var(--color-emerald-700);
+  --color-warning: var(--color-amber-400);
+  --color-warning-light: var(--color-amber-300);
+  --color-warning-dark: var(--color-amber-700);
+
+  --color-ui-surface-shell: var(--color-slate-950);
   --color-ui-surface-overlay: #0206178c;
   --color-ui-surface-panel: #0f172abf;
   --color-ui-surface-muted: #1e293b99;
@@ -11,62 +34,263 @@
   --color-ui-backdrop-strong: #02061799;
   --color-ui-border-subtle: #ffffff26;
   --color-ui-border-strong: #ffffff59;
-  --color-ui-foreground: #f8fafc;
-  --color-ui-foreground-muted: #cbd5e1;
+  --color-ui-foreground: var(--color-slate-50);
+  --color-ui-foreground-muted: var(--color-slate-300);
+  --color-ui-ring-track: #ffffff33;
   --color-ui-shadow-text: #000000cc;
+  --color-ui-shadow-panel: #00000059;
+  --color-slider-thumb-highlight: var(--color-white);
+  --color-slider-thumb-surface: var(--color-slate-100);
+  --color-slider-thumb-shadow: #0206178f;
+  --color-slider-thumb-border: #0f172abf;
 
   --color-ui-warning-solid: #f59e0bdd;
-  --color-ui-warning-border: #fcd34d;
-  --color-ui-warning-foreground: #0f172a;
+  --color-ui-warning-border: var(--color-amber-300);
+  --color-ui-warning-foreground: var(--color-slate-900);
 
-  --color-semantic-light-solid: #fde047;
+  --color-auth-shell-glow: #ffffff24;
+  --color-auth-shell-start: #09111cf0;
+  --color-auth-shell-end: #162130fa;
+
+  --color-semantic-light-solid: var(--color-yellow-300);
   --color-semantic-light-glow: #fde047bf;
-  --color-semantic-active-solid: #22c55e;
+  --color-semantic-active-solid: var(--color-emerald-500);
   --color-semantic-active-glow: #22c55eb0;
 
-  --color-status-good-surface: #10b98140;
-  --color-status-good-emphasis: #10b98166;
-  --color-status-good-foreground: #ecfdf5;
-  --color-status-moderate-surface: #f59e0b40;
-  --color-status-moderate-emphasis: #f59e0b66;
-  --color-status-moderate-foreground: #fffbeb;
-  --color-status-critical-surface: #f43f5e40;
-  --color-status-critical-emphasis: #f43f5e66;
-  --color-status-critical-foreground: #fff1f2;
-  --color-status-neutral-surface: #64748b59;
-  --color-status-neutral-emphasis: #94a3b8;
-  --color-status-neutral-foreground: #f8fafc;
+  --color-scale-temp-cold: var(--color-blue-600);
+  --color-scale-temp-cool: var(--color-sky-400);
+  --color-scale-temp-neutral: var(--color-slate-50);
+  --color-scale-temp-warm: var(--color-orange-400);
+  --color-scale-temp-hot: var(--color-red-500);
+  --color-scale-temp-cold-surface: color-mix(in srgb, var(--color-scale-temp-cold) var(--sidebar-block-surface-mix), transparent);
+  --color-scale-temp-cold-emphasis: color-mix(in srgb, var(--color-scale-temp-cold) 58%, transparent);
+  --color-scale-temp-cold-foreground: var(--color-sky-100);
+  --color-scale-temp-comfort-surface: color-mix(in srgb, var(--color-scale-temp-neutral) var(--sidebar-block-surface-mix), transparent);
+  --color-scale-temp-comfort-emphasis: color-mix(in srgb, var(--color-scale-temp-cool) 38%, transparent);
+  --color-scale-temp-comfort-foreground: var(--color-slate-50);
+  --color-scale-temp-warm-surface: color-mix(in srgb, var(--color-scale-temp-warm) var(--sidebar-block-surface-mix), transparent);
+  --color-scale-temp-warm-emphasis: color-mix(in srgb, var(--color-scale-temp-warm) 54%, transparent);
+  --color-scale-temp-warm-foreground: var(--color-orange-50);
+  --color-scale-temp-hot-surface: color-mix(in srgb, var(--color-scale-temp-hot) var(--sidebar-block-surface-mix), transparent);
+  --color-scale-temp-hot-emphasis: color-mix(in srgb, var(--color-scale-temp-hot) 58%, transparent);
+  --color-scale-temp-hot-foreground: var(--color-rose-50);
 
-  --color-illuminance-night-surface: #1d4ed840;
-  --color-illuminance-night-emphasis: #1d4ed866;
-  --color-illuminance-night-foreground: #dbeafe;
-  --color-illuminance-dim-surface: #64748b40;
-  --color-illuminance-dim-emphasis: #64748b66;
-  --color-illuminance-dim-foreground: #f8fafc;
-  --color-illuminance-soft-surface: #94a3b840;
-  --color-illuminance-soft-emphasis: #94a3b866;
-  --color-illuminance-soft-foreground: #f8fafc;
-  --color-illuminance-bright-surface: #06b6d440;
-  --color-illuminance-bright-emphasis: #67e8f966;
-  --color-illuminance-bright-foreground: #ecfeff;
-  --color-illuminance-sunny-surface: #f59e0b40;
-  --color-illuminance-sunny-emphasis: #fde04766;
-  --color-illuminance-sunny-foreground: #fefce8;
+  --color-scale-lightness-dark: var(--color-zinc-950);
+  --color-scale-lightness-dim: var(--color-slate-700);
+  --color-scale-lightness-mid: var(--color-slate-400);
+  --color-scale-lightness-bright: var(--color-yellow-200);
+  --color-scale-lightness-light: var(--color-yellow-50);
 
-  --color-rain-active-surface: #0ea5e966;
-  --color-rain-active-emphasis: #38bdf8a6;
-  --color-rain-active-foreground: #eff6ff;
+  --color-illuminance-night-surface: color-mix(in srgb, var(--color-scale-lightness-dark) var(--sidebar-block-surface-mix), transparent);
+  --color-illuminance-night-emphasis: color-mix(in srgb, var(--color-scale-lightness-dim) 70%, transparent);
+  --color-illuminance-night-foreground: var(--color-slate-200);
+  --color-illuminance-dim-surface: color-mix(in srgb, var(--color-scale-lightness-dim) var(--sidebar-block-surface-mix), transparent);
+  --color-illuminance-dim-emphasis: color-mix(in srgb, var(--color-scale-lightness-mid) 46%, transparent);
+  --color-illuminance-dim-foreground: var(--color-slate-50);
+  --color-illuminance-soft-surface: color-mix(in srgb, var(--color-scale-lightness-mid) var(--sidebar-block-surface-mix), transparent);
+  --color-illuminance-soft-emphasis: color-mix(in srgb, var(--color-scale-lightness-bright) 36%, transparent);
+  --color-illuminance-soft-foreground: var(--color-slate-50);
+  --color-illuminance-bright-surface: color-mix(in srgb, var(--color-scale-lightness-bright) var(--sidebar-block-surface-mix), transparent);
+  --color-illuminance-bright-emphasis: color-mix(in srgb, var(--color-scale-lightness-bright) 52%, transparent);
+  --color-illuminance-bright-foreground: var(--color-yellow-50);
+  --color-illuminance-sunny-surface: color-mix(in srgb, var(--color-scale-lightness-light) var(--sidebar-block-surface-mix), transparent);
+  --color-illuminance-sunny-emphasis: color-mix(in srgb, var(--color-scale-lightness-light) 68%, transparent);
+  --color-illuminance-sunny-foreground: var(--color-yellow-50);
 
-  --color-chart-series-1: #38bdf8;
-  --color-chart-series-2: #34d399;
-  --color-chart-series-3: #f59e0b;
-  --color-chart-series-4: #f97316;
-  --color-chart-series-5: #f43f5e;
-  --color-chart-series-6: #14b8a6;
+  --color-scale-humidity-dry: var(--color-amber-500);
+  --color-scale-humidity-comfort: var(--color-teal-400);
+  --color-scale-humidity-humid: var(--color-sky-400);
+  --color-scale-humidity-wet: var(--color-blue-600);
+  --color-scale-humidity-dry-surface: color-mix(in srgb, var(--color-scale-humidity-dry) var(--sidebar-block-surface-mix), transparent);
+  --color-scale-humidity-dry-emphasis: color-mix(in srgb, var(--color-scale-humidity-dry) 56%, transparent);
+  --color-scale-humidity-dry-foreground: var(--color-amber-50);
+  --color-scale-humidity-comfort-surface: color-mix(in srgb, var(--color-scale-humidity-comfort) var(--sidebar-block-surface-mix), transparent);
+  --color-scale-humidity-comfort-emphasis: color-mix(in srgb, var(--color-scale-humidity-comfort) 52%, transparent);
+  --color-scale-humidity-comfort-foreground: var(--color-teal-50);
+  --color-scale-humidity-humid-surface: color-mix(in srgb, var(--color-scale-humidity-humid) var(--sidebar-block-surface-mix), transparent);
+  --color-scale-humidity-humid-emphasis: color-mix(in srgb, var(--color-scale-humidity-humid) 54%, transparent);
+  --color-scale-humidity-humid-foreground: var(--color-sky-50);
+  --color-scale-humidity-wet-surface: color-mix(in srgb, var(--color-scale-humidity-wet) var(--sidebar-block-surface-mix), transparent);
+  --color-scale-humidity-wet-emphasis: color-mix(in srgb, var(--color-scale-humidity-wet) 58%, transparent);
+  --color-scale-humidity-wet-foreground: var(--color-blue-50);
+
+  --color-scale-risk-good: var(--color-teal-500);
+  --color-scale-risk-moderate: var(--color-amber-500);
+  --color-scale-risk-bad: var(--color-rose-500);
+  --color-scale-risk-good-surface: color-mix(in srgb, var(--color-scale-risk-good) var(--sidebar-block-surface-mix), transparent);
+  --color-scale-risk-good-emphasis: color-mix(in srgb, var(--color-scale-risk-good) 52%, transparent);
+  --color-scale-risk-good-foreground: var(--color-teal-50);
+  --color-scale-risk-moderate-surface: color-mix(in srgb, var(--color-scale-risk-moderate) var(--sidebar-block-surface-mix), transparent);
+  --color-scale-risk-moderate-emphasis: color-mix(in srgb, var(--color-scale-risk-moderate) 54%, transparent);
+  --color-scale-risk-moderate-foreground: var(--color-amber-50);
+  --color-scale-risk-bad-surface: color-mix(in srgb, var(--color-scale-risk-bad) var(--sidebar-block-surface-mix), transparent);
+  --color-scale-risk-bad-emphasis: color-mix(in srgb, var(--color-scale-risk-bad) 58%, transparent);
+  --color-scale-risk-bad-foreground: var(--color-rose-50);
+
+  --color-scale-soc-critical: var(--color-rose-500);
+  --color-scale-soc-low: var(--color-amber-500);
+  --color-scale-soc-ok: var(--color-teal-500);
+
+  --color-status-good-surface: var(--color-scale-risk-good-surface);
+  --color-status-good-emphasis: var(--color-scale-risk-good-emphasis);
+  --color-status-good-foreground: var(--color-scale-risk-good-foreground);
+  --color-status-moderate-surface: var(--color-scale-risk-moderate-surface);
+  --color-status-moderate-emphasis: var(--color-scale-risk-moderate-emphasis);
+  --color-status-moderate-foreground: var(--color-scale-risk-moderate-foreground);
+  --color-status-critical-surface: var(--color-scale-risk-bad-surface);
+  --color-status-critical-emphasis: var(--color-scale-risk-bad-emphasis);
+  --color-status-critical-foreground: var(--color-scale-risk-bad-foreground);
+  --color-status-neutral-surface: color-mix(in srgb, var(--color-slate-500) var(--sidebar-block-surface-mix), transparent);
+  --color-status-neutral-emphasis: var(--color-slate-400);
+  --color-status-neutral-foreground: var(--color-slate-50);
+
+  --color-rain-active-surface: color-mix(in srgb, var(--color-sky-500) var(--sidebar-block-surface-mix), transparent);
+  --color-rain-active-emphasis: color-mix(in srgb, var(--color-sky-400) 65%, transparent);
+  --color-rain-active-foreground: var(--color-blue-50);
+
+  --color-scale-hue-red: var(--color-red-500);
+  --color-scale-hue-orange: var(--color-orange-500);
+  --color-scale-hue-amber: var(--color-amber-500);
+  --color-scale-hue-lime: var(--color-lime-500);
+  --color-scale-hue-green: var(--color-green-500);
+  --color-scale-hue-teal: var(--color-teal-500);
+  --color-scale-hue-cyan: var(--color-cyan-500);
+  --color-scale-hue-blue: var(--color-blue-500);
+  --color-scale-hue-indigo: var(--color-indigo-500);
+  --color-scale-hue-violet: var(--color-violet-500);
+  --color-scale-hue-fuchsia: var(--color-fuchsia-500);
+  --color-scale-hue-pink: var(--color-pink-500);
+
+  --color-chart-series-1: #0072b2;
+  --color-chart-series-2: #e69f00;
+  --color-chart-series-3: #009e73;
+  --color-chart-series-4: #d55e00;
+  --color-chart-series-5: #56b4e9;
+  --color-chart-series-6: #cc79a7;
   --color-chart-average: #ffffff;
   --color-chart-grid: #ffffff29;
   --color-chart-axis: #ffffff52;
   --color-chart-tooltip-bg: #0f172aeb;
   --color-chart-tooltip-border: #ffffff2e;
-  --color-chart-reference-band: #22c55e30;
+  --color-chart-reference-band: color-mix(in srgb, var(--color-scale-risk-good) 20%, transparent);
+
+  --shadow-slider-column: 0 10px 40px var(--color-ui-shadow-panel);
+  --shadow-slider-thumb: 0 8px 18px var(--color-slider-thumb-shadow), inset 0 1px 0 var(--color-slider-thumb-highlight), inset 0 -1px 0 color-mix(in srgb, var(--color-slider-thumb-border) 28%, transparent);
+  --spacing-slider-thumb-height: 1.75rem;
+  --spacing-slider-thumb-overhang: 0.25rem;
+  --spacing-slider-thumb-edge-inset: 0.375rem;
+  --spacing-slider-thumb-center-inset: calc(
+    var(--spacing-slider-thumb-height) / 2 + var(--spacing-slider-thumb-edge-inset)
+  );
+}
+
+@utility bg-auth-shell-gradient {
+  background-image: radial-gradient(
+      circle at top left,
+      var(--color-auth-shell-glow),
+      transparent 34%
+    ),
+    linear-gradient(
+      135deg,
+      var(--color-auth-shell-start),
+      var(--color-auth-shell-end)
+    );
+}
+
+@utility bg-scale-temperature {
+  background-image: linear-gradient(
+    to bottom,
+    var(--color-scale-temp-hot),
+    var(--color-scale-temp-warm),
+    var(--color-scale-temp-neutral),
+    var(--color-scale-temp-cool),
+    var(--color-scale-temp-cold)
+  );
+}
+
+@utility bg-scale-lightness {
+  background-image: linear-gradient(
+    to bottom,
+    var(--color-scale-lightness-light),
+    var(--color-scale-lightness-bright),
+    var(--color-scale-lightness-mid),
+    var(--color-scale-lightness-dim),
+    var(--color-scale-lightness-dark)
+  );
+}
+
+@utility bg-scale-hue {
+  background-image: linear-gradient(
+    to bottom,
+    var(--color-scale-hue-red),
+    var(--color-scale-hue-pink),
+    var(--color-scale-hue-fuchsia),
+    var(--color-scale-hue-violet),
+    var(--color-scale-hue-indigo),
+    var(--color-scale-hue-blue),
+    var(--color-scale-hue-cyan),
+    var(--color-scale-hue-teal),
+    var(--color-scale-hue-green),
+    var(--color-scale-hue-lime),
+    var(--color-scale-hue-amber),
+    var(--color-scale-hue-orange),
+    var(--color-scale-hue-red)
+  );
+}
+
+@utility bg-scale-saturation {
+  background-image: linear-gradient(
+    to bottom,
+    hsl(var(--slider-hue, 45) 100% 55%),
+    hsl(var(--slider-hue, 45) 0% 55%)
+  );
+}
+
+@utility slider-track-frame {
+  position: relative;
+  overflow: visible;
+  border: 1px solid var(--color-ui-border-subtle);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-slider-column);
+}
+
+@utility slider-track-fill {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+@utility slider-thumb-roundbar {
+  position: absolute;
+  left: calc(-1 * var(--spacing-slider-thumb-overhang));
+  right: calc(-1 * var(--spacing-slider-thumb-overhang));
+  height: var(--spacing-slider-thumb-height);
+  pointer-events: none;
+  border: 1px solid var(--color-slider-thumb-border);
+  border-radius: 9999px;
+  background-image: linear-gradient(
+    to bottom,
+    var(--color-slider-thumb-highlight) 0%,
+    var(--color-slider-thumb-surface) 34%,
+    color-mix(in srgb, var(--color-slider-thumb-surface) 82%, var(--color-slider-thumb-border)) 68%,
+    color-mix(in srgb, var(--color-slider-thumb-surface) 68%, var(--color-slider-thumb-border)) 100%
+  );
+  box-shadow: var(--shadow-slider-thumb);
+}
+
+@utility dimmer-glow {
+  background-color: color-mix(
+    in srgb,
+    var(--color-semantic-light-solid) var(--dimmer-fill-mix, 100%),
+    transparent
+  );
+  box-shadow: 0 0 var(--dimmer-shadow-blur, 100px)
+    var(--dimmer-shadow-spread, 34px)
+    color-mix(
+      in srgb,
+      var(--color-semantic-light-solid) var(--dimmer-shadow-mix, 80%),
+      transparent
+    );
 }

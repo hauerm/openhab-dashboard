@@ -54,11 +54,12 @@ const ViewOverlayShell = ({
         ) : null}
         <button
           type="button"
+          data-testid="overlay-close-button"
           onClick={onClose}
-          className="pointer-events-auto absolute right-3 top-3 z-20 rounded-full border border-ui-border-subtle bg-ui-surface-overlay p-1.5 text-ui-foreground transition hover:bg-ui-surface-panel"
+          className="pointer-events-auto absolute bottom-4 left-4 z-20 rounded-full border border-ui-border-subtle bg-ui-surface-overlay p-3 text-ui-foreground shadow-xl backdrop-blur-md transition hover:bg-ui-surface-panel md:bottom-5 md:left-5 md:p-3.5"
           aria-label="Overlay schließen"
         >
-          <MdClose className="h-5 w-5" />
+          <MdClose className="h-7 w-7 md:h-8 md:w-8" />
         </button>
         {layout === "fullscreen" ? (
           <div className="pointer-events-none relative z-10 h-full min-h-0">

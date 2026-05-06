@@ -1,4 +1,4 @@
-import { useRef, type PointerEvent } from "react";
+import { useRef, type CSSProperties, type PointerEvent } from "react";
 import {
   isPrimaryPointer,
   releasePointerCaptureSafely,
@@ -6,10 +6,8 @@ import {
 } from "../pointerGestures";
 
 const SLIDER_COLUMN_CLASS =
-  "pointer-events-auto relative h-full min-h-0 touch-none select-none overflow-hidden rounded-2xl border border-ui-border-subtle shadow-[0_10px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl transition disabled:cursor-not-allowed disabled:opacity-55";
-const CHANNEL_BAR_CLASS =
-  "pointer-events-none absolute left-3 right-3 rounded-full border border-white/80 bg-white/85 shadow-[0_0_22px_rgba(255,255,255,0.8)]";
-const CHANNEL_BAR_HEIGHT_PX = 28;
+  "pointer-events-auto slider-track-frame h-full min-h-0 touch-none select-none backdrop-blur-xl transition disabled:cursor-not-allowed disabled:opacity-55";
+const CHANNEL_BAR_CLASS = "slider-thumb-roundbar";
 
 interface VerticalChannelSliderProps {
   label: string;
@@ -17,7 +15,8 @@ interface VerticalChannelSliderProps {
   value: number;
   min: number;
   max: number;
-  background: string;
+  trackClassName: string;
+  style?: CSSProperties;
   disabled: boolean;
   onChange: (value: number, force?: boolean) => void;
 }
@@ -48,7 +47,8 @@ export const VerticalChannelSlider = ({
   value,
   min,
   max,
-  background,
+  trackClassName,
+  style,
   disabled,
   onChange,
 }: VerticalChannelSliderProps) => {
@@ -104,20 +104,22 @@ export const VerticalChannelSlider = ({
         releasePointerCaptureSafely(event.currentTarget, event.pointerId);
       }}
       className={SLIDER_COLUMN_CLASS}
-      style={{ background }}
+      style={style}
       aria-label={label}
       aria-valuemin={min}
       aria-valuemax={max}
       aria-valuenow={value}
     >
       <span
+        data-testid={`${testId}-track`}
+        aria-hidden="true"
+        className={`slider-track-fill ${trackClassName}`}
+      />
+      <span
         data-testid={`${testId}-handle`}
         className={CHANNEL_BAR_CLASS}
         style={{
-          top: `clamp(${CHANNEL_BAR_HEIGHT_PX / 2}px, ${handleTopPercent}%, calc(100% - ${
-            CHANNEL_BAR_HEIGHT_PX / 2
-          }px))`,
-          height: CHANNEL_BAR_HEIGHT_PX,
+          top: `clamp(var(--spacing-slider-thumb-center-inset), ${handleTopPercent}%, calc(100% - var(--spacing-slider-thumb-center-inset)))`,
           transform: "translateY(-50%)",
         }}
       />

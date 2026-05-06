@@ -8,8 +8,12 @@ import {
 } from "react-icons/md";
 import { getHealthIndexLabel } from "../../../domain/air-quality";
 import {
+  PROPERTY_AIR_QUALITY,
+  PROPERTY_CO2,
+  PROPERTY_HUMIDITY,
   PROPERTY_ILLUMINANCE,
   PROPERTY_RAIN,
+  PROPERTY_TEMPERATURE,
 } from "../../../domain/openhab-properties";
 import {
   getBackgroundTintLevel,
@@ -40,24 +44,71 @@ export interface IlluminancePresentation {
 
 const TINT_CLASSES: Record<BackgroundTintLevel, LocationPropertyTint> = {
   good: {
-    block: "border-status-good-emphasis bg-status-good-surface",
-    iconContainer: "bg-status-good-emphasis",
-    icon: "text-status-good-foreground",
+    block: "border-scale-risk-good-emphasis bg-scale-risk-good-surface",
+    iconContainer: "bg-scale-risk-good-emphasis",
+    icon: "text-scale-risk-good-foreground",
   },
   moderate: {
-    block: "border-status-moderate-emphasis bg-status-moderate-surface",
-    iconContainer: "bg-status-moderate-emphasis",
-    icon: "text-status-moderate-foreground",
+    block: "border-scale-risk-moderate-emphasis bg-scale-risk-moderate-surface",
+    iconContainer: "bg-scale-risk-moderate-emphasis",
+    icon: "text-scale-risk-moderate-foreground",
   },
   bad: {
-    block: "border-status-critical-emphasis bg-status-critical-surface",
-    iconContainer: "bg-status-critical-emphasis",
-    icon: "text-status-critical-foreground",
+    block: "border-scale-risk-bad-emphasis bg-scale-risk-bad-surface",
+    iconContainer: "bg-scale-risk-bad-emphasis",
+    icon: "text-scale-risk-bad-foreground",
   },
 };
 
+const TEMPERATURE_TINT_CLASSES = {
+  cold: {
+    block: "border-scale-temp-cold-emphasis bg-scale-temp-cold-surface",
+    iconContainer: "bg-scale-temp-cold-emphasis",
+    icon: "text-scale-temp-cold-foreground",
+  },
+  comfort: {
+    block: "border-scale-temp-comfort-emphasis bg-scale-temp-comfort-surface",
+    iconContainer: "bg-scale-temp-comfort-emphasis",
+    icon: "text-scale-temp-comfort-foreground",
+  },
+  warm: {
+    block: "border-scale-temp-warm-emphasis bg-scale-temp-warm-surface",
+    iconContainer: "bg-scale-temp-warm-emphasis",
+    icon: "text-scale-temp-warm-foreground",
+  },
+  hot: {
+    block: "border-scale-temp-hot-emphasis bg-scale-temp-hot-surface",
+    iconContainer: "bg-scale-temp-hot-emphasis",
+    icon: "text-scale-temp-hot-foreground",
+  },
+} satisfies Record<string, LocationPropertyTint>;
+
+const HUMIDITY_TINT_CLASSES = {
+  dry: {
+    block: "border-scale-humidity-dry-emphasis bg-scale-humidity-dry-surface",
+    iconContainer: "bg-scale-humidity-dry-emphasis",
+    icon: "text-scale-humidity-dry-foreground",
+  },
+  comfort: {
+    block:
+      "border-scale-humidity-comfort-emphasis bg-scale-humidity-comfort-surface",
+    iconContainer: "bg-scale-humidity-comfort-emphasis",
+    icon: "text-scale-humidity-comfort-foreground",
+  },
+  humid: {
+    block: "border-scale-humidity-humid-emphasis bg-scale-humidity-humid-surface",
+    iconContainer: "bg-scale-humidity-humid-emphasis",
+    icon: "text-scale-humidity-humid-foreground",
+  },
+  wet: {
+    block: "border-scale-humidity-wet-emphasis bg-scale-humidity-wet-surface",
+    iconContainer: "bg-scale-humidity-wet-emphasis",
+    icon: "text-scale-humidity-wet-foreground",
+  },
+} satisfies Record<string, LocationPropertyTint>;
+
 const DEFAULT_TINT: LocationPropertyTint = {
-  block: "border-ui-border-subtle bg-ui-surface-panel",
+  block: "border-status-neutral-emphasis bg-status-neutral-surface",
   iconContainer: "bg-status-neutral-surface",
   icon: "text-status-neutral-foreground",
 };
@@ -205,6 +256,38 @@ export const resolveIlluminancePresentation = (
   };
 };
 
+const resolveTemperatureTint = (value: number | null): LocationPropertyTint => {
+  if (value === null) {
+    return DEFAULT_TINT;
+  }
+  if (value <= 20) {
+    return TEMPERATURE_TINT_CLASSES.cold;
+  }
+  if (value <= 24) {
+    return TEMPERATURE_TINT_CLASSES.comfort;
+  }
+  if (value <= 27) {
+    return TEMPERATURE_TINT_CLASSES.warm;
+  }
+  return TEMPERATURE_TINT_CLASSES.hot;
+};
+
+const resolveHumidityTint = (value: number | null): LocationPropertyTint => {
+  if (value === null) {
+    return DEFAULT_TINT;
+  }
+  if (value <= 30) {
+    return HUMIDITY_TINT_CLASSES.dry;
+  }
+  if (value <= 60) {
+    return HUMIDITY_TINT_CLASSES.comfort;
+  }
+  if (value <= 70) {
+    return HUMIDITY_TINT_CLASSES.humid;
+  }
+  return HUMIDITY_TINT_CLASSES.wet;
+};
+
 export const formatLocationPropertyValue = (
   metricKey: LocationPropertyHistoryControlDefinition["metricKey"],
   value: number | null
@@ -231,12 +314,24 @@ export const resolveLocationPropertyTint = (
   property: string,
   value: number | null
 ): LocationPropertyTint => {
+  if (property === PROPERTY_TEMPERATURE) {
+    return resolveTemperatureTint(value);
+  }
+
+  if (property === PROPERTY_HUMIDITY) {
+    return resolveHumidityTint(value);
+  }
+
   if (property === PROPERTY_ILLUMINANCE) {
     return resolveIlluminancePresentation(value)?.tint ?? DEFAULT_TINT;
   }
 
   if (property === PROPERTY_RAIN) {
     return value !== null && value > 0 ? RAIN_ACTIVE_TINT : DEFAULT_TINT;
+  }
+
+  if (property !== PROPERTY_CO2 && property !== PROPERTY_AIR_QUALITY) {
+    return DEFAULT_TINT;
   }
 
   const config = LOCATION_PROPERTY_CONTROL_CONFIGS[property];

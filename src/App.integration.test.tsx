@@ -923,6 +923,15 @@ describe("App integration", () => {
     await user.click(screen.getByTestId("hud-metric-ventilation"));
 
     expect(screen.getByTestId("ventilation-overlay")).toBeInTheDocument();
+    expect(screen.getByTestId("overlay-close-button")).toHaveClass(
+      "bottom-4",
+      "left-4",
+      "p-3"
+    );
+    expect(screen.getByTestId("overlay-close-button")).not.toHaveClass(
+      "right-3",
+      "top-3"
+    );
     expect(screen.getByTestId("ventilation-overlay-status")).toHaveTextContent("Stufe 2");
     expect(screen.getByTestId("ventilation-overlay-mode")).toHaveTextContent("Automatik");
     expect(screen.getByTestId("ventilation-control-auto")).toBeInTheDocument();
@@ -1015,7 +1024,10 @@ describe("App integration", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByTestId(`living-control-dimmer-glow-${SAH3_Licht_TV}`)
-    ).toHaveStyle({ backgroundColor: "rgba(253, 224, 71, 0.571)" });
+    ).toHaveClass("dimmer-glow");
+    expect(
+      screen.getByTestId(`living-control-dimmer-glow-${SAH3_Licht_TV}`)
+    ).toHaveStyle("--dimmer-intensity: 0.35");
     expect(
       screen.getByTestId(
         `living-control-placeholder-icon-${RGBW_LED_STRIP_BUERO_KELLER_COLOR}-rgbw-light-on`
@@ -1109,7 +1121,10 @@ describe("App integration", () => {
     expect(
       screen.getByTestId("dimmer-control-Equ_Spots_TV-brightness-value")
     ).toHaveTextContent("B 35");
-    await user.click(screen.getByTestId("dimmer-control-Equ_Spots_TV-toggle"));
+    const dimmerToggle = screen.getByTestId("dimmer-control-Equ_Spots_TV-toggle");
+    expect(dimmerToggle).toHaveClass("rounded-2xl");
+    expect(dimmerToggle).not.toHaveClass("rounded-full");
+    await user.click(dimmerToggle);
     await waitFor(() => {
       expect(screen.getByTestId("dimmer-control-Equ_Spots_TV-state")).toHaveTextContent(
         "Aus"
@@ -1121,7 +1136,7 @@ describe("App integration", () => {
     );
     expect(dimmerBrightnessControl).toHaveTextContent("");
     expect(screen.getByTestId("dimmer-control-Equ_Spots_TV-brightness-handle"))
-      .toHaveStyle({ height: "28px" });
+      .toHaveClass("slider-thumb-roundbar");
     vi.spyOn(dimmerBrightnessControl, "getBoundingClientRect").mockReturnValue({
       x: 0,
       y: 0,
@@ -1285,7 +1300,7 @@ describe("App integration", () => {
       screen.getByTestId(
         `rgbw-light-control-${EQU_RGBW_LED_STRIP_BUERO_KELLER}-hue-handle`
       )
-    ).toHaveStyle({ height: "28px" });
+    ).toHaveClass("slider-thumb-roundbar");
     vi.spyOn(hueControl, "getBoundingClientRect").mockReturnValue({
       x: 0,
       y: 0,
@@ -1363,11 +1378,12 @@ describe("App integration", () => {
       );
     });
 
-    await user.click(
-      screen.getByTestId(
-        `rgbw-light-control-${EQU_RGBW_LED_STRIP_BUERO_KELLER}-toggle`
-      )
+    const rgbwToggle = screen.getByTestId(
+      `rgbw-light-control-${EQU_RGBW_LED_STRIP_BUERO_KELLER}-toggle`
     );
+    expect(rgbwToggle).toHaveClass("rounded-2xl");
+    expect(rgbwToggle).not.toHaveClass("rounded-full");
+    await user.click(rgbwToggle);
     await waitFor(() => {
       expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
         RGBW_LED_STRIP_BUERO_KELLER_COLOR,

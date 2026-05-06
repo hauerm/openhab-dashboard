@@ -73,25 +73,25 @@ const getHudIconClassName = (
 
 const getSocProgressStroke = (soc: number): string => {
   if (soc < 15) {
-    return "#f43f5e";
+    return "var(--color-scale-soc-critical)";
   }
   if (soc < 50) {
-    return "#f59e0b";
+    return "var(--color-scale-soc-low)";
   }
-  return "#22c55e";
+  return "var(--color-scale-soc-ok)";
 };
 
 const getSocTextClassName = (soc: number | null): string => {
   if (soc === null) {
-    return "text-white";
+    return "text-ui-foreground";
   }
   if (soc < 15) {
-    return "text-[#f43f5e]";
+    return "text-scale-soc-critical";
   }
   if (soc < 50) {
-    return "text-[#f59e0b]";
+    return "text-scale-soc-low";
   }
-  return "text-[#22c55e]";
+  return "text-scale-soc-ok";
 };
 
 const SocProgressRings = ({
@@ -134,7 +134,7 @@ const SocProgressRings = ({
               cy="50"
               r={radius}
               fill="none"
-              stroke="rgba(255,255,255,0.2)"
+              stroke="var(--color-ui-ring-track)"
               strokeWidth={strokeWidth}
             />
             <circle
