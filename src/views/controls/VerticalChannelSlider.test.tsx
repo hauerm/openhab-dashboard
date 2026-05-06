@@ -10,7 +10,7 @@ const renderSlider = (onChange = vi.fn()) => {
       value={40}
       min={0}
       max={100}
-      background="linear-gradient(to bottom, #fff, #000)"
+      trackClassName="bg-scale-lightness"
       disabled={false}
       onChange={onChange}
     />
@@ -29,18 +29,25 @@ const renderSlider = (onChange = vi.fn()) => {
     toJSON: () => ({}),
   });
 
-  return { slider, onChange };
+  const track = screen.getByTestId("brightness-slider-track");
+  const handle = screen.getByTestId("brightness-slider-handle");
+
+  return { slider, track, handle, onChange };
 };
 
 describe("VerticalChannelSlider", () => {
   it("tracks one active pointer and finalizes on pointer up", () => {
     const onChange = vi.fn();
-    const { slider } = renderSlider(onChange);
+    const { slider, track, handle } = renderSlider(onChange);
 
     expect(slider).toHaveAttribute("role", "slider");
     expect(slider).toHaveAttribute("aria-valuemin", "0");
     expect(slider).toHaveAttribute("aria-valuemax", "100");
     expect(slider).toHaveAttribute("aria-valuenow", "40");
+    expect(slider).toHaveClass("slider-track-frame");
+    expect(slider).not.toHaveClass("bg-scale-lightness");
+    expect(track).toHaveClass("slider-track-fill", "bg-scale-lightness");
+    expect(handle).toHaveClass("slider-thumb-roundbar");
 
     fireEvent.pointerDown(slider, {
       pointerId: 1,

@@ -236,7 +236,7 @@ describe("EvccOverlayControl", () => {
 
     expect(screen.getByTestId("living-control-evcc-soc-ring-44")).toHaveAttribute(
       "stroke",
-      "#f43f5e"
+      "var(--color-scale-soc-critical)"
     );
 
     act(() => {
@@ -250,7 +250,7 @@ describe("EvccOverlayControl", () => {
     );
     expect(screen.getByTestId("living-control-evcc-soc-ring-44")).toHaveAttribute(
       "stroke",
-      "#f59e0b"
+      "var(--color-scale-soc-low)"
     );
 
     act(() => {
@@ -264,7 +264,7 @@ describe("EvccOverlayControl", () => {
     );
     expect(screen.getByTestId("living-control-evcc-soc-ring-44")).toHaveAttribute(
       "stroke",
-      "#22c55e"
+      "var(--color-scale-soc-ok)"
     );
   });
 
@@ -294,7 +294,7 @@ describe("EvccOverlayControl", () => {
     ).toHaveClass("h-15", "w-15", "md:h-18", "md:w-18");
     expect(
       screen.getByTestId("living-control-evcc-battery-soc-ring-44")
-    ).toHaveAttribute("stroke", "#f59e0b");
+    ).toHaveAttribute("stroke", "var(--color-scale-soc-low)");
     expect(
       screen.getByTestId(
         `living-control-evcc-battery-soc-${itemRefs.connectedItemName}`
@@ -304,7 +304,7 @@ describe("EvccOverlayControl", () => {
       screen.getByTestId(
         `living-control-evcc-battery-soc-${itemRefs.connectedItemName}`
       )
-    ).toHaveClass("text-[#f59e0b]");
+    ).toHaveClass("text-scale-soc-low");
     expect(
       screen.getByTestId(
         `living-control-evcc-battery-state-${itemRefs.connectedItemName}`
@@ -381,7 +381,7 @@ describe("EvccOverlayControl", () => {
       screen.getByTestId(
         `living-control-evcc-battery-soc-${itemRefs.connectedItemName}`
       )
-    ).toHaveClass("text-[#f43f5e]");
+    ).toHaveClass("text-scale-soc-critical");
 
     act(() => {
       setItemStates({
@@ -401,7 +401,7 @@ describe("EvccOverlayControl", () => {
       screen.getByTestId(
         `living-control-evcc-battery-soc-${itemRefs.connectedItemName}`
       )
-    ).toHaveClass("text-[#22c55e]");
+    ).toHaveClass("text-scale-soc-ok");
   });
 
   it("keeps the HUD unchanged when battery item refs are not configured", () => {

@@ -3,6 +3,7 @@ import {
   MdOutlineLightbulb,
   MdPowerSettingsNew,
 } from "react-icons/md";
+import type { CSSProperties } from "react";
 import ViewOverlayShell from "../../ViewOverlayShell";
 import type {
   DimmerControlDefinition,
@@ -97,6 +98,13 @@ export const DimmerHudControl = ({
   const { isOn, brightness } = useDimmerControlModel(definition);
   const hudState = isOn ? "dimmer-on" : "dimmer-off";
   const intensity = Math.max(0.18, brightness / 100);
+  const dimmerGlowStyle = {
+    "--dimmer-intensity": intensity,
+    "--dimmer-fill-mix": `${34 + intensity * 66}%`,
+    "--dimmer-shadow-blur": `${40 + intensity * 60}px`,
+    "--dimmer-shadow-spread": `${10 + intensity * 24}px`,
+    "--dimmer-shadow-mix": `${20 + intensity * 60}%`,
+  } as CSSProperties;
 
   return (
     <button
@@ -116,17 +124,10 @@ export const DimmerHudControl = ({
         data-testid={`living-control-dimmer-glow-${definition.itemRefs.itemName}`}
         className={`pointer-events-auto flex h-20 w-20 items-center justify-center rounded-full backdrop-blur-sm transition md:h-24 md:w-24 ${
           isOn
-            ? "hover:brightness-110"
+            ? "dimmer-glow hover:brightness-110"
             : "bg-ui-surface-overlay shadow-xl hover:bg-ui-surface-panel"
         }`}
-        style={
-          isOn
-            ? {
-                backgroundColor: `rgba(253, 224, 71, ${0.34 + intensity * 0.66})`,
-                boxShadow: `0 0 ${40 + intensity * 60}px ${10 + intensity * 24}px rgba(253, 224, 71, ${0.2 + intensity * 0.6})`,
-              }
-            : undefined
-        }
+        style={isOn ? dimmerGlowStyle : undefined}
       >
         {isOn ? (
           <MdEmojiObjects
@@ -229,7 +230,7 @@ export const DimmerOverlayControl = ({
           </div>
         </section>
 
-        <section className="pointer-events-none flex h-full min-h-0 items-center justify-center rounded-2xl border border-ui-border-subtle bg-ui-surface-panel/80 p-5 backdrop-blur-xl">
+        <section className="pointer-events-none grid h-full min-h-0 grid-rows-[minmax(0,1fr)]">
           <button
             type="button"
             data-testid={`dimmer-control-${definition.controlId}-toggle`}
@@ -237,18 +238,14 @@ export const DimmerOverlayControl = ({
               void toggleDimmer();
             }}
             disabled={sending}
-            className="pointer-events-auto flex aspect-square w-full max-w-56 items-center justify-center rounded-full border border-ui-border-subtle text-ui-foreground transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55"
-            style={{
-              backgroundColor: isOn
-                ? "var(--color-semantic-light-solid)"
-                : "var(--color-ui-surface-overlay)",
-              boxShadow: isOn
-                ? "0 0 90px 20px var(--color-semantic-light-glow)"
-                : undefined,
-            }}
+            className={`pointer-events-auto flex h-full min-h-0 w-full items-center justify-center overflow-hidden rounded-2xl border border-ui-border-subtle transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55 ${
+              isOn
+                ? "bg-semantic-light-solid text-ui-surface-shell shadow-[0_0_90px_20px_var(--color-semantic-light-glow)]"
+                : "bg-ui-surface-overlay text-ui-foreground"
+            }`}
             aria-label={`${definition.label} ${isOn ? "ausschalten" : "einschalten"}`}
           >
-            <MdPowerSettingsNew className="h-1/2 w-1/2" />
+            <MdPowerSettingsNew className="h-[72%] w-[72%] max-h-[9rem] max-w-[9rem] md:max-h-[11rem] md:max-w-[11rem]" />
           </button>
         </section>
 
@@ -258,7 +255,7 @@ export const DimmerOverlayControl = ({
           value={brightness}
           min={0}
           max={100}
-          background="linear-gradient(to bottom, #ffffff, var(--color-ui-surface-shell))"
+          trackClassName="bg-scale-lightness"
           disabled={false}
           onChange={(value, force) => {
             setBrightness(value, force);

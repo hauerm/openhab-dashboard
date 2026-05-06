@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import type { CSSProperties, SVGProps } from "react";
 import { MdPowerSettingsNew } from "react-icons/md";
 import ViewOverlayShell from "../../ViewOverlayShell";
 import type { RgbwLightControlDefinition } from "../controlDefinitions";
@@ -20,18 +20,18 @@ interface RgbwLightOverlayControlProps {
 const TITLE_TEXT_SHADOW_CLASS = "[text-shadow:0_2px_10px_var(--color-ui-shadow-text)]";
 
 const COLOR_SPECTRUM_SEGMENTS = [
-  { color: "#ef4444", rotation: 0 },
-  { color: "#f97316", rotation: 30 },
-  { color: "#f59e0b", rotation: 60 },
-  { color: "#84cc16", rotation: 90 },
-  { color: "#22c55e", rotation: 120 },
-  { color: "#14b8a6", rotation: 150 },
-  { color: "#06b6d4", rotation: 180 },
-  { color: "#3b82f6", rotation: 210 },
-  { color: "#6366f1", rotation: 240 },
-  { color: "#8b5cf6", rotation: 270 },
-  { color: "#d946ef", rotation: 300 },
-  { color: "#ec4899", rotation: 330 },
+  { strokeClassName: "stroke-scale-hue-red", rotation: 0 },
+  { strokeClassName: "stroke-scale-hue-orange", rotation: 30 },
+  { strokeClassName: "stroke-scale-hue-amber", rotation: 60 },
+  { strokeClassName: "stroke-scale-hue-lime", rotation: 90 },
+  { strokeClassName: "stroke-scale-hue-green", rotation: 120 },
+  { strokeClassName: "stroke-scale-hue-teal", rotation: 150 },
+  { strokeClassName: "stroke-scale-hue-cyan", rotation: 180 },
+  { strokeClassName: "stroke-scale-hue-blue", rotation: 210 },
+  { strokeClassName: "stroke-scale-hue-indigo", rotation: 240 },
+  { strokeClassName: "stroke-scale-hue-violet", rotation: 270 },
+  { strokeClassName: "stroke-scale-hue-fuchsia", rotation: 300 },
+  { strokeClassName: "stroke-scale-hue-pink", rotation: 330 },
 ];
 
 const ColorSpectrumCircleIcon = ({
@@ -52,7 +52,7 @@ const ColorSpectrumCircleIcon = ({
         cy="50"
         r="32"
         fill="none"
-        stroke={segment.color}
+        className={segment.strokeClassName}
         strokeWidth="22"
         strokeDasharray="15.2 186"
         strokeLinecap="butt"
@@ -142,6 +142,9 @@ export const RgbwLightOverlayControl = ({
     setSaturation,
     setBrightness,
   } = useRgbwLightControlModel(definition);
+  const saturationSliderStyle = {
+    "--slider-hue": color.hue,
+  } as CSSProperties;
 
   return (
     <ViewOverlayShell onClose={onClose} layout="fullscreen">
@@ -172,7 +175,7 @@ export const RgbwLightOverlayControl = ({
           </div>
         </section>
 
-        <section className="pointer-events-none flex h-full min-h-0 items-center justify-center rounded-2xl border border-ui-border-subtle bg-ui-surface-panel/80 p-5 backdrop-blur-xl">
+        <section className="pointer-events-none grid h-full min-h-0 grid-rows-[minmax(0,1fr)]">
           <button
             type="button"
             data-testid={`rgbw-light-control-${definition.controlId}-toggle`}
@@ -180,14 +183,14 @@ export const RgbwLightOverlayControl = ({
               void toggle();
             }}
             disabled={sending}
-            className="pointer-events-auto flex aspect-square w-full max-w-56 items-center justify-center rounded-full border border-ui-border-subtle text-ui-foreground transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55"
+            className="pointer-events-auto flex h-full min-h-0 w-full items-center justify-center overflow-hidden rounded-2xl border border-ui-border-subtle text-ui-foreground transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55"
             style={{
               backgroundColor: isOn ? cssColor : "var(--color-ui-surface-overlay)",
               boxShadow: isOn ? `0 0 90px 20px ${cssColor}` : undefined,
             }}
             aria-label={`${definition.label} ${isOn ? "ausschalten" : "einschalten"}`}
           >
-            <MdPowerSettingsNew className="h-1/2 w-1/2" />
+            <MdPowerSettingsNew className="h-[72%] w-[72%] max-h-[9rem] max-w-[9rem] drop-shadow-[0_2px_8px_var(--color-ui-shadow-text)] md:max-h-[11rem] md:max-w-[11rem]" />
           </button>
         </section>
 
@@ -197,7 +200,7 @@ export const RgbwLightOverlayControl = ({
           value={color.hue}
           min={0}
           max={360}
-          background="linear-gradient(to bottom, hsl(360 100% 50%), hsl(300 100% 50%), hsl(240 100% 50%), hsl(180 100% 50%), hsl(120 100% 50%), hsl(60 100% 50%), hsl(0 100% 50%))"
+          trackClassName="bg-scale-hue"
           disabled={false}
           onChange={(value, force) => {
             setHue(value, force);
@@ -209,7 +212,8 @@ export const RgbwLightOverlayControl = ({
           value={color.saturation}
           min={0}
           max={100}
-          background={`linear-gradient(to bottom, hsl(${color.hue} 100% 55%), hsl(${color.hue} 0% 55%))`}
+          trackClassName="bg-scale-saturation"
+          style={saturationSliderStyle}
           disabled={false}
           onChange={(value, force) => {
             setSaturation(value, force);
@@ -221,7 +225,7 @@ export const RgbwLightOverlayControl = ({
           value={color.brightness}
           min={0}
           max={100}
-          background="linear-gradient(to bottom, #ffffff, var(--color-ui-surface-shell))"
+          trackClassName="bg-scale-lightness"
           disabled={false}
           onChange={(value, force) => {
             setBrightness(value, force);

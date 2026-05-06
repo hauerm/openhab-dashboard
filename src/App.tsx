@@ -50,7 +50,7 @@ function OpenHABTokenLogin({ onLogin }: TokenLoginProps) {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-ui-surface-shell text-ui-foreground">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.14),transparent_34%),linear-gradient(135deg,rgba(9,17,28,0.94),rgba(22,33,48,0.98))]" />
+      <div className="absolute inset-0 bg-auth-shell-gradient" />
       <main className="relative z-10 flex min-h-screen items-center justify-center px-4">
         <form
           onSubmit={handleSubmit}
