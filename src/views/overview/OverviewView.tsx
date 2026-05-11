@@ -175,10 +175,15 @@ const COUNT_LABEL_BY_GROUP_KEY: Record<
 };
 
 const formatGroupTitle = (group: ControlGroup): string => {
-  const labels = COUNT_LABEL_BY_GROUP_KEY[group.groupKey];
-  return `${group.controls.length} ${
-    group.controls.length === 1 ? labels.singular : labels.plural
-  }`;
+  return formatGroupCountLabel(group.groupKey, group.controls.length);
+};
+
+const formatGroupCountLabel = (
+  groupKey: OverviewGroupKey,
+  count: number
+): string => {
+  const labels = COUNT_LABEL_BY_GROUP_KEY[groupKey];
+  return `${count} ${count === 1 ? labels.singular : labels.plural}`;
 };
 
 const parseSwitchLikeIsOn = (rawState: string | undefined): boolean => {
@@ -420,6 +425,7 @@ const AGGREGATE_ICON_CLASS = "h-7 w-7 md:h-8 md:w-8";
 interface AggregateAction {
   actionKey: string;
   ariaLabel: string;
+  confirmVerb: string;
   testId: string;
   icon: ReactNode;
   className?: string;
@@ -443,16 +449,24 @@ const AggregateActions = ({ group }: { group: ControlGroup }) => {
     return null;
   }
 
-  const run = async (
-    actionKey: string,
-    action: () => Promise<{ attempted: number; failed: number }>
-  ) => {
+  const run = async (action: AggregateAction) => {
     if (sendingAction) {
       return;
     }
-    setSendingAction(actionKey);
+
+    const confirmed = window.confirm(
+      `Wirklich ${formatGroupCountLabel(
+        group.groupKey,
+        aggregateControls.length
+      )} ${action.confirmVerb}?`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setSendingAction(action.actionKey);
     try {
-      const result = await action();
+      const result = await action.execute();
       if (result.failed > 0) {
         toast.error(
           `${result.failed} von ${result.attempted} Befehlen konnten nicht gesendet werden.`
@@ -475,6 +489,7 @@ const AggregateActions = ({ group }: { group: ControlGroup }) => {
               ariaLabel: `${formatGroupTitle(group)} ${
                 anyLightOn ? "ausschalten" : "einschalten"
               }`,
+              confirmVerb: anyLightOn ? "ausschalten" : "einschalten",
               testId: "overview-aggregate-lights-toggle",
               icon: <MdPowerSettingsNew className={AGGREGATE_ICON_CLASS} />,
               className: anyLightOn
@@ -493,6 +508,7 @@ const AggregateActions = ({ group }: { group: ControlGroup }) => {
           {
             actionKey: "shading-UP",
             ariaLabel: `${formatGroupTitle(group)} öffnen`,
+            confirmVerb: "öffnen",
             testId: "overview-aggregate-shading-up",
             icon: <MdKeyboardArrowUp className={AGGREGATE_ICON_CLASS} />,
             className: AGGREGATE_BUTTON_DEFAULT_CLASS,
@@ -501,6 +517,7 @@ const AggregateActions = ({ group }: { group: ControlGroup }) => {
           {
             actionKey: "shading-STOP",
             ariaLabel: `${formatGroupTitle(group)} stoppen`,
+            confirmVerb: "stoppen",
             testId: "overview-aggregate-shading-stop",
             icon: <MdStop className={AGGREGATE_ICON_CLASS} />,
             className: AGGREGATE_BUTTON_DEFAULT_CLASS,
@@ -509,6 +526,7 @@ const AggregateActions = ({ group }: { group: ControlGroup }) => {
           {
             actionKey: "shading-DOWN",
             ariaLabel: `${formatGroupTitle(group)} schließen`,
+            confirmVerb: "schließen",
             testId: "overview-aggregate-shading-down",
             icon: <MdKeyboardArrowDown className={AGGREGATE_ICON_CLASS} />,
             className: AGGREGATE_BUTTON_DEFAULT_CLASS,
@@ -526,6 +544,7 @@ const AggregateActions = ({ group }: { group: ControlGroup }) => {
               ariaLabel: `${formatGroupTitle(group)} ${
                 anyPowerOn ? "ausschalten" : "einschalten"
               }`,
+              confirmVerb: anyPowerOn ? "ausschalten" : "einschalten",
               testId: "overview-aggregate-power-toggle",
               icon: <MdPowerSettingsNew className={AGGREGATE_ICON_CLASS} />,
               className: anyPowerOn
@@ -558,7 +577,7 @@ const AggregateActions = ({ group }: { group: ControlGroup }) => {
           aria-label={action.ariaLabel}
           disabled={Boolean(sendingAction)}
           onClick={() => {
-            void run(action.actionKey, action.execute);
+            void run(action);
           }}
           className={`${AGGREGATE_BUTTON_BASE_CLASS} ${
             action.className ?? AGGREGATE_BUTTON_DEFAULT_CLASS
