@@ -7,6 +7,14 @@ import type {
   RgbwLightControlDefinition,
   ViewControlDefinition,
 } from "../controls/controlDefinitions";
+import { sendRaffstoreCommand } from "../controls/raffstore/commands";
+import { parseOpeningPercent } from "../controls/raffstore/model";
+import {
+  runArbeitsstellung as runRaffstoreArbeitsstellung,
+  runSchliessen as runRaffstoreSchliessen,
+  runTiltPreset as runRaffstoreTiltPreset,
+  type RaffstoreTiltPreset,
+} from "../controls/raffstore/sequences";
 import { parseHsbState, hsbToCommand } from "../controls/rgbw-light/model";
 import { sendViewItemCommand } from "../controls/viewItemCommand";
 
@@ -20,11 +28,19 @@ type LightAggregateDefinition =
   | DimmerControlDefinition
   | RgbwLightControlDefinition;
 
-type ShadingAggregateDefinition = OpeningControlDefinition & {
-  subtype: "raffstore" | "rollershutter";
+type RaffstoreAggregateDefinition = OpeningControlDefinition & {
+  subtype: "raffstore";
+};
+
+type RollershutterAggregateDefinition = OpeningControlDefinition & {
+  subtype: "rollershutter";
 };
 
 type PowerAggregateDefinition = PowerControlDefinition;
+export type RaffstoreAggregatePreset =
+  | "arbeitsstellung"
+  | "schliessen"
+  | RaffstoreTiltPreset;
 
 const isLightAggregateDefinition = (
   definition: ViewControlDefinition
@@ -33,15 +49,48 @@ const isLightAggregateDefinition = (
   definition.controlType === "dimmer" ||
   definition.controlType === "rgbw-light";
 
-const isShadingAggregateDefinition = (
+const isRaffstoreAggregateDefinition = (
   definition: ViewControlDefinition
-): definition is ShadingAggregateDefinition =>
-  definition.controlType === "opening" &&
-  (definition.subtype === "raffstore" || definition.subtype === "rollershutter");
+): definition is RaffstoreAggregateDefinition =>
+  definition.controlType === "opening" && definition.subtype === "raffstore";
+
+const isRollershutterAggregateDefinition = (
+  definition: ViewControlDefinition
+): definition is RollershutterAggregateDefinition =>
+  definition.controlType === "opening" && definition.subtype === "rollershutter";
 
 const isPowerAggregateDefinition = (
   definition: ViewControlDefinition
 ): definition is PowerAggregateDefinition => definition.controlType === "power";
+
+const getOpeningItemNames = (definition: OpeningControlDefinition): string[] =>
+  Array.from(
+    new Set(
+      (definition.itemRefs.itemNames.length > 0
+        ? definition.itemRefs.itemNames
+        : [definition.itemRefs.itemName]
+      )
+        .map((itemName) => itemName.trim())
+        .filter((itemName) => itemName.length > 0)
+    )
+  );
+
+const resolveOpeningPercent = (
+  definition: OpeningControlDefinition,
+  itemStates: ReturnType<typeof useViewStore.getState>["itemStates"]
+): number | null => {
+  const parsedValues = getOpeningItemNames(definition)
+    .map((itemName) => parseOpeningPercent(itemStates[itemName]?.rawState))
+    .filter((value): value is number => value !== null);
+
+  if (parsedValues.length === 0) {
+    return null;
+  }
+
+  return Math.round(
+    parsedValues.reduce((sum, value) => sum + value, 0) / parsedValues.length
+  );
+};
 
 const settle = async (
   tasks: readonly (() => Promise<void>)[]
@@ -86,31 +135,59 @@ export const sendLightsAggregateCommand = async (
   );
 };
 
-export const sendShadingAggregateCommand = async (
+export const sendRaffstoreAggregatePresetCommand = async (
   definitions: readonly ViewControlDefinition[],
-  command: "UP" | "STOP" | "DOWN"
+  preset: RaffstoreAggregatePreset
+): Promise<AggregateCommandResult> => {
+  const itemStates = useViewStore.getState().itemStates;
+  const raffstoreDefinitions = definitions.filter(isRaffstoreAggregateDefinition);
+
+  return settle(
+    raffstoreDefinitions.flatMap((definition) => {
+      const itemNames = getOpeningItemNames(definition);
+      if (itemNames.length === 0) {
+        return [];
+      }
+
+      return [
+        async () => {
+          const sequenceContext = {
+            sendCommand: (command: "UP" | "DOWN" | "STOP") =>
+              sendRaffstoreCommand(itemNames, command),
+            getOpeningPercent: () => resolveOpeningPercent(definition, itemStates),
+          };
+          const signal = new AbortController().signal;
+
+          if (preset === "arbeitsstellung") {
+            await runRaffstoreArbeitsstellung(sequenceContext, signal);
+            return;
+          }
+          if (preset === "schliessen") {
+            await runRaffstoreSchliessen(sequenceContext, signal);
+            return;
+          }
+          await runRaffstoreTiltPreset(sequenceContext, preset, signal);
+        },
+      ];
+    })
+  );
+};
+
+export const sendRollershutterAggregateCommand = async (
+  definitions: readonly ViewControlDefinition[],
+  command: "UP" | "DOWN"
 ): Promise<AggregateCommandResult> => {
   const itemNames = Array.from(
     new Set(
       definitions
-        .filter(isShadingAggregateDefinition)
-        .flatMap((definition) =>
-          definition.itemRefs.itemNames.length > 0
-            ? definition.itemRefs.itemNames
-            : [definition.itemRefs.itemName]
-        )
-        .map((itemName) => itemName.trim())
-        .filter((itemName) => itemName.length > 0)
+        .filter(isRollershutterAggregateDefinition)
+        .flatMap(getOpeningItemNames)
     )
   );
 
   return settle(
     itemNames.map((itemName) => async () => {
-      await sendViewItemCommand(
-        itemName,
-        command,
-        command === "STOP" ? "StopMove" : "UpDown"
-      );
+      await sendViewItemCommand(itemName, command, "UpDown");
     })
   );
 };

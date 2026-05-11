@@ -2,7 +2,8 @@ import type { ViewControlDefinition } from "../controls/controlDefinitions";
 
 export type OverviewGroupKey =
   | "lights"
-  | "shading"
+  | "raffstore"
+  | "rollershutter"
   | "awning"
   | "power"
   | "tv"
@@ -11,7 +12,7 @@ export type OverviewGroupKey =
   | "doors"
   | "other";
 
-export type AggregateCapability = "lights" | "shading" | "power";
+export type AggregateCapability = "lights" | "raffstore" | "rollershutter" | "power";
 export type OverviewExpandedLayout = "icon-grid" | "detail-list";
 
 export interface OverviewControlMetadata {
@@ -30,28 +31,34 @@ export interface OverviewGroupDefinition {
 export const OVERVIEW_GROUPS: readonly OverviewGroupDefinition[] = [
   { groupKey: "lights", label: "Licht", sortOrder: 10, expandedLayout: "icon-grid" },
   {
-    groupKey: "shading",
-    label: "Beschattung",
+    groupKey: "raffstore",
+    label: "Raffstores",
     sortOrder: 20,
     expandedLayout: "icon-grid",
   },
-  { groupKey: "awning", label: "Markise", sortOrder: 30, expandedLayout: "icon-grid" },
+  {
+    groupKey: "rollershutter",
+    label: "Rollläden",
+    sortOrder: 30,
+    expandedLayout: "icon-grid",
+  },
+  { groupKey: "awning", label: "Markise", sortOrder: 40, expandedLayout: "icon-grid" },
   {
     groupKey: "ventilation",
     label: "Lüftung",
-    sortOrder: 40,
+    sortOrder: 50,
     expandedLayout: "icon-grid",
   },
-  { groupKey: "tv", label: "TV", sortOrder: 50, expandedLayout: "detail-list" },
+  { groupKey: "tv", label: "TV", sortOrder: 60, expandedLayout: "detail-list" },
   {
     groupKey: "power",
     label: "Steckdosen",
-    sortOrder: 60,
+    sortOrder: 70,
     expandedLayout: "detail-list",
   },
-  { groupKey: "evcc", label: "Laden", sortOrder: 70, expandedLayout: "detail-list" },
-  { groupKey: "doors", label: "Tore", sortOrder: 80, expandedLayout: "icon-grid" },
-  { groupKey: "other", label: "Sonstiges", sortOrder: 90, expandedLayout: "icon-grid" },
+  { groupKey: "evcc", label: "Laden", sortOrder: 80, expandedLayout: "detail-list" },
+  { groupKey: "doors", label: "Tore", sortOrder: 90, expandedLayout: "icon-grid" },
+  { groupKey: "other", label: "Sonstiges", sortOrder: 100, expandedLayout: "icon-grid" },
 ] as const;
 
 const GROUP_BY_KEY = new Map(
@@ -79,13 +86,17 @@ export const getOverviewControlMetadata = (
   }
 
   if (definition.controlType === "opening") {
-    if (
-      definition.subtype === "raffstore" ||
-      definition.subtype === "rollershutter"
-    ) {
+    if (definition.subtype === "raffstore") {
       return {
-        overviewGroup: "shading",
-        aggregateCapability: "shading",
+        overviewGroup: "raffstore",
+        aggregateCapability: "raffstore",
+        aggregateEnabled: true,
+      };
+    }
+    if (definition.subtype === "rollershutter") {
+      return {
+        overviewGroup: "rollershutter",
+        aggregateCapability: "rollershutter",
         aggregateEnabled: true,
       };
     }

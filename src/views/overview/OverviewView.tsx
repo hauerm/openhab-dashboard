@@ -14,7 +14,6 @@ import {
   MdKeyboardArrowUp,
   MdPowerSettingsNew,
   MdSpaceDashboard,
-  MdStop,
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import LocationDockButton from "../../components/LocationDockButton";
@@ -24,6 +23,8 @@ import { useViewStore } from "../../stores/viewStore";
 import type { OpenHABSemanticModel } from "../../domain/openhab-model";
 import type { ViewId, ViewTrackedItemState } from "../../types/view";
 import type { ViewControlDefinition } from "../controls/controlDefinitions";
+import { RAFFSTORE_TILT_ANGLE_BY_PRESET } from "../controls/raffstore/presetAngles";
+import { RaffstorePresetIcon } from "../controls/raffstore/presetIcons";
 import { renderHudControl, renderOverlayControl } from "../controls/renderControls";
 import { parseHsbState } from "../controls/rgbw-light/model";
 import {
@@ -48,7 +49,8 @@ import {
 import {
   sendLightsAggregateCommand,
   sendPowerAggregateCommand,
-  sendShadingAggregateCommand,
+  sendRaffstoreAggregatePresetCommand,
+  sendRollershutterAggregateCommand,
 } from "./aggregateCommands";
 
 interface OverviewViewProps extends ViewProps {
@@ -164,7 +166,8 @@ const COUNT_LABEL_BY_GROUP_KEY: Record<
   { singular: string; plural: string }
 > = {
   lights: { singular: "Licht", plural: "Lichter" },
-  shading: { singular: "Beschattung", plural: "Beschattungen" },
+  raffstore: { singular: "Raffstore", plural: "Raffstores" },
+  rollershutter: { singular: "Rollladen", plural: "Rollläden" },
   awning: { singular: "Markise", plural: "Markisen" },
   power: { singular: "Steckdose", plural: "Steckdosen" },
   tv: { singular: "TV", plural: "TVs" },
@@ -503,34 +506,98 @@ const AggregateActions = ({ group }: { group: ControlGroup }) => {
             },
           ];
         })()
-      : group.aggregateCapability === "shading"
+      : group.aggregateCapability === "raffstore"
       ? [
           {
-            actionKey: "shading-UP",
-            ariaLabel: `${formatGroupTitle(group)} öffnen`,
-            confirmVerb: "öffnen",
-            testId: "overview-aggregate-shading-up",
-            icon: <MdKeyboardArrowUp className={AGGREGATE_ICON_CLASS} />,
+            actionKey: "raffstore-preset-arbeitsstellung",
+            ariaLabel: `${formatGroupTitle(group)} Arbeitsstellung`,
+            confirmVerb: "auf Arbeitsstellung stellen",
+            testId: "overview-aggregate-raffstore-preset-arbeitsstellung",
+            icon: <RaffstorePresetIcon angleDeg={0} className={AGGREGATE_ICON_CLASS} />,
             className: AGGREGATE_BUTTON_DEFAULT_CLASS,
-            execute: () => sendShadingAggregateCommand(aggregateControls, "UP"),
+            execute: () =>
+              sendRaffstoreAggregatePresetCommand(
+                aggregateControls,
+                "arbeitsstellung"
+              ),
           },
           {
-            actionKey: "shading-STOP",
-            ariaLabel: `${formatGroupTitle(group)} stoppen`,
-            confirmVerb: "stoppen",
-            testId: "overview-aggregate-shading-stop",
-            icon: <MdStop className={AGGREGATE_ICON_CLASS} />,
+            actionKey: "raffstore-preset-tilt-25",
+            ariaLabel: `${formatGroupTitle(group)} Lamelle 25 Prozent`,
+            confirmVerb: "auf Lamelle 25 Prozent stellen",
+            testId: "overview-aggregate-raffstore-preset-tilt-25",
+            icon: (
+              <RaffstorePresetIcon
+                angleDeg={RAFFSTORE_TILT_ANGLE_BY_PRESET[25]}
+                className={AGGREGATE_ICON_CLASS}
+              />
+            ),
             className: AGGREGATE_BUTTON_DEFAULT_CLASS,
-            execute: () => sendShadingAggregateCommand(aggregateControls, "STOP"),
+            execute: () =>
+              sendRaffstoreAggregatePresetCommand(aggregateControls, 25),
           },
           {
-            actionKey: "shading-DOWN",
+            actionKey: "raffstore-preset-tilt-50",
+            ariaLabel: `${formatGroupTitle(group)} Lamelle 50 Prozent`,
+            confirmVerb: "auf Lamelle 50 Prozent stellen",
+            testId: "overview-aggregate-raffstore-preset-tilt-50",
+            icon: (
+              <RaffstorePresetIcon
+                angleDeg={RAFFSTORE_TILT_ANGLE_BY_PRESET[50]}
+                className={AGGREGATE_ICON_CLASS}
+              />
+            ),
+            className: AGGREGATE_BUTTON_DEFAULT_CLASS,
+            execute: () =>
+              sendRaffstoreAggregatePresetCommand(aggregateControls, 50),
+          },
+          {
+            actionKey: "raffstore-preset-tilt-75",
+            ariaLabel: `${formatGroupTitle(group)} Lamelle 75 Prozent`,
+            confirmVerb: "auf Lamelle 75 Prozent stellen",
+            testId: "overview-aggregate-raffstore-preset-tilt-75",
+            icon: (
+              <RaffstorePresetIcon
+                angleDeg={RAFFSTORE_TILT_ANGLE_BY_PRESET[75]}
+                className={AGGREGATE_ICON_CLASS}
+              />
+            ),
+            className: AGGREGATE_BUTTON_DEFAULT_CLASS,
+            execute: () =>
+              sendRaffstoreAggregatePresetCommand(aggregateControls, 75),
+          },
+          {
+            actionKey: "raffstore-preset-schliessen",
             ariaLabel: `${formatGroupTitle(group)} schließen`,
             confirmVerb: "schließen",
-            testId: "overview-aggregate-shading-down",
+            testId: "overview-aggregate-raffstore-preset-schliessen",
+            icon: (
+              <RaffstorePresetIcon angleDeg={85} className={AGGREGATE_ICON_CLASS} />
+            ),
+            className: AGGREGATE_BUTTON_DEFAULT_CLASS,
+            execute: () =>
+              sendRaffstoreAggregatePresetCommand(aggregateControls, "schliessen"),
+          },
+        ]
+      : group.aggregateCapability === "rollershutter"
+      ? [
+          {
+            actionKey: "rollershutter-UP",
+            ariaLabel: `${formatGroupTitle(group)} öffnen`,
+            confirmVerb: "öffnen",
+            testId: "overview-aggregate-rollershutter-up",
+            icon: <MdKeyboardArrowUp className={AGGREGATE_ICON_CLASS} />,
+            className: AGGREGATE_BUTTON_DEFAULT_CLASS,
+            execute: () => sendRollershutterAggregateCommand(aggregateControls, "UP"),
+          },
+          {
+            actionKey: "rollershutter-DOWN",
+            ariaLabel: `${formatGroupTitle(group)} schließen`,
+            confirmVerb: "schließen",
+            testId: "overview-aggregate-rollershutter-down",
             icon: <MdKeyboardArrowDown className={AGGREGATE_ICON_CLASS} />,
             className: AGGREGATE_BUTTON_DEFAULT_CLASS,
-            execute: () => sendShadingAggregateCommand(aggregateControls, "DOWN"),
+            execute: () => sendRollershutterAggregateCommand(aggregateControls, "DOWN"),
           },
         ]
       : group.aggregateCapability === "power"

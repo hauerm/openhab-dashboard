@@ -11,8 +11,10 @@ import {
 import { toast } from "react-toastify";
 import ViewOverlayShell from "../../ViewOverlayShell";
 import type { RaffstoreControlDefinition } from "../controlDefinitions";
-import { sendViewItemCommand } from "../viewItemCommand";
+import { sendRaffstoreCommand } from "./commands";
 import { useRaffstoreControlModel } from "./model";
+import { RAFFSTORE_TILT_ANGLE_BY_PRESET } from "./presetAngles";
+import { RaffstorePresetIcon } from "./presetIcons";
 import {
   createRaffstoreSequenceController,
   type RaffstoreMotionCommand,
@@ -55,16 +57,8 @@ const MANUAL_BUTTON_ICON_CLASS =
 const STOP_BUTTON_ICON_CLASS =
   "h-[80%] w-[80%] max-h-[9rem] max-w-[9rem] md:max-h-[11rem] md:max-w-[11rem]";
 
-const PRESET_ICON_WRAPPER_CLASS =
-  "relative flex h-[80%] w-[80%] items-center justify-center";
-const TILT_ICON_CLASS = "h-full w-full text-ui-foreground";
+const PRESET_ICON_CLASS = "h-[80%] w-[80%]";
 const TITLE_TEXT_SHADOW_CLASS = "[text-shadow:0_2px_10px_var(--color-ui-shadow-text)]";
-
-const TILT_ANGLE_BY_PRESET: Record<RaffstoreTiltPreset, number> = {
-  25: 22.5,
-  50: 45,
-  75: 67.5,
-};
 
 const resolveOpeningKind = (
   subtype: RaffstoreControlDefinition["subtype"]
@@ -82,57 +76,6 @@ const resolveOpeningKind = (
     return "Markise";
   }
   return "Öffnung";
-};
-
-const TiltSectionIcon = ({ angleDeg }: { angleDeg: number }) => {
-  const mirroredAngleDeg = -angleDeg;
-
-  return (
-    <span className={PRESET_ICON_WRAPPER_CLASS}>
-      <svg
-        viewBox="0 0 100 100"
-        className={TILT_ICON_CLASS}
-        aria-hidden="true"
-        focusable="false"
-      >
-        <line
-          x1="50"
-          y1="14"
-          x2="50"
-          y2="86"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          opacity="0.9"
-        />
-        <line
-          x1="25"
-          y1="50"
-          x2="75"
-          y2="50"
-          stroke="currentColor"
-          strokeWidth="10"
-          strokeLinecap="round"
-          transform={`rotate(${mirroredAngleDeg} 50 50)`}
-        />
-      </svg>
-    </span>
-  );
-};
-
-const sendRaffstoreCommand = async (
-  itemNames: readonly string[],
-  command: RaffstoreMotionCommand
-): Promise<void> => {
-  if (command === "STOP") {
-    await Promise.all(
-      itemNames.map((itemName) => sendViewItemCommand(itemName, command, "StopMove"))
-    );
-    return;
-  }
-  await Promise.all(
-    itemNames.map((itemName) => sendViewItemCommand(itemName, command, "UpDown"))
-  );
 };
 
 export const RaffstoreHudControl = ({
@@ -340,7 +283,7 @@ export const RaffstoreOverlayControl = ({
                   className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
                   aria-label={`${definition.label} Arbeitsstellung`}
                 >
-                  <TiltSectionIcon angleDeg={0} />
+                  <RaffstorePresetIcon angleDeg={0} className={PRESET_ICON_CLASS} />
                 </button>
                 <button
                   type="button"
@@ -351,7 +294,10 @@ export const RaffstoreOverlayControl = ({
                   className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
                   aria-label={`${definition.label} Lamelle 25 Prozent`}
                 >
-                  <TiltSectionIcon angleDeg={TILT_ANGLE_BY_PRESET[25]} />
+                  <RaffstorePresetIcon
+                    angleDeg={RAFFSTORE_TILT_ANGLE_BY_PRESET[25]}
+                    className={PRESET_ICON_CLASS}
+                  />
                 </button>
                 <button
                   type="button"
@@ -362,7 +308,10 @@ export const RaffstoreOverlayControl = ({
                   className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
                   aria-label={`${definition.label} Lamelle 50 Prozent`}
                 >
-                  <TiltSectionIcon angleDeg={TILT_ANGLE_BY_PRESET[50]} />
+                  <RaffstorePresetIcon
+                    angleDeg={RAFFSTORE_TILT_ANGLE_BY_PRESET[50]}
+                    className={PRESET_ICON_CLASS}
+                  />
                 </button>
                 <button
                   type="button"
@@ -373,7 +322,10 @@ export const RaffstoreOverlayControl = ({
                   className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
                   aria-label={`${definition.label} Lamelle 75 Prozent`}
                 >
-                  <TiltSectionIcon angleDeg={TILT_ANGLE_BY_PRESET[75]} />
+                  <RaffstorePresetIcon
+                    angleDeg={RAFFSTORE_TILT_ANGLE_BY_PRESET[75]}
+                    className={PRESET_ICON_CLASS}
+                  />
                 </button>
                 <button
                   type="button"
@@ -384,7 +336,7 @@ export const RaffstoreOverlayControl = ({
                   className={`pointer-events-auto ${PRESET_STACK_BUTTON_CLASS}`}
                   aria-label={`${definition.label} Schließen`}
                 >
-                  <TiltSectionIcon angleDeg={85} />
+                  <RaffstorePresetIcon angleDeg={85} className={PRESET_ICON_CLASS} />
                 </button>
               </section>
 

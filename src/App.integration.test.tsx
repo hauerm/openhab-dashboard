@@ -105,6 +105,10 @@ vi.mock("./stores/locationPropertyHistoryStore", () => ({
 }));
 const EQU_RAFFSTORE_TERRASSE = "Equ_Raffstore_Terrasse";
 const EQU_RAFFSTORE_STRASSE = "Equ_Raffstore_Strasse";
+const EQU_ROLLERSHUTTER_KUECHE = "Equ_Rollladen_Kueche";
+const EQU_ROLLERSHUTTER_SPEIS = "Equ_Rollladen_Speis";
+const KNX_ROLLERSHUTTER_KUECHE = "KNX_JA1_Rollladen_Kueche";
+const KNX_ROLLERSHUTTER_SPEIS = "KNX_JA1_Rollladen_Speis";
 const EQU_RGBW_LED_STRIP_BUERO_KELLER = "Equ_RGBW_LED_Strip_BueroKeller";
 const RGBW_LED_STRIP_BUERO_KELLER_COLOR = "RGBW_LED_Strip_BueroKeller_Color";
 const GARAGE_DOOR_EQUIPMENT = "KNX_Hormann_Garagentor";
@@ -223,6 +227,26 @@ const buildDefaultItems = (): Item[] => [
     groupNames: [EQU_RAFFSTORE_STRASSE],
     metadata: { automation: { value: "raffstore" } },
   }),
+  createItem(EQU_ROLLERSHUTTER_KUECHE, "NULL", "Group", {
+    label: "Rollladen Küche",
+    tags: ["Blinds"],
+    groupNames: ["Wohnzimmer"],
+  }),
+  createItem(KNX_ROLLERSHUTTER_KUECHE, "0", "Rollershutter", {
+    tags: ["Control", "Opening"],
+    groupNames: [EQU_ROLLERSHUTTER_KUECHE],
+    metadata: { automation: { value: "rollershutter" } },
+  }),
+  createItem(EQU_ROLLERSHUTTER_SPEIS, "NULL", "Group", {
+    label: "Rollladen Speis",
+    tags: ["Blinds"],
+    groupNames: ["Wohnzimmer"],
+  }),
+  createItem(KNX_ROLLERSHUTTER_SPEIS, "100", "Rollershutter", {
+    tags: ["Control", "Opening"],
+    groupNames: [EQU_ROLLERSHUTTER_SPEIS],
+    metadata: { automation: { value: "rollershutter" } },
+  }),
   createItem("Equ_Spots_Couch", "NULL", "Group", {
     label: "Spots Couch",
     tags: ["Chandelier"],
@@ -311,7 +335,7 @@ const buildDefaultItems = (): Item[] => [
     tags: ["GarageDoor"],
     groupNames: ["Garage"],
   }),
-  createItem(GARAGE_DOOR_ITEM, "100", "Rollershutter", {
+  createItem(GARAGE_DOOR_ITEM, "0", "Rollershutter", {
     label: "Garagentor",
     tags: ["Control", "Opening"],
     groupNames: [GARAGE_DOOR_EQUIPMENT],
@@ -638,14 +662,21 @@ describe("App integration", () => {
 
     expect(screen.getByTestId("Hauer-overview")).toBeInTheDocument();
     expect(screen.getByTestId("overview-group-lights")).toBeInTheDocument();
-    expect(screen.getByTestId("overview-group-shading")).toBeInTheDocument();
+    expect(screen.getByTestId("overview-group-raffstore")).toBeInTheDocument();
+    expect(screen.getByTestId("overview-group-rollershutter")).toBeInTheDocument();
     expect(screen.getByText("3 Lichter")).toBeInTheDocument();
+    expect(screen.getByText("2 Raffstores")).toBeInTheDocument();
+    expect(screen.getByText("2 Rollläden")).toBeInTheDocument();
     expect(screen.queryByTestId("overview-control-Equ_Spots_TV"))
       .not.toBeInTheDocument();
     expect(screen.getByTestId("overview-aggregate-lights-toggle")).toBeInTheDocument();
     expect(screen.queryByTestId("overview-aggregate-lights-off"))
       .not.toBeInTheDocument();
-    expect(screen.getByTestId("overview-aggregate-shading-up")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("overview-aggregate-raffstore-preset-arbeitsstellung")
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("overview-aggregate-rollershutter-up"))
+      .toBeInTheDocument();
     expect(screen.queryByTestId("bottom-dock-panel")).not.toBeInTheDocument();
     expect(screen.queryByTestId("overview-switch-to-location"))
       .not.toBeInTheDocument();
@@ -913,7 +944,140 @@ describe("App integration", () => {
     });
   });
 
-  it("sends aggregate shading commands only to raffstore and rollershutter items", async () => {
+  it("runs aggregate RETROLux raffstore presets only for raffstores", async () => {
+    mockResponsiveDefault(false);
+    const confirm = mockWindowConfirm(true);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
+    });
+
+    const flush = async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    };
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(
+        screen.getByTestId("overview-aggregate-raffstore-preset-tilt-50")
+      );
+      await flush();
+
+      expect(confirm).toHaveBeenCalledWith(
+        "Wirklich 2 Raffstores auf Lamelle 50 Prozent stellen?"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        1,
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "UP",
+        "UpDown"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        2,
+        KNX_JA1_Raffstore_Wohnzimmer_Strasse,
+        "UP",
+        "UpDown"
+      );
+
+      await vi.advanceTimersByTimeAsync(3_000);
+      await flush();
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        3,
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "STOP",
+        "StopMove"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        4,
+        KNX_JA1_Raffstore_Wohnzimmer_Strasse,
+        "STOP",
+        "StopMove"
+      );
+
+      await vi.advanceTimersByTimeAsync(500);
+      await flush();
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        5,
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "DOWN",
+        "UpDown"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        6,
+        KNX_JA1_Raffstore_Wohnzimmer_Strasse,
+        "DOWN",
+        "UpDown"
+      );
+
+      await vi.advanceTimersByTimeAsync(4_000);
+      await flush();
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        7,
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "STOP",
+        "StopMove"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        8,
+        KNX_JA1_Raffstore_Wohnzimmer_Strasse,
+        "STOP",
+        "StopMove"
+      );
+
+      await vi.advanceTimersByTimeAsync(500);
+      await flush();
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        9,
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "UP",
+        "UpDown"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        10,
+        KNX_JA1_Raffstore_Wohnzimmer_Strasse,
+        "UP",
+        "UpDown"
+      );
+
+      await vi.advanceTimersByTimeAsync(800);
+      await flush();
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        11,
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "STOP",
+        "StopMove"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenNthCalledWith(
+        12,
+        KNX_JA1_Raffstore_Wohnzimmer_Strasse,
+        "STOP",
+        "StopMove"
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(mocks.websocketSendCommand).not.toHaveBeenCalledWith(
+      KNX_ROLLERSHUTTER_KUECHE,
+      expect.anything(),
+      expect.anything()
+    );
+    expect(mocks.websocketSendCommand).not.toHaveBeenCalledWith(
+      KNX_ROLLERSHUTTER_SPEIS,
+      expect.anything(),
+      expect.anything()
+    );
+    expect(mocks.websocketSendCommand).not.toHaveBeenCalledWith(
+      GARAGE_DOOR_ITEM,
+      expect.anything(),
+      expect.anything()
+    );
+  });
+
+  it("sends aggregate rollershutter commands without a stop action", async () => {
     const user = userEvent.setup();
     mockResponsiveDefault(false);
     const confirm = mockWindowConfirm(true);
@@ -924,25 +1088,59 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
     });
 
-    await user.click(screen.getByTestId("overview-aggregate-shading-up"));
+    expect(screen.getByTestId("overview-aggregate-rollershutter-up"))
+      .toBeInTheDocument();
+    expect(screen.getByTestId("overview-aggregate-rollershutter-down"))
+      .toBeInTheDocument();
+    expect(screen.queryByTestId("overview-aggregate-rollershutter-stop"))
+      .not.toBeInTheDocument();
 
-    expect(confirm).toHaveBeenCalledWith("Wirklich 2 Beschattungen öffnen?");
+    await user.click(screen.getByTestId("overview-aggregate-rollershutter-up"));
+
+    expect(confirm).toHaveBeenCalledWith("Wirklich 2 Rollläden öffnen?");
     await waitFor(() => {
       expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
-        KNX_JA1_Raffstore_Wohnzimmer,
+        KNX_ROLLERSHUTTER_KUECHE,
         "UP",
         "UpDown"
       );
       expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
-        KNX_JA1_Raffstore_Wohnzimmer_Strasse,
+        KNX_ROLLERSHUTTER_SPEIS,
         "UP",
         "UpDown"
       );
     });
     expect(mocks.websocketSendCommand).not.toHaveBeenCalledWith(
+      KNX_JA1_Raffstore_Wohnzimmer,
+      "UP",
+      "UpDown"
+    );
+    expect(mocks.websocketSendCommand).not.toHaveBeenCalledWith(
       GARAGE_DOOR_ITEM,
       "UP",
       "UpDown"
+    );
+
+    mocks.websocketSendCommand.mockClear();
+    await user.click(screen.getByTestId("overview-aggregate-rollershutter-down"));
+
+    expect(confirm).toHaveBeenLastCalledWith("Wirklich 2 Rollläden schließen?");
+    await waitFor(() => {
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        KNX_ROLLERSHUTTER_KUECHE,
+        "DOWN",
+        "UpDown"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        KNX_ROLLERSHUTTER_SPEIS,
+        "DOWN",
+        "UpDown"
+      );
+    });
+    expect(mocks.websocketSendCommand).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "STOP",
+      "StopMove"
     );
   });
 
@@ -1900,7 +2098,30 @@ describe("App integration", () => {
 
     expect(
       screen.getByTestId(`raffstore-control-${GARAGE_DOOR_EQUIPMENT}-value`)
-    ).toHaveTextContent("Unten");
+    ).toHaveTextContent("Geschlossen");
+    expect(
+      screen.getByTestId(
+        `living-control-placeholder-icon-${GARAGE_DOOR_ITEM}-raffstore-closed`
+      )
+    ).toBeInTheDocument();
+
+    act(() => {
+      mocks.wsListener?.({
+        itemName: GARAGE_DOOR_ITEM,
+        rawState: "100",
+      });
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`raffstore-control-${GARAGE_DOOR_EQUIPMENT}-value`)
+      ).toHaveTextContent("Offen");
+    });
+    expect(
+      screen.getByTestId(
+        `living-control-placeholder-icon-${GARAGE_DOOR_ITEM}-raffstore-open`
+      )
+    ).toBeInTheDocument();
     expect(
       screen.getByTestId(`raffstore-control-${GARAGE_DOOR_EQUIPMENT}-layout`)
     ).toHaveClass("grid-cols-4");

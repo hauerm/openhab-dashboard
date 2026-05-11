@@ -2,7 +2,9 @@ import { useMemo } from "react";
 import { useViewStore } from "../../../stores/viewStore";
 import type { RaffstoreControlDefinition } from "../controlDefinitions";
 
-const parseOpeningPercent = (rawState: string | undefined): number | null => {
+type RaffstoreHudState = "raffstore-open" | "raffstore-half" | "raffstore-closed";
+
+export const parseOpeningPercent = (rawState: string | undefined): number | null => {
   if (!rawState) {
     return null;
   }
@@ -27,7 +29,7 @@ const parseOpeningPercent = (rawState: string | undefined): number | null => {
 
 const resolveRaffstoreHudState = (
   openingPercent: number | null
-): "raffstore-open" | "raffstore-half" | "raffstore-closed" => {
+): RaffstoreHudState => {
   if (openingPercent === null) {
     return "raffstore-closed";
   }
@@ -38,6 +40,43 @@ const resolveRaffstoreHudState = (
     return "raffstore-half";
   }
   return "raffstore-closed";
+};
+
+const resolveOpeningDisplayValue = (
+  subtype: RaffstoreControlDefinition["subtype"],
+  openingPercent: number | null
+): string => {
+  if (openingPercent === null) {
+    return "--";
+  }
+
+  if (subtype === "garagedoor") {
+    if (openingPercent === 0) {
+      return "Geschlossen";
+    }
+    if (openingPercent === 100) {
+      return "Offen";
+    }
+    return `${openingPercent}%`;
+  }
+
+  if (openingPercent === 0) {
+    return "Oben";
+  }
+  if (openingPercent === 100) {
+    return "Unten";
+  }
+  return `${openingPercent}%`;
+};
+
+const resolveOpeningHudState = (
+  subtype: RaffstoreControlDefinition["subtype"],
+  openingPercent: number | null
+): RaffstoreHudState => {
+  if (subtype === "garagedoor" && openingPercent !== null) {
+    return resolveRaffstoreHudState(100 - openingPercent);
+  }
+  return resolveRaffstoreHudState(openingPercent);
 };
 
 export const useRaffstoreControlModel = (definition: RaffstoreControlDefinition) => {
@@ -64,20 +103,16 @@ export const useRaffstoreControlModel = (definition: RaffstoreControlDefinition)
         : Math.round(
             parsedValues.reduce((sum, value) => sum + value, 0) / parsedValues.length
           );
-    const openingDisplayValue =
-      openingPercent === null
-        ? "--"
-        : openingPercent === 0
-        ? "Oben"
-        : openingPercent === 100
-        ? "Unten"
-        : `${openingPercent}%`;
+    const openingDisplayValue = resolveOpeningDisplayValue(
+      definition.subtype,
+      openingPercent
+    );
 
     return {
       rawState: rawStates[0],
       openingPercent,
       openingDisplayValue,
-      hudState: resolveRaffstoreHudState(openingPercent),
+      hudState: resolveOpeningHudState(definition.subtype, openingPercent),
     };
-  }, [rawStates]);
+  }, [definition.subtype, rawStates]);
 };
