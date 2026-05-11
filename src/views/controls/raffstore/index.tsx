@@ -24,6 +24,7 @@ interface RaffstoreHudControlProps {
   definition: RaffstoreControlDefinition;
   disabled?: boolean;
   interactive?: boolean;
+  variant?: "default" | "compact";
   onOpenControl: (controlId: string) => void;
 }
 
@@ -138,10 +139,18 @@ export const RaffstoreHudControl = ({
   definition,
   disabled = false,
   interactive = true,
+  variant = "default",
   onOpenControl,
 }: RaffstoreHudControlProps) => {
   const { hudState } = useRaffstoreControlModel(definition);
   const openingKind = resolveOpeningKind(definition.subtype);
+  const isCompact = variant === "compact";
+  const surfaceSizeClass = isCompact
+    ? "h-14 w-14 md:h-16 md:w-16"
+    : "h-20 w-20 md:h-24 md:w-24";
+  const iconSizeClass = isCompact
+    ? "h-7 w-7 md:h-8 md:w-8"
+    : "h-10 w-10 md:h-12 md:w-12";
   const Icon =
     definition.subtype === "garagedoor"
       ? GARAGE_DOOR_ICON_BY_STATE[hudState]
@@ -161,10 +170,12 @@ export const RaffstoreHudControl = ({
       className="flex items-center justify-center"
       aria-label={`${definition.label} (${openingKind} öffnen)`}
     >
-      <span className="pointer-events-auto flex h-20 w-20 items-center justify-center rounded-full bg-ui-surface-overlay backdrop-blur-sm shadow-xl transition hover:bg-ui-surface-panel md:h-24 md:w-24">
+      <span
+        className={`pointer-events-auto flex ${surfaceSizeClass} items-center justify-center rounded-full bg-ui-surface-overlay backdrop-blur-sm shadow-xl transition hover:bg-ui-surface-panel`}
+      >
         <Icon
           data-testid={`living-control-placeholder-icon-${definition.itemRefs.itemName}-${hudState}`}
-          className="h-10 w-10 text-ui-foreground md:h-12 md:w-12"
+          className={`${iconSizeClass} text-ui-foreground`}
         />
       </span>
     </button>
@@ -263,11 +274,11 @@ export const RaffstoreOverlayControl = ({
     <ViewOverlayShell onClose={onClose} layout="fullscreen">
       <div
         data-testid={`raffstore-control-${definition.controlId}`}
-        className="pointer-events-none relative h-full w-full overflow-hidden"
+        className="pointer-events-none relative min-h-full w-full md:h-full md:overflow-hidden"
       >
         <div
           data-testid={`raffstore-control-${definition.controlId}-layout`}
-          className="pointer-events-none grid h-full min-h-0 w-full grid-cols-4 gap-2 p-2 md:gap-3 md:p-3"
+          className="pointer-events-none flex min-h-full w-full grid-cols-4 flex-col gap-3 p-4 pt-16 md:grid md:h-full md:min-h-0 md:gap-3 md:p-3"
         >
           <section className="pointer-events-none flex flex-col justify-start">
             <p className="text-xs font-semibold tracking-wide text-ui-foreground-muted md:text-sm">
@@ -281,7 +292,7 @@ export const RaffstoreOverlayControl = ({
             </p>
           </section>
 
-          <section className="pointer-events-none grid h-full min-h-0 grid-rows-[repeat(3,minmax(0,1fr))] gap-2 overflow-hidden">
+          <section className="pointer-events-none grid min-h-36 grid-cols-3 gap-2 overflow-hidden md:h-full md:min-h-0 md:grid-cols-1 md:grid-rows-[repeat(3,minmax(0,1fr))]">
             <button
               type="button"
               data-testid={`raffstore-control-${definition.controlId}-up`}
@@ -319,7 +330,7 @@ export const RaffstoreOverlayControl = ({
 
           {supportsTiltPresets ? (
             <>
-              <section className="pointer-events-none grid h-full min-h-0 grid-rows-[repeat(5,minmax(0,1fr))] gap-2 overflow-hidden">
+              <section className="pointer-events-none grid min-h-80 grid-cols-2 gap-2 overflow-hidden md:h-full md:min-h-0 md:grid-cols-1 md:grid-rows-[repeat(5,minmax(0,1fr))]">
                 <button
                   type="button"
                   data-testid={`raffstore-control-${definition.controlId}-preset-arbeitsstellung`}

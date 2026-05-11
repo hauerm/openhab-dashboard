@@ -2,13 +2,17 @@ import type { CSSProperties, SVGProps } from "react";
 import { MdPowerSettingsNew } from "react-icons/md";
 import ViewOverlayShell from "../../ViewOverlayShell";
 import type { RgbwLightControlDefinition } from "../controlDefinitions";
-import { VerticalChannelSlider } from "../VerticalChannelSlider";
+import {
+  HorizontalChannelSlider,
+  VerticalChannelSlider,
+} from "../VerticalChannelSlider";
 import { useRgbwLightControlModel } from "./model";
 
 interface RgbwLightHudControlProps {
   definition: RgbwLightControlDefinition;
   disabled?: boolean;
   interactive?: boolean;
+  variant?: "default" | "compact";
   onOpenControl: (controlId: string) => void;
 }
 
@@ -82,10 +86,18 @@ export const RgbwLightHudControl = ({
   definition,
   disabled = false,
   interactive = true,
+  variant = "default",
   onOpenControl,
 }: RgbwLightHudControlProps) => {
   const { isOn, cssColor } = useRgbwLightControlModel(definition);
   const hudState = isOn ? "rgbw-light-on" : "rgbw-light-off";
+  const isCompact = variant === "compact";
+  const surfaceSizeClass = isCompact
+    ? "h-14 w-14 md:h-16 md:w-16"
+    : "h-20 w-20 md:h-24 md:w-24";
+  const iconSizeClass = isCompact
+    ? "h-8 w-8 md:h-9 md:w-9"
+    : "h-11 w-11 md:h-14 md:w-14";
 
   return (
     <button
@@ -103,7 +115,7 @@ export const RgbwLightHudControl = ({
     >
       <span
         data-testid={`living-control-rgbw-glow-${definition.itemRefs.colorItemName}`}
-        className={`pointer-events-auto flex h-20 w-20 items-center justify-center rounded-full backdrop-blur-sm transition md:h-24 md:w-24 ${
+        className={`pointer-events-auto flex ${surfaceSizeClass} items-center justify-center rounded-full backdrop-blur-sm transition ${
           isOn
             ? "hover:brightness-110"
             : "bg-ui-surface-overlay shadow-xl hover:bg-ui-surface-panel"
@@ -119,7 +131,7 @@ export const RgbwLightHudControl = ({
       >
         <ColorSpectrumCircleIcon
           data-testid={`living-control-placeholder-icon-${definition.itemRefs.colorItemName}-${hudState}`}
-          className={`h-11 w-11 md:h-14 md:w-14 ${
+          className={`${iconSizeClass} ${
             isOn ? "text-ui-surface-shell" : "text-ui-foreground"
           }`}
         />
@@ -150,7 +162,7 @@ export const RgbwLightOverlayControl = ({
     <ViewOverlayShell onClose={onClose} layout="fullscreen">
       <div
         data-testid={`rgbw-light-control-${definition.controlId}`}
-        className="pointer-events-none grid h-full min-h-0 w-full grid-cols-5 gap-2 p-2 md:gap-3 md:p-3"
+        className="pointer-events-none flex min-h-full w-full grid-cols-5 flex-col gap-3 p-4 pt-16 md:grid md:h-full md:min-h-0 md:gap-3 md:p-3"
       >
         <section className="pointer-events-none flex flex-col items-start justify-start">
           <p className="text-xs font-semibold tracking-wide text-ui-foreground-muted md:text-sm">
@@ -175,7 +187,7 @@ export const RgbwLightOverlayControl = ({
           </div>
         </section>
 
-        <section className="pointer-events-none grid h-full min-h-0 grid-rows-[minmax(0,1fr)]">
+        <section className="pointer-events-none grid min-h-40 grid-rows-[minmax(0,1fr)] md:h-full md:min-h-0">
           <button
             type="button"
             data-testid={`rgbw-light-control-${definition.controlId}-toggle`}
@@ -194,43 +206,89 @@ export const RgbwLightOverlayControl = ({
           </button>
         </section>
 
-        <VerticalChannelSlider
-          label="Hue"
-          testId={`rgbw-light-control-${definition.controlId}-hue`}
-          value={color.hue}
-          min={0}
-          max={360}
-          trackClassName="bg-scale-hue"
-          disabled={false}
-          onChange={(value, force) => {
-            setHue(value, force);
-          }}
-        />
-        <VerticalChannelSlider
-          label="Saturation"
-          testId={`rgbw-light-control-${definition.controlId}-saturation`}
-          value={color.saturation}
-          min={0}
-          max={100}
-          trackClassName="bg-scale-saturation"
-          style={saturationSliderStyle}
-          disabled={false}
-          onChange={(value, force) => {
-            setSaturation(value, force);
-          }}
-        />
-        <VerticalChannelSlider
-          label="Brightness"
-          testId={`rgbw-light-control-${definition.controlId}-brightness`}
-          value={color.brightness}
-          min={0}
-          max={100}
-          trackClassName="bg-scale-lightness"
-          disabled={false}
-          onChange={(value, force) => {
-            setBrightness(value, force);
-          }}
-        />
+        <div className="pointer-events-auto space-y-3 md:hidden">
+          <HorizontalChannelSlider
+            label="Hue"
+            testId={`rgbw-light-control-${definition.controlId}-hue-mobile`}
+            value={color.hue}
+            min={0}
+            max={360}
+            trackClassName="bg-scale-hue"
+            disabled={false}
+            onChange={(value, force) => {
+              setHue(value, force);
+            }}
+          />
+          <HorizontalChannelSlider
+            label="Saturation"
+            testId={`rgbw-light-control-${definition.controlId}-saturation-mobile`}
+            value={color.saturation}
+            min={0}
+            max={100}
+            trackClassName="bg-scale-saturation"
+            style={saturationSliderStyle}
+            disabled={false}
+            onChange={(value, force) => {
+              setSaturation(value, force);
+            }}
+          />
+          <HorizontalChannelSlider
+            label="Brightness"
+            testId={`rgbw-light-control-${definition.controlId}-brightness-mobile`}
+            value={color.brightness}
+            min={0}
+            max={100}
+            trackClassName="bg-scale-lightness"
+            disabled={false}
+            onChange={(value, force) => {
+              setBrightness(value, force);
+            }}
+          />
+        </div>
+
+        <div className="hidden min-h-0 md:grid md:h-full md:grid-rows-[minmax(0,1fr)]">
+          <VerticalChannelSlider
+            label="Hue"
+            testId={`rgbw-light-control-${definition.controlId}-hue`}
+            value={color.hue}
+            min={0}
+            max={360}
+            trackClassName="bg-scale-hue"
+            disabled={false}
+            onChange={(value, force) => {
+              setHue(value, force);
+            }}
+          />
+        </div>
+        <div className="hidden min-h-0 md:grid md:h-full md:grid-rows-[minmax(0,1fr)]">
+          <VerticalChannelSlider
+            label="Saturation"
+            testId={`rgbw-light-control-${definition.controlId}-saturation`}
+            value={color.saturation}
+            min={0}
+            max={100}
+            trackClassName="bg-scale-saturation"
+            style={saturationSliderStyle}
+            disabled={false}
+            onChange={(value, force) => {
+              setSaturation(value, force);
+            }}
+          />
+        </div>
+        <div className="hidden min-h-0 md:grid md:h-full md:grid-rows-[minmax(0,1fr)]">
+          <VerticalChannelSlider
+            label="Brightness"
+            testId={`rgbw-light-control-${definition.controlId}-brightness`}
+            value={color.brightness}
+            min={0}
+            max={100}
+            trackClassName="bg-scale-lightness"
+            disabled={false}
+            onChange={(value, force) => {
+              setBrightness(value, force);
+            }}
+          />
+        </div>
       </div>
     </ViewOverlayShell>
   );

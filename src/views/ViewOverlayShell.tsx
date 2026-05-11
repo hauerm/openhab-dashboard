@@ -26,12 +26,12 @@ const ViewOverlayShell = ({
 
   const backdropClassName =
     layout === "fullscreen"
-      ? "fixed inset-0 z-50 bg-ui-backdrop-soft p-2 backdrop-blur-sm md:p-3"
+      ? "fixed inset-0 z-50 bg-ui-backdrop-soft p-0 backdrop-blur-sm md:p-3"
       : "fixed inset-0 z-50 flex items-center justify-center bg-ui-backdrop-strong p-4 backdrop-blur-sm";
 
   const panelClassName =
     layout === "fullscreen"
-      ? "relative flex h-full w-full min-h-0 flex-col overflow-hidden rounded-3xl"
+      ? "relative flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden rounded-none md:h-full md:rounded-3xl"
       : "relative w-full max-w-4xl rounded-2xl border border-ui-border-subtle bg-ui-surface-panel p-4 text-ui-foreground shadow-2xl";
 
   return (
@@ -56,13 +56,21 @@ const ViewOverlayShell = ({
           type="button"
           data-testid="overlay-close-button"
           onClick={onClose}
-          className="pointer-events-auto absolute bottom-4 left-4 z-20 rounded-full border border-ui-border-subtle bg-ui-surface-overlay p-3 text-ui-foreground shadow-xl backdrop-blur-md transition hover:bg-ui-surface-panel md:bottom-5 md:left-5 md:p-3.5"
+          className="pointer-events-auto absolute right-3 top-3 z-20 rounded-full border border-ui-border-subtle bg-ui-surface-overlay p-2.5 text-ui-foreground shadow-xl backdrop-blur-md transition hover:bg-ui-surface-panel md:bottom-5 md:left-5 md:right-auto md:top-auto md:p-3.5"
           aria-label="Overlay schließen"
         >
           <MdClose className="h-7 w-7 md:h-8 md:w-8" />
         </button>
         {layout === "fullscreen" ? (
-          <div className="pointer-events-none relative z-10 h-full min-h-0">
+          <div
+            data-testid="overlay-content-scroll"
+            className="pointer-events-auto relative z-10 h-full min-h-0 overflow-y-auto overscroll-contain md:overflow-hidden"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                onClose();
+              }
+            }}
+          >
             {children}
           </div>
         ) : (

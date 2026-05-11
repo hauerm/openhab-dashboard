@@ -9,13 +9,17 @@ import type {
   DimmerControlDefinition,
   LightControlDefinition,
 } from "../controlDefinitions";
-import { VerticalChannelSlider } from "../VerticalChannelSlider";
+import {
+  HorizontalChannelSlider,
+  VerticalChannelSlider,
+} from "../VerticalChannelSlider";
 import { useDimmerControlModel, useLightControlModel } from "./model";
 
 interface LightHudControlProps {
   definition: LightControlDefinition;
   disabled?: boolean;
   interactive?: boolean;
+  variant?: "default" | "compact";
   onOpenControl: (controlId: string) => void;
 }
 
@@ -28,6 +32,7 @@ interface DimmerHudControlProps {
   definition: DimmerControlDefinition;
   disabled?: boolean;
   interactive?: boolean;
+  variant?: "default" | "compact";
   onOpenControl: (controlId: string) => void;
 }
 
@@ -42,11 +47,19 @@ export const LightHudControl = ({
   definition,
   disabled = false,
   interactive = true,
+  variant = "default",
   onOpenControl,
 }: LightHudControlProps) => {
   const { isOn, sending, toggleLight } = useLightControlModel(definition);
   const isDisabled = sending || disabled;
   const hudState = isOn ? "light-on" : "light-off";
+  const isCompact = variant === "compact";
+  const surfaceSizeClass = isCompact
+    ? "h-14 w-14 md:h-16 md:w-16"
+    : "h-20 w-20 md:h-24 md:w-24";
+  const iconSizeClass = isCompact
+    ? "h-7 w-7 md:h-8 md:w-8"
+    : "h-10 w-10 md:h-12 md:w-12";
 
   return (
     <button
@@ -67,7 +80,7 @@ export const LightHudControl = ({
       aria-label={`${definition.label} (Licht steuern)`}
     >
       <span
-        className={`pointer-events-auto flex h-20 w-20 items-center justify-center rounded-full backdrop-blur-sm transition md:h-24 md:w-24 ${
+        className={`pointer-events-auto flex ${surfaceSizeClass} items-center justify-center rounded-full backdrop-blur-sm transition ${
           isOn
             ? "bg-semantic-light-solid shadow-[0_0_90px_28px_var(--color-semantic-light-glow)] hover:brightness-110"
             : "bg-ui-surface-overlay shadow-xl hover:bg-ui-surface-panel"
@@ -76,12 +89,12 @@ export const LightHudControl = ({
         {isOn ? (
           <MdEmojiObjects
             data-testid={`living-control-placeholder-icon-${definition.itemRefs.itemName}-${hudState}`}
-            className="h-10 w-10 text-ui-surface-shell md:h-12 md:w-12"
+            className={`${iconSizeClass} text-ui-surface-shell`}
           />
         ) : (
           <MdOutlineLightbulb
             data-testid={`living-control-placeholder-icon-${definition.itemRefs.itemName}-${hudState}`}
-            className="h-10 w-10 text-ui-foreground md:h-12 md:w-12"
+            className={`${iconSizeClass} text-ui-foreground`}
           />
         )}
       </span>
@@ -93,10 +106,18 @@ export const DimmerHudControl = ({
   definition,
   disabled = false,
   interactive = true,
+  variant = "default",
   onOpenControl,
 }: DimmerHudControlProps) => {
   const { isOn, brightness } = useDimmerControlModel(definition);
   const hudState = isOn ? "dimmer-on" : "dimmer-off";
+  const isCompact = variant === "compact";
+  const surfaceSizeClass = isCompact
+    ? "h-14 w-14 md:h-16 md:w-16"
+    : "h-20 w-20 md:h-24 md:w-24";
+  const iconSizeClass = isCompact
+    ? "h-7 w-7 md:h-8 md:w-8"
+    : "h-10 w-10 md:h-12 md:w-12";
   const intensity = Math.max(0.18, brightness / 100);
   const dimmerGlowStyle = {
     "--dimmer-intensity": intensity,
@@ -122,7 +143,7 @@ export const DimmerHudControl = ({
     >
       <span
         data-testid={`living-control-dimmer-glow-${definition.itemRefs.itemName}`}
-        className={`pointer-events-auto flex h-20 w-20 items-center justify-center rounded-full backdrop-blur-sm transition md:h-24 md:w-24 ${
+        className={`pointer-events-auto flex ${surfaceSizeClass} items-center justify-center rounded-full backdrop-blur-sm transition ${
           isOn
             ? "dimmer-glow hover:brightness-110"
             : "bg-ui-surface-overlay shadow-xl hover:bg-ui-surface-panel"
@@ -132,12 +153,12 @@ export const DimmerHudControl = ({
         {isOn ? (
           <MdEmojiObjects
             data-testid={`living-control-placeholder-icon-${definition.itemRefs.itemName}-${hudState}`}
-            className="h-10 w-10 text-ui-surface-shell md:h-12 md:w-12"
+            className={`${iconSizeClass} text-ui-surface-shell`}
           />
         ) : (
           <MdOutlineLightbulb
             data-testid={`living-control-placeholder-icon-${definition.itemRefs.itemName}-${hudState}`}
-            className="h-10 w-10 text-ui-foreground md:h-12 md:w-12"
+            className={`${iconSizeClass} text-ui-foreground`}
           />
         )}
       </span>
@@ -211,7 +232,7 @@ export const DimmerOverlayControl = ({
     <ViewOverlayShell onClose={onClose} layout="fullscreen">
       <div
         data-testid={`dimmer-control-${definition.controlId}`}
-        className="pointer-events-none grid h-full min-h-0 w-full grid-cols-4 gap-2 p-2 md:gap-3 md:p-3"
+        className="pointer-events-none flex min-h-full w-full grid-cols-4 flex-col gap-3 p-4 pt-16 md:grid md:h-full md:min-h-0 md:gap-3 md:p-3"
       >
         <section className="pointer-events-none flex flex-col items-start justify-start">
           <p className="text-xs font-semibold tracking-wide text-ui-foreground-muted md:text-sm">
@@ -230,7 +251,7 @@ export const DimmerOverlayControl = ({
           </div>
         </section>
 
-        <section className="pointer-events-none grid h-full min-h-0 grid-rows-[minmax(0,1fr)]">
+        <section className="pointer-events-none grid min-h-40 grid-rows-[minmax(0,1fr)] md:h-full md:min-h-0">
           <button
             type="button"
             data-testid={`dimmer-control-${definition.controlId}-toggle`}
@@ -249,18 +270,35 @@ export const DimmerOverlayControl = ({
           </button>
         </section>
 
-        <VerticalChannelSlider
-          label="Brightness"
-          testId={`dimmer-control-${definition.controlId}-brightness`}
-          value={brightness}
-          min={0}
-          max={100}
-          trackClassName="bg-scale-lightness"
-          disabled={false}
-          onChange={(value, force) => {
-            setBrightness(value, force);
-          }}
-        />
+        <div className="pointer-events-auto md:hidden">
+          <HorizontalChannelSlider
+            label="Brightness"
+            testId={`dimmer-control-${definition.controlId}-brightness-mobile`}
+            value={brightness}
+            min={0}
+            max={100}
+            trackClassName="bg-scale-lightness"
+            disabled={false}
+            onChange={(value, force) => {
+              setBrightness(value, force);
+            }}
+          />
+        </div>
+
+        <div className="hidden min-h-0 md:grid md:h-full md:grid-rows-[minmax(0,1fr)]">
+          <VerticalChannelSlider
+            label="Brightness"
+            testId={`dimmer-control-${definition.controlId}-brightness`}
+            value={brightness}
+            min={0}
+            max={100}
+            trackClassName="bg-scale-lightness"
+            disabled={false}
+            onChange={(value, force) => {
+              setBrightness(value, force);
+            }}
+          />
+        </div>
 
         <section className="pointer-events-none" aria-hidden="true" />
       </div>

@@ -12,6 +12,7 @@ interface PowerHudControlProps {
   definition: PowerControlDefinition;
   disabled?: boolean;
   interactive?: boolean;
+  variant?: "default" | "compact";
   onOpenControl: (controlId: string) => void;
 }
 
@@ -49,10 +50,18 @@ export const PowerHudControl = ({
   definition,
   disabled = false,
   interactive = true,
+  variant = "default",
   onOpenControl,
 }: PowerHudControlProps) => {
   const { isOn, consumptionDisplay } = usePowerControlModel(definition);
   const itemName = definition.itemRefs.powerItemName;
+  const isCompact = variant === "compact";
+  const surfaceSizeClass = isCompact
+    ? "h-14 w-14 md:h-16 md:w-16"
+    : "h-20 w-20 md:h-24 md:w-24";
+  const iconSizeClass = isCompact
+    ? "h-7 w-7 md:h-8 md:w-8"
+    : "h-10 w-10 md:h-12 md:w-12";
 
   return (
     <button
@@ -69,7 +78,7 @@ export const PowerHudControl = ({
       aria-label={`${definition.label} (Strom steuern)`}
     >
       <span
-        className={`pointer-events-auto flex h-20 w-20 items-center justify-center rounded-full backdrop-blur-sm transition md:h-24 md:w-24 ${
+        className={`pointer-events-auto flex ${surfaceSizeClass} items-center justify-center rounded-full backdrop-blur-sm transition ${
           isOn
             ? "bg-status-good-surface shadow-[0_0_84px_20px_var(--color-semantic-active-glow)] hover:brightness-110"
             : "bg-ui-surface-overlay shadow-xl hover:bg-ui-surface-panel"
@@ -77,18 +86,20 @@ export const PowerHudControl = ({
       >
         <MdPowerSettingsNew
           data-testid={`living-control-placeholder-icon-${itemName}-${isOn ? "power-on" : "power-off"}`}
-          className={`h-10 w-10 md:h-12 md:w-12 ${
+          className={`${iconSizeClass} ${
             isOn
               ? "text-semantic-active-solid drop-shadow-[0_0_14px_var(--color-semantic-active-glow)]"
               : "text-ui-foreground"
           }`}
         />
       </span>
-      {renderPowerInfo({
-        itemName,
-        isOn,
-        consumptionDisplay,
-      })}
+      {isCompact
+        ? null
+        : renderPowerInfo({
+            itemName,
+            isOn,
+            consumptionDisplay,
+          })}
     </button>
   );
 };
@@ -125,9 +136,9 @@ export const PowerOverlayControl = ({
     <ViewOverlayShell onClose={onClose} layout="fullscreen">
       <div
         data-testid={`living-power-overlay-${itemName}`}
-        className="pointer-events-none relative h-full w-full overflow-hidden"
+        className="pointer-events-none relative min-h-full w-full md:h-full md:overflow-hidden"
       >
-        <div className="pointer-events-none grid h-full min-h-0 w-full grid-cols-4 gap-2 p-2 md:gap-3 md:p-3">
+        <div className="pointer-events-none flex min-h-full w-full grid-cols-4 flex-col gap-3 p-4 pt-16 md:grid md:h-full md:min-h-0 md:gap-3 md:p-3">
           <section className="pointer-events-none flex flex-col items-start justify-start">
             <p className="text-xs font-semibold tracking-wide text-ui-foreground-muted md:text-sm">
               {definition.label}
@@ -150,7 +161,7 @@ export const PowerOverlayControl = ({
             ) : null}
           </section>
 
-          <section className="pointer-events-none grid h-full min-h-0 grid-rows-[minmax(0,1fr)] gap-2">
+          <section className="pointer-events-none grid min-h-44 grid-rows-[minmax(0,1fr)] gap-2 md:h-full md:min-h-0">
             <button
               type="button"
               data-testid={`living-power-overlay-power-${itemName}`}

@@ -17,6 +17,45 @@ import type { ActiveViewOverlay } from "./types/overlay";
 import ViewSidebar, { VIEW_SIDEBAR_SAFE_ZONE_PX } from "./views/ViewSidebar";
 import ViewLayer from "./views/ViewLayer";
 
+type ViewMode = "overview" | "location";
+
+const LOCATION_VIEW_DEFAULT_QUERY = "(min-width: 1024px) and (orientation: landscape)";
+const DESKTOP_SIDEBAR_QUERY = "(min-width: 768px)";
+
+const resolvePreferredViewMode = (): ViewMode => {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return "location";
+  }
+  return window.matchMedia(LOCATION_VIEW_DEFAULT_QUERY).matches
+    ? "location"
+    : "overview";
+};
+
+const useMediaQuery = (query: string, defaultMatches = false): boolean => {
+  const [matches, setMatches] = useState(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return defaultMatches;
+    }
+    return window.matchMedia(query).matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return undefined;
+    }
+
+    const mediaQueryList = window.matchMedia(query);
+    const handleChange = () => setMatches(mediaQueryList.matches);
+    handleChange();
+    mediaQueryList.addEventListener("change", handleChange);
+    return () => {
+      mediaQueryList.removeEventListener("change", handleChange);
+    };
+  }, [query]);
+
+  return matches;
+};
+
 interface TokenLoginProps {
   onLogin: () => void;
 }
@@ -110,9 +149,13 @@ function OpenHABTokenLogin({ onLogin }: TokenLoginProps) {
 
 function App() {
   const [activeOverlay, setActiveOverlay] = useState<ActiveViewOverlay | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>(() => resolvePreferredViewMode());
   const [isAuthenticated, setIsAuthenticated] = useState(
     () => getOpenHABRuntimeToken() !== null
   );
+  const hasDesktopSidebar = useMediaQuery(DESKTOP_SIDEBAR_QUERY, true);
+  const isMobileView = !hasDesktopSidebar;
+  const effectiveViewMode: ViewMode = isMobileView ? "overview" : viewMode;
   const initializeViewStore = useViewStore((state) => state.initialize);
   const currentView = useViewStore((state) => state.currentView);
   const loading = useViewStore((state) => state.loading);
@@ -141,7 +184,8 @@ function App() {
   }, [activeOverlay, currentView]);
 
   const hasSidebar = Boolean(currentViewConfig?.location);
-  const blockedLeftPx = hasSidebar ? VIEW_SIDEBAR_SAFE_ZONE_PX : 0;
+  const blockedLeftPx =
+    hasSidebar && hasDesktopSidebar ? VIEW_SIDEBAR_SAFE_ZONE_PX : 0;
 
   if (!isAuthenticated) {
     return <OpenHABTokenLogin onLogin={() => setIsAuthenticated(true)} />;
@@ -163,10 +207,15 @@ function App() {
           {error}
         </div>
       ) : null}
-      {hasSidebar ? (
+      {hasSidebar && effectiveViewMode === "location" ? (
         <ViewSidebar
           viewId={currentView}
+          viewMode={effectiveViewMode}
           activeControlId={visibleOverlay?.controlId ?? null}
+          onSetViewMode={(nextViewMode) => {
+            setActiveOverlay(null);
+            setViewMode(nextViewMode);
+          }}
           onOpenControl={(controlId) => {
             setActiveOverlay({ viewId: currentView, controlId });
           }}
@@ -174,18 +223,29 @@ function App() {
         />
       ) : null}
       <ViewLayer
+        viewMode={effectiveViewMode}
         activeControlId={visibleOverlay?.controlId ?? null}
         blockedLeftPx={blockedLeftPx}
+        allowLocationViewSwitch={!isMobileView}
+        onSwitchToLocationView={() => {
+          if (isMobileView) {
+            return;
+          }
+          setActiveOverlay(null);
+          setViewMode("location");
+        }}
         onOpenControl={(controlId) => {
           setActiveOverlay({ viewId: currentView, controlId });
         }}
         onCloseControl={() => setActiveOverlay(null)}
       />
-      <BottomDock
-        onViewChange={() => {
-          setActiveOverlay(null);
-        }}
-      />
+      {effectiveViewMode === "location" && !isMobileView ? (
+        <BottomDock
+          onViewChange={() => {
+            setActiveOverlay(null);
+          }}
+        />
+      ) : null}
       <ToastContainer
         position="top-right"
         autoClose={3000}

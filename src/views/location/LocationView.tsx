@@ -1,28 +1,8 @@
 import { useMemo, useState } from "react";
 import { MdOutlineOpenWith } from "react-icons/md";
 import { useViewStore } from "../../stores/viewStore";
-import {
-  DimmerHudControl,
-  DimmerOverlayControl,
-  LightHudControl,
-  LightOverlayControl,
-} from "../controls/light";
-import { EvccHudControl, EvccOverlayControl } from "../controls/evcc";
-import { PowerHudControl, PowerOverlayControl } from "../controls/power";
-import {
-  RaffstoreHudControl,
-  RaffstoreOverlayControl,
-} from "../controls/raffstore";
-import {
-  RgbwLightHudControl,
-  RgbwLightOverlayControl,
-} from "../controls/rgbw-light";
-import { TvHudControl, TvOverlayControl } from "../controls/tv";
-import {
-  VentilationHudControl,
-  VentilationOverlayControl,
-} from "../controls/ventilation";
 import type { ViewControlDefinition } from "../controls/controlDefinitions";
+import { renderHudControl, renderOverlayControl } from "../controls/renderControls";
 import type { ViewProps } from "../types";
 import { useViewControlLayout } from "../useViewControlLayout";
 
@@ -53,125 +33,6 @@ const getLayoutToggleClassName = (layoutEditMode: boolean): string =>
   `${HUD_LAYOUT_TOGGLE_BASE_CLASS} ${
     layoutEditMode ? HUD_LAYOUT_TOGGLE_EDIT_CLASS : HUD_LAYOUT_TOGGLE_DEFAULT_CLASS
   }`;
-
-const renderHudControl = (
-  definition: ViewControlDefinition,
-  layoutEditMode: boolean,
-  onOpenControl: (controlId: string) => void
-) => {
-  if (definition.controlType === "opening") {
-    return (
-      <RaffstoreHudControl
-        definition={definition}
-        interactive={!layoutEditMode}
-        onOpenControl={onOpenControl}
-      />
-    );
-  }
-  if (definition.controlType === "light") {
-    return (
-      <LightHudControl
-        definition={definition}
-        interactive={!layoutEditMode}
-        onOpenControl={onOpenControl}
-      />
-    );
-  }
-  if (definition.controlType === "dimmer") {
-    return (
-      <DimmerHudControl
-        definition={definition}
-        interactive={!layoutEditMode}
-        onOpenControl={onOpenControl}
-      />
-    );
-  }
-  if (definition.controlType === "rgbw-light") {
-    return (
-      <RgbwLightHudControl
-        definition={definition}
-        interactive={!layoutEditMode}
-        onOpenControl={onOpenControl}
-      />
-    );
-  }
-  if (definition.controlType === "tv") {
-    return (
-      <TvHudControl
-        definition={definition}
-        interactive={!layoutEditMode}
-        onOpenControl={onOpenControl}
-      />
-    );
-  }
-  if (definition.controlType === "evcc") {
-    return (
-      <EvccHudControl
-        definition={definition}
-        interactive={!layoutEditMode}
-        onOpenControl={onOpenControl}
-      />
-    );
-  }
-  if (definition.controlType === "power") {
-    return (
-      <PowerHudControl
-        definition={definition}
-        interactive={!layoutEditMode}
-        onOpenControl={onOpenControl}
-      />
-    );
-  }
-  if (definition.controlType === "ventilation") {
-    return (
-      <VentilationHudControl
-        definition={definition}
-        interactive={!layoutEditMode}
-        onOpenControl={onOpenControl}
-      />
-    );
-  }
-  return null;
-};
-
-const renderOverlayControl = (
-  definition: ViewControlDefinition | null,
-  onCloseControl: () => void
-) => {
-  if (!definition) {
-    return null;
-  }
-  if (definition.controlType === "opening") {
-    return <RaffstoreOverlayControl definition={definition} onClose={onCloseControl} />;
-  }
-  if (definition.controlType === "light") {
-    return <LightOverlayControl definition={definition} onClose={onCloseControl} />;
-  }
-  if (definition.controlType === "dimmer") {
-    return <DimmerOverlayControl definition={definition} onClose={onCloseControl} />;
-  }
-  if (definition.controlType === "rgbw-light") {
-    return <RgbwLightOverlayControl definition={definition} onClose={onCloseControl} />;
-  }
-  if (definition.controlType === "tv") {
-    return <TvOverlayControl definition={definition} onClose={onCloseControl} />;
-  }
-  if (definition.controlType === "evcc") {
-    return <EvccOverlayControl definition={definition} onClose={onCloseControl} />;
-  }
-  if (definition.controlType === "power") {
-    return <PowerOverlayControl definition={definition} onClose={onCloseControl} />;
-  }
-  if (definition.controlType === "ventilation") {
-    return (
-      <VentilationOverlayControl
-        definition={definition}
-        onClose={onCloseControl}
-      />
-    );
-  }
-  return null;
-};
 
 const LocationView = ({
   viewId,

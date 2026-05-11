@@ -20,6 +20,7 @@ interface EvccHudControlProps {
   definition: EvccControlDefinition;
   disabled?: boolean;
   interactive?: boolean;
+  variant?: "default" | "compact";
   onOpenControl: (controlId: string) => void;
 }
 
@@ -462,10 +463,21 @@ export const EvccHudControl = ({
   definition,
   disabled = false,
   interactive = true,
+  variant = "default",
   onOpenControl,
 }: EvccHudControlProps) => {
   const model = useEvccControlModel(definition);
   const itemName = definition.itemRefs.connectedItemName;
+  const isCompact = variant === "compact";
+  const surfaceSizeClass = isCompact
+    ? "h-14 w-14 md:h-16 md:w-16"
+    : "h-20 w-20 md:h-24 md:w-24";
+  const compactGridClass = isCompact
+    ? "grid-cols-[3.5rem_auto] md:grid-cols-[4rem_auto]"
+    : "grid-cols-[5rem_auto] md:grid-cols-[6rem_auto]";
+  const chargePowerTextClass = isCompact
+    ? "text-base md:text-lg"
+    : "text-2xl md:text-3xl";
 
   return (
     <button
@@ -482,9 +494,9 @@ export const EvccHudControl = ({
       aria-label={`${definition.label} (EVCC steuern)`}
     >
       <span className="flex flex-col items-start gap-1 md:gap-1.5">
-        <span className="grid grid-cols-[5rem_auto] items-center gap-3 md:grid-cols-[6rem_auto] md:gap-4">
+        <span className={`grid ${compactGridClass} items-center gap-3 md:gap-4`}>
           <span
-            className={`pointer-events-auto relative flex h-20 w-20 items-center justify-center rounded-full backdrop-blur-sm transition md:h-24 md:w-24 ${getHudSurfaceClassName(
+            className={`pointer-events-auto relative flex ${surfaceSizeClass} items-center justify-center rounded-full backdrop-blur-sm transition ${getHudSurfaceClassName(
               model.hudState
             )} justify-self-center`}
           >
@@ -497,7 +509,7 @@ export const EvccHudControl = ({
             {model.charging && model.chargePowerHudDisplay ? (
               <span
                 data-testid={`living-control-placeholder-icon-${itemName}-evcc-power`}
-                className={`relative z-10 text-2xl font-black md:text-3xl ${getHudIconClassName(
+                className={`relative z-10 font-black ${chargePowerTextClass} ${getHudIconClassName(
                   model.hudState
                 )}`}
               >
@@ -509,18 +521,20 @@ export const EvccHudControl = ({
               />
             )}
           </span>
-          {renderEvccInfo({
-            connected: model.connected,
-            itemName,
-            vehicleDisplayName: model.vehicleDisplayName,
-            vehicleLogoKey: model.vehicleLogoKey,
-            vehicleSocDisplay: model.vehicleSocDisplay,
-            vehicleRangeDisplay: model.vehicleRangeDisplay,
-            effectivePlanSocDisplay: model.effectivePlanSocDisplay,
-            effectivePlanTimeDisplay: model.effectivePlanTimeDisplay,
-          })}
+          {isCompact
+            ? null
+            : renderEvccInfo({
+                connected: model.connected,
+                itemName,
+                vehicleDisplayName: model.vehicleDisplayName,
+                vehicleLogoKey: model.vehicleLogoKey,
+                vehicleSocDisplay: model.vehicleSocDisplay,
+                vehicleRangeDisplay: model.vehicleRangeDisplay,
+                effectivePlanSocDisplay: model.effectivePlanSocDisplay,
+                effectivePlanTimeDisplay: model.effectivePlanTimeDisplay,
+              })}
         </span>
-        {model.batterySocDisplay || model.batteryPowerState ? (
+        {!isCompact && (model.batterySocDisplay || model.batteryPowerState) ? (
           <span className="grid grid-cols-[5rem_auto] items-center gap-3 md:grid-cols-[6rem_auto] md:gap-4">
             <span className="justify-self-center">
               <BatteryChargingIcon
@@ -617,10 +631,10 @@ export const EvccOverlayControl = ({
     <ViewOverlayShell onClose={onClose} layout="fullscreen">
       <div
         data-testid={`living-evcc-overlay-${itemName}`}
-        className="pointer-events-none relative h-full w-full overflow-hidden"
+        className="pointer-events-none relative min-h-full w-full md:h-full md:overflow-hidden"
       >
-        <div className="pointer-events-none grid h-full min-h-0 w-full grid-cols-4 gap-2 p-2 md:gap-3 md:p-3">
-          <section className="pointer-events-none flex flex-col items-start justify-start overflow-hidden">
+        <div className="pointer-events-none flex min-h-full w-full grid-cols-4 flex-col gap-3 p-4 pt-16 md:grid md:h-full md:min-h-0 md:gap-3 md:p-3">
+          <section className="pointer-events-none flex flex-col items-start justify-start overflow-hidden rounded-lg border border-ui-border-subtle bg-ui-surface-overlay p-3 md:border-0 md:bg-transparent md:p-0">
             <p className="text-xs font-semibold tracking-wide text-ui-foreground-muted md:text-sm">
               {definition.label}
             </p>
@@ -654,7 +668,7 @@ export const EvccOverlayControl = ({
             />
           </section>
 
-          <section className="pointer-events-none grid h-full min-h-0 grid-rows-4 gap-2 md:gap-3">
+          <section className="pointer-events-none grid min-h-56 grid-cols-2 gap-2 md:h-full md:min-h-0 md:grid-cols-1 md:grid-rows-4 md:gap-3">
             {MODE_OPTIONS.map((option) => {
               const active = model.mode?.toLowerCase() === option.command;
               return (
@@ -678,7 +692,7 @@ export const EvccOverlayControl = ({
             })}
           </section>
 
-          <section className="pointer-events-none grid h-full min-h-0 grid-rows-3 gap-2 md:gap-3">
+          <section className="pointer-events-none grid min-h-44 grid-cols-3 gap-2 md:h-full md:min-h-0 md:grid-cols-1 md:grid-rows-3 md:gap-3">
             {LIMIT_OPTIONS.map((limit) => {
               const active = Math.round(model.limitSoc ?? -1) === limit;
               return (
@@ -702,7 +716,7 @@ export const EvccOverlayControl = ({
             })}
           </section>
 
-          <section className="pointer-events-none flex h-full min-h-0">
+          <section className="pointer-events-none flex min-h-32 md:h-full md:min-h-0">
             {definition.itemRefs.repeatingPlanActiveItemName ? (
               <RepeatingPlanToggle
                 itemName={itemName}
