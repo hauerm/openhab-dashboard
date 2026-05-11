@@ -452,6 +452,16 @@ const fireElementSwipe = (
   });
 };
 
+const mockWindowConfirm = (confirmed: boolean) => {
+  const confirm = vi.fn(() => confirmed);
+  Object.defineProperty(window, "confirm", {
+    configurable: true,
+    writable: true,
+    value: confirm,
+  });
+  return confirm;
+};
+
 describe("App integration", () => {
   beforeEach(() => {
     resetViewStoreForTests();
@@ -461,6 +471,7 @@ describe("App integration", () => {
       writable: true,
       value: undefined,
     });
+    mockWindowConfirm(true);
 
     mocks.fetchItemsMetadata.mockReset();
     mocks.fetchItemsMetadata.mockResolvedValue(buildDefaultItems());
@@ -822,6 +833,7 @@ describe("App integration", () => {
   it("uses one aggregate light toggle and turns active light groups off", async () => {
     const user = userEvent.setup();
     mockResponsiveDefault(false);
+    const confirm = mockWindowConfirm(true);
 
     render(<App />);
 
@@ -831,6 +843,7 @@ describe("App integration", () => {
 
     await user.click(screen.getByTestId("overview-aggregate-lights-toggle"));
 
+    expect(confirm).toHaveBeenCalledWith("Wirklich 3 Lichter ausschalten?");
     await waitFor(() => {
       expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
         SAH3_Licht_Couch,
@@ -854,9 +867,27 @@ describe("App integration", () => {
       .not.toBeInTheDocument();
   });
 
+  it("does not send aggregate commands when confirmation is cancelled", async () => {
+    const user = userEvent.setup();
+    mockResponsiveDefault(false);
+    const confirm = mockWindowConfirm(false);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
+    });
+
+    await user.click(screen.getByTestId("overview-aggregate-lights-toggle"));
+
+    expect(confirm).toHaveBeenCalledWith("Wirklich 3 Lichter ausschalten?");
+    expect(mocks.websocketSendCommand).not.toHaveBeenCalled();
+  });
+
   it("groups power outlets as Steckdosen and toggles them together", async () => {
     const user = userEvent.setup();
     mockResponsiveDefault(false);
+    const confirm = mockWindowConfirm(true);
 
     render(<App />);
 
@@ -867,6 +898,7 @@ describe("App integration", () => {
     expect(screen.getByText("2 Steckdosen")).toBeInTheDocument();
     await user.click(screen.getByTestId("overview-aggregate-power-toggle"));
 
+    expect(confirm).toHaveBeenCalledWith("Wirklich 2 Steckdosen ausschalten?");
     await waitFor(() => {
       expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
         Shelly_Plug_Wohnzimmer_Betrieb,
@@ -884,6 +916,7 @@ describe("App integration", () => {
   it("sends aggregate shading commands only to raffstore and rollershutter items", async () => {
     const user = userEvent.setup();
     mockResponsiveDefault(false);
+    const confirm = mockWindowConfirm(true);
 
     render(<App />);
 
@@ -893,6 +926,7 @@ describe("App integration", () => {
 
     await user.click(screen.getByTestId("overview-aggregate-shading-up"));
 
+    expect(confirm).toHaveBeenCalledWith("Wirklich 2 Beschattungen öffnen?");
     await waitFor(() => {
       expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
         KNX_JA1_Raffstore_Wohnzimmer,
