@@ -51,6 +51,10 @@ const mocks = vi.hoisted(() => ({
   locationPropertyInitialize: vi.fn(),
   locationPropertyEnsureHistoryRange: vi.fn(),
   locationPropertyValues: {} as Record<string, number | null>,
+  locationPropertyHistory: {} as Record<
+    string,
+    Array<{ timestamp: number; value: number }>
+  >,
   wsListener: null as ((update: { itemName: string; rawState: string }) => void) | null,
 }));
 
@@ -84,7 +88,7 @@ vi.mock("./stores/locationPropertyHistoryStore", () => ({
       initialize: mocks.locationPropertyInitialize,
       ensureHistoryRange: mocks.locationPropertyEnsureHistoryRange,
       currentValue: mocks.locationPropertyValues[config.property] ?? null,
-      history: {},
+      history: mocks.locationPropertyHistory,
       metadata: [],
       itemNames: new Set<string>([`${config.property}-item`]),
       latestValues: {},
@@ -284,6 +288,24 @@ const buildDefaultItems = (): Item[] => [
     tags: ["Power", "Measurement"],
     groupNames: ["Shelly_Plug_Wohnzimmer"],
   }),
+  createItem("Shelly_Plug_Wohnzimmer_Stehlampe", "NULL", "Group", {
+    label: "Shelly Plug Stehlampe",
+    tags: ["PowerOutlet"],
+    groupNames: ["Wohnzimmer"],
+  }),
+  createItem("Shelly_Plug_Wohnzimmer_Stehlampe_Betrieb", "ON", "Switch", {
+    tags: ["Power", "Control"],
+    groupNames: ["Shelly_Plug_Wohnzimmer_Stehlampe"],
+  }),
+  createItem(
+    "Shelly_Plug_Wohnzimmer_Stehlampe_Stromverbrauch",
+    "8.1 W",
+    "Number:Power",
+    {
+      tags: ["Power", "Measurement"],
+      groupNames: ["Shelly_Plug_Wohnzimmer_Stehlampe"],
+    }
+  ),
   createItem(GARAGE_DOOR_EQUIPMENT, "NULL", "Group", {
     label: "KNX Hörmann Garagentor",
     tags: ["GarageDoor"],
@@ -304,6 +326,26 @@ const buildDefaultItems = (): Item[] => [
     groupNames: [GARAGE_DOOR_EQUIPMENT],
   }),
 ];
+
+const mockResponsiveDefault = (useLocationView: boolean): void => {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches:
+        query === "(min-width: 1024px) and (orientation: landscape)"
+          ? useLocationView
+          : false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+};
 
 const fireViewportTap = (target: Element, x = 100, y = 100): void => {
   fireEvent.pointerDown(target, {
@@ -368,10 +410,57 @@ const fireViewportSwipe = (
   });
 };
 
+const fireElementSwipe = (
+  target: Element,
+  options: {
+    pointerId?: number;
+    startX: number;
+    startY: number;
+    endX: number;
+    endY: number;
+    pointerType?: "mouse" | "pen" | "touch";
+  }
+): void => {
+  const pointerId = options.pointerId ?? 302;
+  const pointerType = options.pointerType ?? "touch";
+  fireEvent.pointerDown(target, {
+    pointerId,
+    pointerType,
+    isPrimary: true,
+    button: 0,
+    buttons: 1,
+    clientX: options.startX,
+    clientY: options.startY,
+  });
+  fireEvent.pointerMove(target, {
+    pointerId,
+    pointerType,
+    isPrimary: true,
+    button: 0,
+    buttons: 1,
+    clientX: options.endX,
+    clientY: options.endY,
+  });
+  fireEvent.pointerUp(target, {
+    pointerId,
+    pointerType,
+    isPrimary: true,
+    button: 0,
+    buttons: 0,
+    clientX: options.endX,
+    clientY: options.endY,
+  });
+};
+
 describe("App integration", () => {
   beforeEach(() => {
     resetViewStoreForTests();
     mocks.wsListener = null;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    });
 
     mocks.fetchItemsMetadata.mockReset();
     mocks.fetchItemsMetadata.mockResolvedValue(buildDefaultItems());
@@ -409,6 +498,7 @@ describe("App integration", () => {
       Property_AirQuality_CO2: 810,
       Property_AirQuality_AQI: 1,
     };
+    mocks.locationPropertyHistory = {};
     mocks.subscribeWebSocketListener.mockReset();
     mocks.subscribeWebSocketListener.mockImplementation((listener) => {
       mocks.wsListener = listener;
@@ -525,6 +615,303 @@ describe("App integration", () => {
     });
   });
 
+  it("keeps small screens in overview and opens mobile room navigation from the header", async () => {
+    const user = userEvent.setup();
+    mockResponsiveDefault(false);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByTestId("Hauer-overview")).toBeInTheDocument();
+    expect(screen.getByTestId("overview-group-lights")).toBeInTheDocument();
+    expect(screen.getByTestId("overview-group-shading")).toBeInTheDocument();
+    expect(screen.getByText("3 Lichter")).toBeInTheDocument();
+    expect(screen.queryByTestId("overview-control-Equ_Spots_TV"))
+      .not.toBeInTheDocument();
+    expect(screen.getByTestId("overview-aggregate-lights-toggle")).toBeInTheDocument();
+    expect(screen.queryByTestId("overview-aggregate-lights-off"))
+      .not.toBeInTheDocument();
+    expect(screen.getByTestId("overview-aggregate-shading-up")).toBeInTheDocument();
+    expect(screen.queryByTestId("bottom-dock-panel")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("overview-switch-to-location"))
+      .not.toBeInTheDocument();
+    expect(screen.queryByTestId("mobile-overview-toggle")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("mobile-side-dock-handle")).not.toBeInTheDocument();
+    expect(screen.getByTestId("mobile-overview-state-grid")).toHaveClass(
+      "grid-cols-2"
+    );
+    expect(screen.getByTestId("hud-metric-temp")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-humidity")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-illuminance")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-rain")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-wind")).toHaveTextContent("10,8 km/h");
+    expect(screen.getByTestId("hud-metric-co2")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-health")).toBeInTheDocument();
+    expect(screen.getByTestId("mobile-top-dock-toggle")).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
+
+    await user.click(screen.getByTestId("mobile-top-dock-toggle"));
+    expect(screen.getByTestId("mobile-top-dock-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("dock-button-EG")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("mobile-top-dock-collapse"));
+    expect(screen.queryByTestId("mobile-top-dock-panel")).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("overview-group-toggle-lights"));
+    expect(screen.getByTestId("overview-control-Equ_Spots_TV")).toBeInTheDocument();
+    expect(screen.getByTestId("overview-group-controls-lights")).toHaveAttribute(
+      "data-layout",
+      "icon-grid"
+    );
+
+    await user.click(screen.getByTestId("overview-group-toggle-tv"));
+    expect(screen.getByTestId("overview-group-controls-tv")).toHaveAttribute(
+      "data-layout",
+      "detail-list"
+    );
+
+    await user.click(screen.getByTestId("overview-group-toggle-power"));
+    expect(screen.getByTestId("overview-group-controls-power")).toHaveAttribute(
+      "data-layout",
+      "detail-list"
+    );
+  });
+
+  it("uses current location plus descendants for overview scope", async () => {
+    const user = userEvent.setup();
+    mockResponsiveDefault(false);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
+    });
+
+    await user.click(screen.getByTestId("mobile-top-dock-toggle"));
+    await user.click(screen.getByTestId("dock-button-EG"));
+    expect(screen.getByTestId("EG-overview")).toBeInTheDocument();
+    await user.click(screen.getByTestId("overview-group-toggle-lights"));
+    expect(screen.getByTestId("overview-control-Equ_Spots_TV")).toBeInTheDocument();
+    expect(screen.queryByTestId("overview-group-doors")).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("mobile-top-dock-toggle"));
+    await user.click(screen.getByTestId("dock-button-Wohnzimmer"));
+    expect(screen.getByTestId("Wohnzimmer-overview")).toBeInTheDocument();
+    await user.click(screen.getByTestId("overview-group-toggle-lights"));
+    expect(screen.getByTestId("overview-control-Equ_Spots_TV")).toBeInTheDocument();
+    expect(screen.queryByTestId("overview-group-ventilation"))
+      .not.toBeInTheDocument();
+  });
+
+  it("switches sibling views from horizontal swipes in the mobile overview", async () => {
+    const user = userEvent.setup();
+    mockResponsiveDefault(false);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
+    });
+
+    await user.click(screen.getByTestId("mobile-top-dock-toggle"));
+    await user.click(screen.getByTestId("dock-button-EG"));
+    expect(screen.getByTestId("EG-overview")).toBeInTheDocument();
+
+    fireElementSwipe(screen.getByTestId("EG-overview"), {
+      startX: 240,
+      startY: 160,
+      endX: 40,
+      endY: 166,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("Garage-overview")).toBeInTheDocument();
+      expect(screen.getByTestId("view-background-image")).toHaveAttribute(
+        "src",
+        expect.stringContaining("/views/Garage.webp")
+      );
+    });
+
+    fireElementSwipe(screen.getByTestId("Garage-overview"), {
+      pointerId: 303,
+      startX: 40,
+      startY: 160,
+      endX: 240,
+      endY: 166,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("EG-overview")).toBeInTheDocument();
+      expect(screen.getByTestId("view-background-image")).toHaveAttribute(
+        "src",
+        expect.stringContaining("/views/EG.webp")
+      );
+    });
+
+    fireElementSwipe(screen.getByTestId("EG-overview"), {
+      pointerId: 304,
+      startX: 120,
+      startY: 40,
+      endX: 128,
+      endY: 190,
+    });
+    expect(screen.getByTestId("EG-overview")).toBeInTheDocument();
+  });
+
+  it("opens fullscreen scrollable history overlay from the mobile state grid", async () => {
+    const user = userEvent.setup();
+    mockResponsiveDefault(false);
+    const now = Date.now();
+    mocks.locationPropertyHistory = {
+      "Property_Temperature-item": [
+        { timestamp: now - 60_000, value: 21.4 },
+        { timestamp: now, value: 22.1 },
+      ],
+    };
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
+    });
+
+    await user.click(screen.getByTestId("hud-metric-temp"));
+
+    const overlay = screen.getByTestId("location-property-history-control-overlay");
+    expect(overlay).toBeInTheDocument();
+    expect(overlay).toHaveClass("h-full", "min-h-0", "rounded-none", "md:rounded-3xl");
+    expect(screen.getByTestId("location-property-history-chart-scroll")).toHaveClass(
+      "h-full",
+      "min-h-0",
+      "overflow-x-auto"
+    );
+    const chartInner = screen.getByTestId("location-property-history-chart-inner");
+    expect(chartInner).toHaveClass("h-full", "min-h-0");
+    expect(chartInner.className).toContain("min-w-[44rem]");
+  });
+
+  it("toggles direct light controls from the overview without opening an overlay", async () => {
+    const user = userEvent.setup();
+    mockResponsiveDefault(false);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
+    });
+
+    await user.click(screen.getByTestId("overview-group-toggle-lights"));
+    await user.click(screen.getByTestId("overview-control-Equ_Spots_Couch"));
+
+    await waitFor(() => {
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        SAH3_Licht_Couch,
+        "OFF",
+        "OnOff"
+      );
+    });
+    expect(screen.queryByTestId("light-control-Equ_Spots_Couch"))
+      .not.toBeInTheDocument();
+  });
+
+  it("uses one aggregate light toggle and turns active light groups off", async () => {
+    const user = userEvent.setup();
+    mockResponsiveDefault(false);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
+    });
+
+    await user.click(screen.getByTestId("overview-aggregate-lights-toggle"));
+
+    await waitFor(() => {
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        SAH3_Licht_Couch,
+        "OFF",
+        "OnOff"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        SAH3_Licht_TV,
+        "OFF",
+        "OnOff"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        RGBW_LED_STRIP_BUERO_KELLER_COLOR,
+        "210,80,0",
+        "HSB"
+      );
+    });
+    expect(screen.queryByTestId("overview-aggregate-lights-on"))
+      .not.toBeInTheDocument();
+    expect(screen.queryByTestId("overview-aggregate-lights-off"))
+      .not.toBeInTheDocument();
+  });
+
+  it("groups power outlets as Steckdosen and toggles them together", async () => {
+    const user = userEvent.setup();
+    mockResponsiveDefault(false);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByText("2 Steckdosen")).toBeInTheDocument();
+    await user.click(screen.getByTestId("overview-aggregate-power-toggle"));
+
+    await waitFor(() => {
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        Shelly_Plug_Wohnzimmer_Betrieb,
+        "OFF",
+        "OnOff"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        "Shelly_Plug_Wohnzimmer_Stehlampe_Betrieb",
+        "OFF",
+        "OnOff"
+      );
+    });
+  });
+
+  it("sends aggregate shading commands only to raffstore and rollershutter items", async () => {
+    const user = userEvent.setup();
+    mockResponsiveDefault(false);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
+    });
+
+    await user.click(screen.getByTestId("overview-aggregate-shading-up"));
+
+    await waitFor(() => {
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        KNX_JA1_Raffstore_Wohnzimmer,
+        "UP",
+        "UpDown"
+      );
+      expect(mocks.websocketSendCommand).toHaveBeenCalledWith(
+        KNX_JA1_Raffstore_Wohnzimmer_Strasse,
+        "UP",
+        "UpDown"
+      );
+    });
+    expect(mocks.websocketSendCommand).not.toHaveBeenCalledWith(
+      GARAGE_DOOR_ITEM,
+      "UP",
+      "UpDown"
+    );
+  });
+
   it("hides the rain sidebar metric when the rain state is inactive", async () => {
     mocks.locationPropertyValues.Property_Precipitation_Rain = 0;
 
@@ -534,6 +921,21 @@ describe("App integration", () => {
       expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
     });
 
+    expect(screen.queryByTestId("hud-metric-rain")).not.toBeInTheDocument();
+    expect(screen.getByTestId("hud-metric-wind")).toHaveTextContent("10,8 km/h");
+  });
+
+  it("hides the mobile rain state when the rain state is inactive", async () => {
+    mockResponsiveDefault(false);
+    mocks.locationPropertyValues.Property_Precipitation_Rain = 0;
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mocks.fetchItemsMetadata).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByTestId("mobile-overview-state-grid")).toBeInTheDocument();
     expect(screen.queryByTestId("hud-metric-rain")).not.toBeInTheDocument();
     expect(screen.getByTestId("hud-metric-wind")).toHaveTextContent("10,8 km/h");
   });
@@ -924,18 +1326,28 @@ describe("App integration", () => {
 
     expect(screen.getByTestId("ventilation-overlay")).toBeInTheDocument();
     expect(screen.getByTestId("overlay-close-button")).toHaveClass(
-      "bottom-4",
-      "left-4",
-      "p-3"
+      "right-3",
+      "top-3",
+      "p-2.5",
+      "md:bottom-5",
+      "md:left-5"
     );
     expect(screen.getByTestId("overlay-close-button")).not.toHaveClass(
-      "right-3",
-      "top-3"
+      "bottom-4",
+      "left-4"
     );
     expect(screen.getByTestId("ventilation-overlay-status")).toHaveTextContent("Stufe 2");
     expect(screen.getByTestId("ventilation-overlay-mode")).toHaveTextContent("Automatik");
-    expect(screen.getByTestId("ventilation-control-auto")).toBeInTheDocument();
+    expect(screen.getByTestId("ventilation-control-auto")).toHaveClass(
+      "bg-status-good-surface"
+    );
     expect(screen.getByTestId("ventilation-control-manual-0")).toBeInTheDocument();
+    expect(screen.getByTestId("ventilation-control-manual-2")).toHaveClass(
+      "bg-status-good-surface"
+    );
+    expect(screen.getByTestId("ventilation-control-manual-3")).not.toHaveClass(
+      "bg-status-moderate-surface"
+    );
     expect(screen.getByTestId("ventilation-control-manual-4")).toBeInTheDocument();
 
     await user.click(screen.getByTestId("ventilation-control-manual-3"));
@@ -943,6 +1355,26 @@ describe("App integration", () => {
       "KNX_Helios_ManualMode",
       "3",
       "Decimal"
+    );
+    act(() => {
+      mocks.wsListener?.({
+        itemName: KNX_Helios_ManualMode,
+        rawState: "3",
+      });
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("ventilation-overlay-mode")).toHaveTextContent(
+        "Stufe 3"
+      );
+    });
+    expect(screen.getByTestId("ventilation-control-auto")).not.toHaveClass(
+      "bg-status-good-surface"
+    );
+    expect(screen.getByTestId("ventilation-control-manual-2")).not.toHaveClass(
+      "bg-status-good-surface"
+    );
+    expect(screen.getByTestId("ventilation-control-manual-3")).toHaveClass(
+      "bg-status-moderate-surface"
     );
 
     await user.click(screen.getByTestId("overlay-backdrop"));
@@ -962,7 +1394,7 @@ describe("App integration", () => {
 
     expect(screen.getByTestId("ventilation-overlay")).toBeInTheDocument();
 
-    await user.click(screen.getByTestId("overlay-close-area"));
+    await user.click(screen.getByTestId("overlay-content-scroll"));
     expect(screen.queryByTestId("ventilation-overlay")).not.toBeInTheDocument();
   });
 
@@ -1494,7 +1926,7 @@ describe("App integration", () => {
     expect(
       screen.getByTestId(`raffstore-control-${EQU_RAFFSTORE_TERRASSE}-value`)
     ).toBeInTheDocument();
-    await user.click(screen.getByTestId("overlay-close-area"));
+    await user.click(screen.getByTestId("overlay-content-scroll"));
     expect(
       screen.queryByTestId(`raffstore-control-${EQU_RAFFSTORE_TERRASSE}-value`)
     ).not.toBeInTheDocument();
@@ -1505,7 +1937,7 @@ describe("App integration", () => {
     expect(
       screen.getByTestId(`living-tv-overlay-power-${Samsung_TV_Wohnzimmer_Power}`)
     ).toBeInTheDocument();
-    await user.click(screen.getByTestId("overlay-close-area"));
+    await user.click(screen.getByTestId("overlay-content-scroll"));
     expect(
       screen.queryByTestId(`living-tv-overlay-power-${Samsung_TV_Wohnzimmer_Power}`)
     ).not.toBeInTheDocument();

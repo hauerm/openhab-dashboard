@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  MdChevronLeft,
-  MdChevronRight,
-  MdSubdirectoryArrowLeft,
-} from "react-icons/md";
+import { MdChevronLeft, MdChevronRight } from "react-icons/md";
 import { useViewStore } from "../stores/viewStore";
 import type { ViewId } from "../types/view";
+import LocationDockButton from "./LocationDockButton";
+import { useLocationDockItems } from "./locationDockModel";
+import { getSiblingViewId } from "./locationSiblingNavigation";
 import {
   POINTER_HORIZONTAL_SWIPE_FACTOR,
   POINTER_SWIPE_MIN_DISTANCE_PX,
@@ -34,11 +33,6 @@ const EDGE_BUTTON_BASE_CLASS =
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(Math.max(value, min), max);
 
-interface DockItem {
-  viewId: ViewId;
-  isParent: boolean;
-}
-
 interface ViewportGestureState {
   pointerId: number;
   startX: number;
@@ -62,9 +56,8 @@ const resetHorizontalScroll = (container: HTMLDivElement | null): void => {
 const BottomDock = ({ onViewChange }: BottomDockProps) => {
   const currentView = useViewStore((state) => state.currentView);
   const setCurrentView = useViewStore((state) => state.setCurrentView);
-  const viewConfigs = useViewStore((state) => state.viewConfigs);
-  const viewLabels = useViewStore((state) => state.viewLabels);
   const model = useViewStore((state) => state.model);
+  const dockItems = useLocationDockItems();
   const [isDockVisible, setIsDockVisible] = useState(true);
   const dockRootRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -74,45 +67,6 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  const dockItems = (() => {
-    if (!model) {
-      return [] as DockItem[];
-    }
-
-    const currentLocation = model.locationsByName.get(currentView);
-    if (!currentLocation) {
-      return [] as DockItem[];
-    }
-
-    const childLocationNames =
-      model.childLocationNamesByParentName[currentView] ?? [];
-
-    if (currentLocation.parentName === null) {
-      return childLocationNames.map((viewId) => ({ viewId, isParent: false }));
-    }
-
-    const parentName = currentLocation.parentName;
-
-    if (childLocationNames.length > 0) {
-      return [
-        { viewId: parentName, isParent: true },
-        ...childLocationNames.map((viewId) => ({ viewId, isParent: false })),
-      ];
-    }
-
-    const siblingLocationNames =
-      model.childLocationNamesByParentName[parentName] ?? [];
-    const parentLocation = model.locationsByName.get(parentName);
-
-    if (!parentLocation || parentLocation.parentName === null) {
-      return siblingLocationNames.map((viewId) => ({ viewId, isParent: false }));
-    }
-
-    return [
-      { viewId: parentLocation.parentName, isParent: true },
-      ...siblingLocationNames.map((viewId) => ({ viewId, isParent: false })),
-    ];
-  })();
   const dockItemsSignature = dockItems.map((item) => item.viewId).join("|");
 
   const updateScrollState = useCallback(() => {
@@ -217,25 +171,7 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
 
   const getSiblingView = useCallback(
     (direction: "previous" | "next"): ViewId | null => {
-      if (!model) {
-        return null;
-      }
-
-      const currentLocation = model.locationsByName.get(currentView);
-      if (!currentLocation?.parentName) {
-        return null;
-      }
-
-      const siblingLocationNames =
-        model.childLocationNamesByParentName[currentLocation.parentName] ?? [];
-      const currentIndex = siblingLocationNames.indexOf(currentView);
-      if (currentIndex === -1) {
-        return null;
-      }
-
-      const targetIndex =
-        direction === "next" ? currentIndex + 1 : currentIndex - 1;
-      return siblingLocationNames[targetIndex] ?? null;
+      return getSiblingViewId(model, currentView, direction);
     },
     [currentView, model]
   );
@@ -422,74 +358,19 @@ const BottomDock = ({ onViewChange }: BottomDockProps) => {
             }`}
             style={{ touchAction: "pan-x" }}
           >
-            {dockItems.map(({ viewId, isParent }) => {
-              const viewConfig = viewConfigs[viewId];
-              if (!viewConfig) {
-                return null;
-              }
-              const viewLabel = viewLabels[viewId] ?? viewConfig.label;
-              const isActive = currentView === viewId;
-
-              return (
-                <button
-                  key={viewId}
-                  type="button"
-                  data-testid={`dock-button-${viewId}`}
-                  onClick={() => {
-                    onViewChange?.(viewId);
-                    setCurrentView(viewId);
-                    clearHideTimer();
-                    setIsDockVisible(false);
-                  }}
-                  className="group relative h-32 aspect-[4/3] shrink-0 overflow-hidden bg-ui-surface-panel text-left transition md:h-40"
-                  aria-label={
-                    isParent
-                      ? `Ebene hoch zu ${viewLabel}`
-                      : `Wechsel zu ${viewLabel}`
-                  }
-                  aria-current={isActive ? "page" : undefined}
-                >
-                  <img
-                    src={viewConfig.baseImage}
-                    alt={`Thumbnail ${viewLabel}`}
-                    className="h-full w-full object-cover object-center transition duration-300 group-hover:scale-105"
-                    draggable={false}
-                    onError={(event) => {
-                      if (event.currentTarget.dataset.fallback === "1") {
-                        return;
-                      }
-                      event.currentTarget.dataset.fallback = "1";
-                      event.currentTarget.src = "/views/missing.jpg";
-                    }}
-                  />
-                  {isParent ? (
-                    <div className="absolute left-2 top-2 z-10 inline-flex items-center justify-center rounded-full bg-ui-surface-overlay/90 p-1.5 text-ui-foreground shadow-md backdrop-blur-sm">
-                      <MdSubdirectoryArrowLeft
-                        data-testid={`dock-parent-icon-${viewId}`}
-                        className="h-5 w-5 md:h-6 md:w-6"
-                      />
-                    </div>
-                  ) : null}
-                  <div
-                    className={`absolute inset-0 transition ${
-                      isActive
-                        ? "bg-ui-surface-image"
-                        : "bg-ui-surface-image-strong group-hover:bg-ui-surface-image"
-                    }`}
-                  />
-                  <div className="absolute inset-x-0 bottom-0 bg-ui-surface-image-strong px-3 py-1.5 text-sm font-semibold text-ui-foreground md:text-base">
-                    {viewLabel}
-                  </div>
-                  <div
-                    className={`absolute inset-x-0 bottom-0 h-1 transition ${
-                      isActive
-                        ? "bg-ui-foreground"
-                        : "bg-transparent group-hover:bg-ui-border-strong"
-                    }`}
-                  />
-                </button>
-              );
-            })}
+            {dockItems.map((item) => (
+              <LocationDockButton
+                key={item.viewId}
+                item={item}
+                className="h-32 aspect-[4/3] md:h-40"
+                onClick={({ viewId }) => {
+                  onViewChange?.(viewId);
+                  setCurrentView(viewId);
+                  clearHideTimer();
+                  setIsDockVisible(false);
+                }}
+              />
+            ))}
           </div>
 
           {isOverflowing && (

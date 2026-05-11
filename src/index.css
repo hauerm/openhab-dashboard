@@ -280,6 +280,24 @@
   box-shadow: var(--shadow-slider-thumb);
 }
 
+@utility slider-thumb-roundbar-horizontal {
+  position: absolute;
+  top: calc(-1 * var(--spacing-slider-thumb-overhang));
+  bottom: calc(-1 * var(--spacing-slider-thumb-overhang));
+  width: var(--spacing-slider-thumb-height);
+  pointer-events: none;
+  border: 1px solid var(--color-slider-thumb-border);
+  border-radius: 9999px;
+  background-image: linear-gradient(
+    to right,
+    var(--color-slider-thumb-highlight) 0%,
+    var(--color-slider-thumb-surface) 34%,
+    color-mix(in srgb, var(--color-slider-thumb-surface) 82%, var(--color-slider-thumb-border)) 68%,
+    color-mix(in srgb, var(--color-slider-thumb-surface) 68%, var(--color-slider-thumb-border)) 100%
+  );
+  box-shadow: var(--shadow-slider-thumb);
+}
+
 @utility dimmer-glow {
   background-color: color-mix(
     in srgb,

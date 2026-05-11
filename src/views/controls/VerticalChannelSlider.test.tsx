@@ -1,6 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { VerticalChannelSlider } from "./VerticalChannelSlider";
+import {
+  HorizontalChannelSlider,
+  VerticalChannelSlider,
+} from "./VerticalChannelSlider";
 
 const renderSlider = (onChange = vi.fn()) => {
   render(
@@ -146,5 +149,64 @@ describe("VerticalChannelSlider", () => {
       clientY: 40,
     });
     expect(onChange).toHaveBeenLastCalledWith(60, false);
+  });
+});
+
+describe("HorizontalChannelSlider", () => {
+  it("tracks one active pointer horizontally and keeps the thumb full height", () => {
+    const onChange = vi.fn();
+    render(
+      <HorizontalChannelSlider
+        label="Brightness"
+        testId="brightness-slider-horizontal"
+        value={40}
+        min={0}
+        max={100}
+        trackClassName="bg-scale-lightness"
+        disabled={false}
+        onChange={onChange}
+      />
+    );
+
+    const slider = screen.getByTestId("brightness-slider-horizontal");
+    vi.spyOn(slider, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      top: 0,
+      right: 100,
+      bottom: 100,
+      left: 0,
+      toJSON: () => ({}),
+    });
+
+    const track = screen.getByTestId("brightness-slider-horizontal-track");
+    const handle = screen.getByTestId("brightness-slider-horizontal-handle");
+    expect(slider).toHaveClass("slider-track-frame");
+    expect(track).toHaveClass("slider-track-fill", "bg-scale-lightness");
+    expect(handle).toHaveClass("slider-thumb-roundbar-horizontal");
+    expect(handle).toHaveStyle({ transform: "translateX(-50%)" });
+    expect(handle.getAttribute("style")).not.toContain("top:");
+
+    fireEvent.pointerDown(slider, {
+      pointerId: 1,
+      pointerType: "touch",
+      isPrimary: true,
+      button: 0,
+      buttons: 1,
+      clientX: 70,
+    });
+    expect(onChange).toHaveBeenLastCalledWith(70, false);
+
+    fireEvent.pointerUp(slider, {
+      pointerId: 1,
+      pointerType: "touch",
+      isPrimary: true,
+      button: 0,
+      buttons: 0,
+      clientX: 20,
+    });
+    expect(onChange).toHaveBeenLastCalledWith(20, true);
   });
 });

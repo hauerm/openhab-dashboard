@@ -233,9 +233,9 @@ export const LocationPropertyHistoryOverlayControl = ({
     <ViewOverlayShell onClose={onClose} layout="fullscreen">
       <section
         data-testid="location-property-history-control-overlay"
-        className="pointer-events-none flex h-full min-h-0 w-full flex-col rounded-3xl border border-ui-border-subtle bg-ui-surface-panel p-4 shadow-2xl backdrop-blur-2xl md:p-6"
+        className="pointer-events-none flex h-full min-h-0 w-full flex-col overflow-hidden rounded-none border border-ui-border-subtle bg-ui-surface-panel p-3 pt-16 shadow-2xl backdrop-blur-2xl md:rounded-3xl md:p-6"
       >
-        <header className="flex flex-wrap items-start justify-between gap-3 text-ui-foreground">
+        <header className="shrink-0 text-ui-foreground md:flex md:flex-wrap md:items-start md:justify-between md:gap-3">
           <div>
             <h2 className="text-xl font-semibold md:text-2xl">{definition.title}</h2>
             <div className="mt-1 text-xs text-ui-foreground-muted md:text-sm">
@@ -245,7 +245,7 @@ export const LocationPropertyHistoryOverlayControl = ({
             </div>
           </div>
 
-          <div className="flex flex-wrap justify-end gap-1.5">
+          <div className="mt-3 flex max-w-full gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] md:mt-0 md:flex-wrap md:justify-end md:overflow-visible md:pb-0 [&::-webkit-scrollbar]:hidden">
             {HISTORY_RANGE_OPTIONS.map((option) => {
               const isActive = option.key === activeRangeKey;
               return (
@@ -281,109 +281,118 @@ export const LocationPropertyHistoryOverlayControl = ({
               Keine historischen Werte im gewählten Zeitraum verfügbar.
             </div>
           ) : (
-            <div className="relative h-full w-full">
-              {loading ? (
-                <div className="pointer-events-none absolute right-3 top-3 z-10 rounded-md border border-ui-border-subtle bg-ui-surface-overlay px-2 py-1 text-xs text-ui-foreground-muted backdrop-blur">
-                  Lade...
-                </div>
-              ) : null}
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={chartData}
-                  margin={{ top: 16, right: 32, left: 8, bottom: 16 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="var(--color-chart-grid)"
-                  />
-                  {definition.comfortBand ? (
-                    <ReferenceArea
-                      y1={definition.comfortBand.min}
-                      y2={definition.comfortBand.max}
-                      fill="var(--color-chart-reference-band)"
-                      ifOverflow="extendDomain"
+            <div
+              data-testid="location-property-history-chart-scroll"
+              className="pointer-events-auto h-full min-h-0 overflow-x-auto overflow-y-hidden md:overflow-visible"
+            >
+              <div
+                data-testid="location-property-history-chart-inner"
+                className="relative h-full min-h-0 min-w-[44rem] md:w-full md:min-w-0"
+              >
+                {loading ? (
+                  <div className="pointer-events-none absolute right-3 top-3 z-10 rounded-md border border-ui-border-subtle bg-ui-surface-overlay px-2 py-1 text-xs text-ui-foreground-muted backdrop-blur">
+                    Lade...
+                  </div>
+                ) : null}
+                <ResponsiveContainer width="100%" height="100%" minHeight={320}>
+                  <LineChart
+                    data={chartData}
+                    margin={{ top: 16, right: 32, left: 8, bottom: 16 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="var(--color-chart-grid)"
                     />
-                  ) : null}
-                  <XAxis
-                    dataKey="timestamp"
-                    type="number"
-                    domain={["dataMin", "dataMax"]}
-                    tickFormatter={(value) =>
-                      axisTimeFormatter.format(new Date(Number(value)))
-                    }
-                    tick={{ fill: "var(--color-chart-axis)", fontSize: 12 }}
-                    axisLine={{ stroke: "var(--color-chart-axis)" }}
-                    tickLine={{ stroke: "var(--color-chart-axis)" }}
-                    minTickGap={24}
-                  />
-                  <YAxis
-                    type="number"
-                    domain={yDomain}
-                    tick={{ fill: "var(--color-chart-axis)", fontSize: 12 }}
-                    axisLine={{ stroke: "var(--color-chart-axis)" }}
-                    tickLine={{ stroke: "var(--color-chart-axis)" }}
-                    width={72}
-                    label={{
-                      value: yAxisLabel,
-                      angle: -90,
-                      position: "insideLeft",
-                      fill: "var(--color-chart-axis)",
-                      fontSize: 12,
-                    }}
-                  />
-                  <Tooltip
-                    formatter={(value, name) => {
-                      const label = typeof name === "string" ? name : String(name ?? "");
-                      if (typeof value !== "number" || !Number.isFinite(value)) {
-                        return ["--", label];
+                    {definition.comfortBand ? (
+                      <ReferenceArea
+                        y1={definition.comfortBand.min}
+                        y2={definition.comfortBand.max}
+                        fill="var(--color-chart-reference-band)"
+                        ifOverflow="extendDomain"
+                      />
+                    ) : null}
+                    <XAxis
+                      dataKey="timestamp"
+                      type="number"
+                      domain={["dataMin", "dataMax"]}
+                      tickFormatter={(value) =>
+                        axisTimeFormatter.format(new Date(Number(value)))
                       }
-                      const suffix = resolvedUnit ? ` ${resolvedUnit}` : "";
-                      return [`${value.toFixed(1)}${suffix}`, label];
-                    }}
-                    labelFormatter={(value) =>
-                      tooltipTimeFormatter.format(new Date(Number(value)))
-                    }
-                    contentStyle={{
-                      backgroundColor: "var(--color-chart-tooltip-bg)",
-                      border: "1px solid var(--color-chart-tooltip-border)",
-                      borderRadius: "12px",
-                      color: "var(--color-ui-foreground)",
-                    }}
-                    itemStyle={{ color: "var(--color-ui-foreground)" }}
-                    labelStyle={{ color: "var(--color-ui-foreground-muted)" }}
-                  />
-                  <Legend
-                    wrapperStyle={{
-                      color: "var(--color-ui-foreground)",
-                      paddingTop: 8,
-                    }}
-                  />
-                  {seriesKeys.map((seriesKey, index) => (
-                    <Line
-                      key={seriesKey}
-                      type="monotone"
-                      dataKey={seriesKey}
-                      name={seriesKey}
-                      stroke={SERIES_COLORS[index % SERIES_COLORS.length]}
-                      strokeWidth={2}
-                      dot={false}
-                      connectNulls
+                      tick={{ fill: "var(--color-chart-axis)", fontSize: 12 }}
+                      axisLine={{ stroke: "var(--color-chart-axis)" }}
+                      tickLine={{ stroke: "var(--color-chart-axis)" }}
+                      minTickGap={24}
                     />
-                  ))}
-                  {showAverageSeries ? (
-                    <Line
-                      type="monotone"
-                      dataKey="average"
-                      name="Durchschnitt"
-                      stroke="var(--color-chart-average)"
-                      strokeWidth={2}
-                      strokeDasharray="6 6"
-                      dot={false}
-                      connectNulls
+                    <YAxis
+                      type="number"
+                      domain={yDomain}
+                      tick={{ fill: "var(--color-chart-axis)", fontSize: 12 }}
+                      axisLine={{ stroke: "var(--color-chart-axis)" }}
+                      tickLine={{ stroke: "var(--color-chart-axis)" }}
+                      width={72}
+                      label={{
+                        value: yAxisLabel,
+                        angle: -90,
+                        position: "insideLeft",
+                        fill: "var(--color-chart-axis)",
+                        fontSize: 12,
+                      }}
                     />
-                  ) : null}
-                </LineChart>
-              </ResponsiveContainer>
+                    <Tooltip
+                      formatter={(value, name) => {
+                        const label =
+                          typeof name === "string" ? name : String(name ?? "");
+                        if (typeof value !== "number" || !Number.isFinite(value)) {
+                          return ["--", label];
+                        }
+                        const suffix = resolvedUnit ? ` ${resolvedUnit}` : "";
+                        return [`${value.toFixed(1)}${suffix}`, label];
+                      }}
+                      labelFormatter={(value) =>
+                        tooltipTimeFormatter.format(new Date(Number(value)))
+                      }
+                      contentStyle={{
+                        backgroundColor: "var(--color-chart-tooltip-bg)",
+                        border: "1px solid var(--color-chart-tooltip-border)",
+                        borderRadius: "12px",
+                        color: "var(--color-ui-foreground)",
+                      }}
+                      itemStyle={{ color: "var(--color-ui-foreground)" }}
+                      labelStyle={{ color: "var(--color-ui-foreground-muted)" }}
+                    />
+                    <Legend
+                      wrapperStyle={{
+                        color: "var(--color-ui-foreground)",
+                        paddingTop: 8,
+                      }}
+                    />
+                    {seriesKeys.map((seriesKey, index) => (
+                      <Line
+                        key={seriesKey}
+                        type="monotone"
+                        dataKey={seriesKey}
+                        name={seriesKey}
+                        stroke={SERIES_COLORS[index % SERIES_COLORS.length]}
+                        strokeWidth={2}
+                        dot={false}
+                        connectNulls
+                      />
+                    ))}
+                    {showAverageSeries ? (
+                      <Line
+                        type="monotone"
+                        dataKey="average"
+                        name="Durchschnitt"
+                        stroke="var(--color-chart-average)"
+                        strokeWidth={2}
+                        strokeDasharray="6 6"
+                        dot={false}
+                        connectNulls
+                      />
+                    ) : null}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           )}
         </div>
